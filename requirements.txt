@@ -1,0 +1,34 @@
+# --- Backend core ---
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+
+# --- DB ---
+sqlalchemy
+alembic
+asyncpg
+psycopg2-binary
+
+# --- Auth ---
+fastapi-users[sqlalchemy]
+
+# --- Admin ---
+sqladmin
+
+# --- Background tasks / cache ---
+arq
+redis
+
+# --- Search client (Meilisearch) ---
+meilisearch-python-sdk
+
+# --- Images ---
+pillow
+boto3
+
+# --- Dev / testing ---
+pytest
+pytest-asyncio
+httpx
+ruff

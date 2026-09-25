@@ -1,0 +1,20 @@
+# venv
+.venv/
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# env / secrets
+.env
+
+# pytest
+.pytest_cache/
+
+# ide
+.vscode/*
+!.vscode/settings.json
+
+# os
+.DS_Store
