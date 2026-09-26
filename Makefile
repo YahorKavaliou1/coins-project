@@ -36,8 +36,13 @@ dev: ## Run server with auto-reload
 
 # ---- Database / Docker ----
 
-up: ## Start Postgres container
+up: ## Start Postgres container and wait until it is ready
 	docker compose up -d
+	@echo "Waiting for Postgres to be ready..."
+	@until docker exec $(DB_CONTAINER) pg_isready -U $(DB_USER) -d $(DB_NAME) > /dev/null 2>&1; do \
+		sleep 1; \
+	done
+	@echo "Postgres is ready."
 
 down: ## Stop and remove containers (data is preserved)
 	docker compose down

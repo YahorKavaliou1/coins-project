@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Coins Catalog</title>
@@ -8,36 +8,36 @@
 <body>
     <header>
         <h1>Coins Catalog</h1>
-        <div id="auth-status">Не авторизован</div>
+        <div id="auth-status">Not logged in</div>
     </header>
 
     <nav class="tabs">
         <button data-tab="auth" class="tab-btn active">Auth</button>
-        <button data-tab="reference" class="tab-btn">Справочники</button>
-        <button data-tab="coins" class="tab-btn">Монеты</button>
+        <button data-tab="reference" class="tab-btn">Reference data</button>
+        <button data-tab="coins" class="tab-btn">Coins</button>
     </nav>
 
     <!-- AUTH TAB -->
     <section id="tab-auth" class="tab-content active">
         <div class="grid">
             <div class="card">
-                <h2>Регистрация</h2>
+                <h2>Register</h2>
                 <form id="register-form">
                     <input type="email" name="email" placeholder="Email" required>
-                    <input type="password" name="password" placeholder="Пароль" required>
-                    <input type="text" name="full_name" placeholder="Имя (необязательно)">
-                    <button type="submit">Зарегистрироваться</button>
+                    <input type="password" name="password" placeholder="Password" required>
+                    <input type="text" name="full_name" placeholder="Full name (optional)">
+                    <button type="submit">Register</button>
                 </form>
             </div>
 
             <div class="card">
-                <h2>Вход</h2>
+                <h2>Log in</h2>
                 <form id="login-form">
                     <input type="email" name="email" placeholder="Email" required>
-                    <input type="password" name="password" placeholder="Пароль" required>
-                    <button type="submit">Войти</button>
+                    <input type="password" name="password" placeholder="Password" required>
+                    <button type="submit">Log in</button>
                 </form>
-                <button id="logout-btn" style="display:none">Выйти</button>
+                <button id="logout-btn" style="display:none">Log out</button>
             </div>
         </div>
         <pre id="auth-log" class="log"></pre>
@@ -47,65 +47,61 @@
     <section id="tab-reference" class="tab-content">
         <div class="grid">
             <div class="card">
-                <h2>Страны</h2>
+                <h2>Countries</h2>
                 <form id="country-form">
-                    <input type="text" name="name" placeholder="Название страны" required>
-                    <input type="text" name="code" placeholder="Код (RU, US...)">
-                    <button type="submit">Добавить</button>
+                    <input type="text" name="name" placeholder="Country name" required>
+                    <input type="text" name="code" placeholder="Code (US, RU...)">
+                    <button type="submit">Add</button>
                 </form>
                 <ul id="countries-list"></ul>
             </div>
 
             <div class="card">
-                <h2>Металлы</h2>
+                <h2>Metals</h2>
                 <form id="metal-form">
-                    <input type="text" name="name" placeholder="Название металла" required>
-                    <button type="submit">Добавить</button>
+                    <input type="text" name="name" placeholder="Metal name" required>
+                    <button type="submit">Add</button>
                 </form>
                 <ul id="metals-list"></ul>
             </div>
 
-            <div class="card">
-                <h2>Номиналы</h2>
-                <form id="denomination-form">
-                    <input type="text" name="name" placeholder="Название номинала" required>
-                    <input type="number" step="0.01" name="value" placeholder="Значение">
-                    <button type="submit">Добавить</button>
-                </form>
-                <ul id="denominations-list"></ul>
-            </div>
         </div>
     </section>
 
     <!-- COINS TAB -->
     <section id="tab-coins" class="tab-content">
         <div class="card">
-            <h2>Добавить монету</h2>
+            <h2>Add coin</h2>
             <form id="coin-form">
-                <input type="text" name="name" placeholder="Название монеты" required>
-                <input type="number" name="year" placeholder="Год" required>
                 <select name="country_id" required>
-                    <option value="">Страна</option>
+                    <option value="">Country</option>
                 </select>
-                <select name="metal_id">
-                    <option value="">Металл (необязательно)</option>
+                <input type="text" name="denomination" placeholder="Denomination (optional, e.g. 1 Dollar)">
+                <input type="number" name="year" placeholder="Year" required>
+                <select name="metal_id" required>
+                    <option value="">Metal</option>
                 </select>
-                <select name="denomination_id">
-                    <option value="">Номинал (необязательно)</option>
-                </select>
-                <textarea name="description" placeholder="Описание"></textarea>
-                <button type="submit">Создать</button>
+                <div class="weight-row">
+                    <input type="number" step="0.01" name="weight" placeholder="Weight" required>
+                    <select name="weight_unit">
+                        <option value="oz">oz</option>
+                        <option value="g">g</option>
+                        <option value="kg">kg</option>
+                    </select>
+                </div>
+                <input type="text" name="extra_info" placeholder="Extra info (e.g. Walking Liberty)">
+                <button type="submit">Create</button>
             </form>
         </div>
 
         <div class="card">
-            <h2>Фильтр</h2>
+            <h2>Filter</h2>
             <div class="filters">
                 <select id="filter-country">
-                    <option value="">Все страны</option>
+                    <option value="">All countries</option>
                 </select>
-                <input type="text" id="filter-q" placeholder="Поиск по названию">
-                <button id="filter-apply">Применить</button>
+                <input type="text" id="filter-q" placeholder="Search by name">
+                <button id="filter-apply">Apply</button>
             </div>
         </div>
 

@@ -5,9 +5,41 @@ from sqlalchemy.orm import selectinload
 
 from app.db.session import get_db
 from app.models.coin import Coin
+from app.models.country import Country
+from app.models.metal import Metal
 from app.schemas.coin import CoinCreate, CoinRead, CoinUpdate, Page
+from app.services.coin_naming import build_coin_name
 
 router = APIRouter(prefix="/coins", tags=["coins"])
+
+
+async def _resolve_name(
+    db: AsyncSession,
+    country_id: int,
+    metal_id: int,
+    year: int,
+    weight: float,
+    weight_unit: str,
+    denomination: str | None,
+    extra_info: str | None,
+) -> str:
+    country = await db.get(Country, country_id)
+    if country is None:
+        raise HTTPException(status_code=404, detail="Country not found")
+
+    metal = await db.get(Metal, metal_id)
+    if metal is None:
+        raise HTTPException(status_code=404, detail="Metal not found")
+
+    return build_coin_name(
+        country_name=country.name,
+        year=year,
+        metal_name=metal.name,
+        weight=weight,
+        weight_unit=weight_unit,
+        denomination=denomination,
+        extra_info=extra_info,
+    )
 
 
 @router.get("", response_model=Page)
@@ -24,7 +56,6 @@ async def list_coins(
     stmt = select(Coin).options(
         selectinload(Coin.country),
         selectinload(Coin.metal),
-        selectinload(Coin.denomination),
     )
 
     if country_id is not None:
@@ -51,11 +82,7 @@ async def list_coins(
 async def get_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> Coin:
     stmt = (
         select(Coin)
-        .options(
-            selectinload(Coin.country),
-            selectinload(Coin.metal),
-            selectinload(Coin.denomination),
-        )
+        .options(selectinload(Coin.country), selectinload(Coin.metal))
         .where(Coin.id == coin_id)
     )
     coin = (await db.execute(stmt)).scalar_one_or_none()
@@ -66,15 +93,28 @@ async def get_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> Coin:
 
 @router.post("", response_model=CoinRead, status_code=201)
 async def create_coin(data: CoinCreate, db: AsyncSession = Depends(get_db)) -> Coin:
-    coin = Coin(**data.model_dump())
+    name = await _resolve_name(
+        db,
+        country_id=data.country_id,
+        metal_id=data.metal_id,
+        year=data.year,
+        weight=data.weight,
+        weight_unit=data.weight_unit,
+        denomination=data.denomination,
+        extra_info=data.extra_info,
+    )
+
+    coin = Coin(**data.model_dump(), name=name)
     db.add(coin)
     await db.commit()
-    await db.refresh(coin, attribute_names=["country", "metal", "denomination"])
+    await db.refresh(coin, attribute_names=["country", "metal"])
     return coin
 
 
 @router.patch("/{coin_id}", response_model=CoinRead)
-async def update_coin(coin_id: int, data: CoinUpdate, db: AsyncSession = Depends(get_db)) -> Coin:
+async def update_coin(
+    coin_id: int, data: CoinUpdate, db: AsyncSession = Depends(get_db)
+) -> Coin:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
@@ -82,8 +122,19 @@ async def update_coin(coin_id: int, data: CoinUpdate, db: AsyncSession = Depends
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(coin, field, value)
 
+    coin.name = await _resolve_name(
+        db,
+        country_id=coin.country_id,
+        metal_id=coin.metal_id,
+        year=coin.year,
+        weight=coin.weight,
+        weight_unit=coin.weight_unit,
+        denomination=coin.denomination,
+        extra_info=coin.extra_info,
+    )
+
     await db.commit()
-    await db.refresh(coin, attribute_names=["country", "metal", "denomination"])
+    await db.refresh(coin, attribute_names=["country", "metal"])
     return coin
 
 

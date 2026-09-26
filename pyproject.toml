@@ -11,14 +11,14 @@ select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
     "F",   # pyflakes
-    "I",   # isort (сортировка импортов)
-    "B",   # flake8-bugbear (частые баги)
+    "I",   # isort (import sorting)
+    "B",   # flake8-bugbear (common bugs)
     "C4",  # flake8-comprehensions
-    "UP",  # pyupgrade (современный синтаксис)
+    "UP",  # pyupgrade (modern syntax)
     "SIM", # flake8-simplify
 ]
 ignore = [
-    "E501",  # длина строки - обрабатывается форматтером
+    "E501",  # line length - handled by the formatter
 ]
 
 [tool.ruff.lint.isort]

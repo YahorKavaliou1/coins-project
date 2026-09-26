@@ -1,8 +1,8 @@
-"""initial schema: users, countries, metals, denominations, coins
+"""initial schema
 
-Revision ID: fd3c77a4f377
+Revision ID: 1747612ed3d8
 Revises: 
-Create Date: 2026-09-26 12:26:43.406468
+Create Date: 2026-09-26 13:00:19.952569
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'fd3c77a4f377'
+revision: str = '1747612ed3d8'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -55,10 +55,12 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('year', sa.Integer(), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('weight', sa.Float(), nullable=False),
+    sa.Column('weight_unit', sa.String(length=10), server_default='oz', nullable=False),
+    sa.Column('extra_info', sa.Text(), nullable=True),
     sa.Column('mintage', sa.Integer(), nullable=True),
     sa.Column('country_id', sa.Integer(), nullable=False),
-    sa.Column('metal_id', sa.Integer(), nullable=True),
+    sa.Column('metal_id', sa.Integer(), nullable=False),
     sa.Column('denomination_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['country_id'], ['countries.id'], ),
     sa.ForeignKeyConstraint(['denomination_id'], ['denominations.id'], ),

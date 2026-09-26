@@ -21,10 +21,10 @@ function updateAuthUI() {
     const status = document.getElementById("auth-status");
     const logoutBtn = document.getElementById("logout-btn");
     if (accessToken) {
-        status.textContent = "Авторизован";
+        status.textContent = "Logged in";
         logoutBtn.style.display = "inline-block";
     } else {
-        status.textContent = "Не авторизован";
+        status.textContent = "Not logged in";
         logoutBtn.style.display = "none";
     }
 }
@@ -117,16 +117,6 @@ async function loadMetals() {
     select.innerHTML = keepFirst + metals.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
 }
 
-async function loadDenominations() {
-    const denominations = await api("/denominations");
-    document.getElementById("denominations-list").innerHTML =
-        denominations.map((d) => `<li>${d.name} ${d.value ?? ""}</li>`).join("");
-
-    const select = document.querySelector('select[name="denomination_id"]');
-    const keepFirst = select.options[0].outerHTML;
-    select.innerHTML = keepFirst + denominations.map((d) => `<option value="${d.id}">${d.name}</option>`).join("");
-}
-
 document.getElementById("country-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
@@ -151,38 +141,24 @@ document.getElementById("metal-form").addEventListener("submit", async (e) => {
     await loadMetals();
 });
 
-document.getElementById("denomination-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    await api("/denominations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            name: form.get("name"),
-            value: form.get("value") ? parseFloat(form.get("value")) : null,
-        }),
-    });
-    e.target.reset();
-    await loadDenominations();
-});
-
 // ---- Coins ----
 
 function renderCoins(page) {
     const container = document.getElementById("coins-list");
     if (page.items.length === 0) {
-        container.innerHTML = "<p>Монет не найдено</p>";
+        container.innerHTML = "<p>No coins found</p>";
         return;
     }
     container.innerHTML = page.items
         .map(
             (c) => `
         <div class="coin-card">
-            <h3>${c.name} (${c.year})</h3>
-            <p>Страна: ${c.country?.name || "-"}</p>
-            <p>Металл: ${c.metal?.name || "-"}</p>
-            <p>Номинал: ${c.denomination?.name || "-"}</p>
-            ${c.description ? `<p>${c.description}</p>` : ""}
+            <h3>${c.name}</h3>
+            <p>Year: ${c.year}</p>
+            <p>Country: ${c.country?.name || "-"}</p>
+            <p>Metal: ${c.metal?.name || "-"}</p>
+            <p>Weight: ${c.weight} ${c.weight_unit}</p>
+            <p>Denomination: ${c.denomination || "-"}</p>
         </div>
     `
         )
@@ -209,20 +185,19 @@ document.getElementById("coin-form").addEventListener("submit", async (e) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                name: form.get("name"),
-                year: parseInt(form.get("year"), 10),
                 country_id: parseInt(form.get("country_id"), 10),
-                metal_id: form.get("metal_id") ? parseInt(form.get("metal_id"), 10) : null,
-                denomination_id: form.get("denomination_id")
-                    ? parseInt(form.get("denomination_id"), 10)
-                    : null,
-                description: form.get("description") || null,
+                denomination: form.get("denomination") || null,
+                year: parseInt(form.get("year"), 10),
+                metal_id: parseInt(form.get("metal_id"), 10),
+                weight: parseFloat(form.get("weight")),
+                weight_unit: form.get("weight_unit"),
+                extra_info: form.get("extra_info") || null,
             }),
         });
         e.target.reset();
         await loadCoins();
     } catch (err) {
-        alert(`Ошибка: ${JSON.stringify(err.data)}`);
+        alert(`Error: ${JSON.stringify(err.data)}`);
     }
 });
 
@@ -233,5 +208,4 @@ document.getElementById("filter-apply").addEventListener("click", loadCoins);
 updateAuthUI();
 loadCountries();
 loadMetals();
-loadDenominations();
 loadCoins();
