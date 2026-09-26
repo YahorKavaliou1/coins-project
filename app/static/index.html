@@ -17,7 +17,8 @@
     <nav class="tabs">
         <button data-tab="auth" class="tab-btn active">Auth</button>
         <button data-tab="reference" class="tab-btn">Reference data</button>
-        <button data-tab="coins" class="tab-btn">Coins</button>
+        <button data-tab="sell" class="tab-btn">Sell</button>
+        <button data-tab="browse" class="tab-btn">Browse</button>
         <button data-tab="cart" class="tab-btn">Cart</button>
         <button data-tab="purchases" class="tab-btn">My purchases</button>
     </nav>
@@ -63,8 +64,8 @@
         </div>
     </section>
 
-    <!-- COINS TAB -->
-    <section id="tab-coins" class="tab-content">
+    <!-- SELL TAB -->
+    <section id="tab-sell" class="tab-content">
         <div class="card">
             <h2>Add coin (list for sale)</h2>
             <form id="coin-form">
@@ -91,6 +92,14 @@
             </form>
         </div>
 
+        <div class="card">
+            <h2>Your listings</h2>
+            <div id="my-listings-list" class="coins-grid"></div>
+        </div>
+    </section>
+
+    <!-- BROWSE TAB -->
+    <section id="tab-browse" class="tab-content">
         <div class="card">
             <h2>Filter</h2>
             <div class="filters">
