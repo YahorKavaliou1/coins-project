@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.api import auth, coins, countries, denominations, metals, users
 
@@ -15,3 +16,7 @@ app.include_router(coins.router)
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.mount("/", StaticFiles(directory="app/static", html=True), name="root")

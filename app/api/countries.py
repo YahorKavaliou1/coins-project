@@ -17,7 +17,6 @@ async def list_countries(db: AsyncSession = Depends(get_db)) -> list[Country]:
 
 @router.post("", response_model=CountryRead, status_code=201)
 async def create_country(data: CountryCreate, db: AsyncSession = Depends(get_db)) -> Country:
-    # TODO: ограничить доступ ролью admin/moderator, когда появится система ролей
     country = Country(**data.model_dump())
     db.add(country)
     await db.commit()
