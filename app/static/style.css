@@ -75,3 +75,58 @@ li { padding: 4px 0; border-bottom: 1px solid #eee; }
 .weight-row { display: flex; gap: 8px; }
 .weight-row input { flex: 2; }
 .weight-row select { flex: 1; }
+
+.header-right { display: flex; align-items: center; gap: 12px; }
+.badge {
+    background: #333;
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+}
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+.checkbox-label input { width: auto; }
+.coin-actions { margin-top: 8px; display: flex; gap: 8px; }
+.coin-actions button {
+    flex: 1;
+    font-size: 13px;
+    padding: 6px;
+}
+.btn-buy { background: #2a7d2a; }
+.btn-buy:hover { background: #35a035; }
+.btn-remove { background: #a03535; }
+.btn-remove:hover { background: #c94040; }
+.price-tag { font-weight: bold; color: #2a7d2a; }
+.sold-tag { color: #999; font-style: italic; }
+.cart-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+.cart-row:last-child { border-bottom: none; }
+.cart-total {
+    text-align: right;
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 2px solid #333;
+}
+.purchase-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.purchase-card h3 { margin: 0 0 6px; font-size: 15px; }
+.purchase-card .order-meta { font-size: 12px; color: #888; margin-bottom: 8px; }
+.purchase-item { font-size: 13px; padding: 4px 0; border-top: 1px dashed #ddd; }

@@ -8,13 +8,18 @@
 <body>
     <header>
         <h1>Coins Catalog</h1>
-        <div id="auth-status">Not logged in</div>
+        <div class="header-right">
+            <span id="cart-badge" class="badge" style="display:none">Cart: 0</span>
+            <div id="auth-status">Not logged in</div>
+        </div>
     </header>
 
     <nav class="tabs">
         <button data-tab="auth" class="tab-btn active">Auth</button>
         <button data-tab="reference" class="tab-btn">Reference data</button>
         <button data-tab="coins" class="tab-btn">Coins</button>
+        <button data-tab="cart" class="tab-btn">Cart</button>
+        <button data-tab="purchases" class="tab-btn">My purchases</button>
     </nav>
 
     <!-- AUTH TAB -->
@@ -55,14 +60,13 @@
                 <h2>Metals</h2>
                 <ul id="metals-list"></ul>
             </div>
-
         </div>
     </section>
 
     <!-- COINS TAB -->
     <section id="tab-coins" class="tab-content">
         <div class="card">
-            <h2>Add coin</h2>
+            <h2>Add coin (list for sale)</h2>
             <form id="coin-form">
                 <select name="country_id" required>
                     <option value="">Country</option>
@@ -82,7 +86,8 @@
                 </div>
                 <input type="text" name="composition" placeholder="Composition (optional, e.g. 92.5% Ag, 7.5% Cu)">
                 <input type="text" name="extra_info" placeholder="Extra info (e.g. Walking Liberty)">
-                <button type="submit">Create</button>
+                <input type="number" step="0.01" name="price" placeholder="Price (USD)" required>
+                <button type="submit">Create listing</button>
             </form>
         </div>
 
@@ -93,11 +98,41 @@
                     <option value="">All countries</option>
                 </select>
                 <input type="text" id="filter-q" placeholder="Search by name">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="filter-for-sale">
+                    For sale only
+                </label>
                 <button id="filter-apply">Apply</button>
             </div>
         </div>
 
         <div id="coins-list" class="coins-grid"></div>
+    </section>
+
+    <!-- CART TAB -->
+    <section id="tab-cart" class="tab-content">
+        <div class="card">
+            <h2>Your cart</h2>
+            <div id="cart-list"></div>
+            <div id="cart-total" class="cart-total"></div>
+        </div>
+
+        <div class="card" id="checkout-card" style="display:none">
+            <h2>Checkout</h2>
+            <form id="checkout-form">
+                <textarea name="shipping_address" placeholder="Shipping address" required></textarea>
+                <button type="submit">Place order</button>
+            </form>
+        </div>
+        <pre id="checkout-log" class="log"></pre>
+    </section>
+
+    <!-- PURCHASES TAB -->
+    <section id="tab-purchases" class="tab-content">
+        <div class="card">
+            <h2>My purchases</h2>
+            <div id="purchases-list"></div>
+        </div>
     </section>
 
     <script src="/static/app.js"></script>
