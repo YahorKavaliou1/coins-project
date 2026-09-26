@@ -160,7 +160,31 @@ async function loadMetals() {
 
 // ---- Coins ----
 
-function coinCardHtml(c) {
+function coinImagesHtml(c, allowManage) {
+    const images = c.images || [];
+    const imageTags = images
+        .map((img) => {
+            const removeBtn = allowManage
+                ? `<button class="coin-image-remove" data-remove-image="${c.id}:${img.id}" title="Remove">x</button>`
+                : "";
+            return `<div class="coin-image-wrap"><img src="${img.url}" alt="${c.name}">${removeBtn}</div>`;
+        })
+        .join("");
+
+    const uploadHtml = allowManage
+        ? `
+        <div class="upload-row">
+            <input type="file" accept="image/jpeg,image/png,image/webp" data-upload-input="${c.id}">
+            <button data-upload-btn="${c.id}">Upload</button>
+        </div>`
+        : "";
+
+    if (!imageTags && !uploadHtml) return "";
+
+    return `<div class="coin-images">${imageTags}</div>${uploadHtml}`;
+}
+
+function coinCardHtml(c, allowManage = false) {
     const isOwner = currentUserId !== null && c.owner.id === currentUserId;
     const canBuy = accessToken && !isOwner && c.is_for_sale;
 
@@ -185,9 +209,62 @@ function coinCardHtml(c) {
             <p>Weight: ${c.weight} ${c.weight_unit}</p>
             ${c.composition ? `<p>Composition: ${c.composition}</p>` : ""}
             ${c.price !== null ? `<p class="price-tag">$${c.price.toFixed(2)}</p>` : ""}
+            ${coinImagesHtml(c, allowManage)}
             ${actionHtml}
         </div>
     `;
+}
+
+async function uploadCoinImage(coinId, fileInput) {
+    const file = fileInput.files[0];
+    if (!file) {
+        alert("Please choose a file first.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        const headers = {};
+        if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+        const res = await fetch(`/coins/${coinId}/images`, {
+            method: "POST",
+            headers,
+            body: formData,
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw { data };
+        await loadMyListings();
+    } catch (err) {
+        alert(`Upload error: ${err.data?.detail || JSON.stringify(err.data)}`);
+    }
+}
+
+async function deleteCoinImage(coinId, imageId) {
+    try {
+        await api(`/coins/${coinId}/images/${imageId}`, { method: "DELETE" });
+        await loadMyListings();
+    } catch (err) {
+        alert(`Error: ${err.data?.detail || JSON.stringify(err.data)}`);
+    }
+}
+
+function bindImageHandlers(container) {
+    container.querySelectorAll("[data-upload-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const coinId = btn.dataset.uploadBtn;
+            const input = container.querySelector(`[data-upload-input="${coinId}"]`);
+            uploadCoinImage(coinId, input);
+        });
+    });
+
+    container.querySelectorAll("[data-remove-image]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const [coinId, imageId] = btn.dataset.removeImage.split(":");
+            deleteCoinImage(coinId, imageId);
+        });
+    });
 }
 
 function renderCoins(page) {
@@ -196,7 +273,7 @@ function renderCoins(page) {
         container.innerHTML = "<p>No coins found</p>";
         return;
     }
-    container.innerHTML = page.items.map(coinCardHtml).join("");
+    container.innerHTML = page.items.map((c) => coinCardHtml(c, false)).join("");
 
     container.querySelectorAll("[data-add-to-cart]").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -272,7 +349,8 @@ async function loadMyListings() {
         container.innerHTML = "<p>You have not listed any coins yet.</p>";
         return;
     }
-    container.innerHTML = page.items.map(coinCardHtml).join("");
+    container.innerHTML = page.items.map((c) => coinCardHtml(c, true)).join("");
+    bindImageHandlers(container);
 }
 
 // ---- Cart ----
@@ -280,11 +358,17 @@ async function loadMyListings() {
 function cartRowHtml(item) {
     const c = item.coin;
     const priceLabel = c.price !== null ? `$${c.price.toFixed(2)}` : "Price not set";
+    const thumb = c.images && c.images.length > 0
+        ? `<img src="${c.images[0].url}" alt="${c.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;margin-right:10px;">`
+        : "";
     return `
         <div class="cart-row">
-            <div>
-                <strong>${c.name}</strong>
-                <div class="price-tag">${priceLabel}</div>
+            <div style="display:flex;align-items:center;">
+                ${thumb}
+                <div>
+                    <strong>${c.name}</strong>
+                    <div class="price-tag">${priceLabel}</div>
+                </div>
             </div>
             <button class="btn-remove" data-remove-from-cart="${c.id}">Remove</button>
         </div>
