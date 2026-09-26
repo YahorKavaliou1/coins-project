@@ -19,6 +19,7 @@ class Coin(Base):
     weight: Mapped[float] = mapped_column(Float)
     weight_unit: Mapped[str] = mapped_column(String(10), default="oz", server_default="oz")
     denomination: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    composition: Mapped[str | None] = mapped_column(String(255), nullable=True)
     extra_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     mintage: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

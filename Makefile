@@ -1,4 +1,4 @@
-.PHONY: help venv install run dev migrate makemigrations upgrade downgrade \
+.PHONY: help venv install run dev migrate makemigrations upgrade downgrade seed \
         up down down-v logs psql lint format typecheck check test \
         precommit clean
 
@@ -96,3 +96,6 @@ test: ## Run tests
 clean: ## Remove caches and temporary files
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf .mypy_cache .ruff_cache .pytest_cache
+
+seed: ## Populate reference tables with curated data (metals, etc.)
+	$(PYTHON) -m app.db.seed.run

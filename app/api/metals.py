@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.metal import Metal
-from app.schemas.metal import MetalCreate, MetalRead
+from app.schemas.metal import MetalRead
 
 router = APIRouter(prefix="/metals", tags=["metals"])
 
@@ -13,15 +13,6 @@ router = APIRouter(prefix="/metals", tags=["metals"])
 async def list_metals(db: AsyncSession = Depends(get_db)) -> list[Metal]:
     result = await db.execute(select(Metal).order_by(Metal.name))
     return list(result.scalars().all())
-
-
-@router.post("", response_model=MetalRead, status_code=201)
-async def create_metal(data: MetalCreate, db: AsyncSession = Depends(get_db)) -> Metal:
-    metal = Metal(**data.model_dump())
-    db.add(metal)
-    await db.commit()
-    await db.refresh(metal)
-    return metal
 
 
 @router.get("/{metal_id}", response_model=MetalRead)

@@ -1,8 +1,8 @@
-"""initial schema
+"""add composition field to coin; simplify metals/countries to read-only
 
-Revision ID: 1747612ed3d8
+Revision ID: 1e42f98763ce
 Revises: 
-Create Date: 2026-09-26 13:00:19.952569
+Create Date: 2026-09-26 13:14:00.645491
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '1747612ed3d8'
+revision: str = '1e42f98763ce'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,12 +27,6 @@ def upgrade() -> None:
     sa.Column('code', sa.String(length=10), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
-    )
-    op.create_table('denominations',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=False),
-    sa.Column('value', sa.Float(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('metals',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -57,13 +51,13 @@ def upgrade() -> None:
     sa.Column('year', sa.Integer(), nullable=False),
     sa.Column('weight', sa.Float(), nullable=False),
     sa.Column('weight_unit', sa.String(length=10), server_default='oz', nullable=False),
+    sa.Column('denomination', sa.String(length=100), nullable=True),
+    sa.Column('composition', sa.String(length=255), nullable=True),
     sa.Column('extra_info', sa.Text(), nullable=True),
     sa.Column('mintage', sa.Integer(), nullable=True),
     sa.Column('country_id', sa.Integer(), nullable=False),
     sa.Column('metal_id', sa.Integer(), nullable=False),
-    sa.Column('denomination_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['country_id'], ['countries.id'], ),
-    sa.ForeignKeyConstraint(['denomination_id'], ['denominations.id'], ),
     sa.ForeignKeyConstraint(['metal_id'], ['metals.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -77,6 +71,5 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('metals')
-    op.drop_table('denominations')
     op.drop_table('countries')
     # ### end Alembic commands ###

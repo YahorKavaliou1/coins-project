@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.country import Country
-from app.schemas.country import CountryCreate, CountryRead
+from app.schemas.country import CountryRead
 
 router = APIRouter(prefix="/countries", tags=["countries"])
 
@@ -13,15 +13,6 @@ router = APIRouter(prefix="/countries", tags=["countries"])
 async def list_countries(db: AsyncSession = Depends(get_db)) -> list[Country]:
     result = await db.execute(select(Country).order_by(Country.name))
     return list(result.scalars().all())
-
-
-@router.post("", response_model=CountryRead, status_code=201)
-async def create_country(data: CountryCreate, db: AsyncSession = Depends(get_db)) -> Country:
-    country = Country(**data.model_dump())
-    db.add(country)
-    await db.commit()
-    await db.refresh(country)
-    return country
 
 
 @router.get("/{country_id}", response_model=CountryRead)

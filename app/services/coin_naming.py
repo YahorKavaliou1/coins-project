@@ -9,12 +9,12 @@ def build_coin_name(
     metal_name: str,
     weight: float,
     weight_unit: str,
-    denomination_name: str | None = None,
+    denomination: str | None = None,
     extra_info: str | None = None,
 ) -> str:
     parts = [country_name]
-    if denomination_name:
-        parts.append(denomination_name)
+    if denomination:
+        parts.append(denomination)
     parts.append(str(year))
     parts.append(metal_name)
 

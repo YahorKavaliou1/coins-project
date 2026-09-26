@@ -117,30 +117,6 @@ async function loadMetals() {
     select.innerHTML = keepFirst + metals.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
 }
 
-document.getElementById("country-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    await api("/countries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.get("name"), code: form.get("code") || null }),
-    });
-    e.target.reset();
-    await loadCountries();
-});
-
-document.getElementById("metal-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    await api("/metals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.get("name") }),
-    });
-    e.target.reset();
-    await loadMetals();
-});
-
 // ---- Coins ----
 
 function renderCoins(page) {

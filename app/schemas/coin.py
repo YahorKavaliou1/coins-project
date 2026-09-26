@@ -9,6 +9,7 @@ class CoinBase(BaseModel):
     weight: float
     weight_unit: str = "oz"
     denomination: str | None = None
+    composition: str | None = None
     extra_info: str | None = None
     mintage: int | None = None
 
@@ -23,6 +24,7 @@ class CoinUpdate(BaseModel):
     weight: float | None = None
     weight_unit: str | None = None
     denomination: str | None = None
+    composition: str | None = None
     extra_info: str | None = None
     mintage: int | None = None
     country_id: int | None = None
@@ -38,6 +40,7 @@ class CoinRead(BaseModel):
     weight: float
     weight_unit: str
     denomination: str | None
+    composition: str | None
     extra_info: str | None
     mintage: int | None
     country: CountryRead

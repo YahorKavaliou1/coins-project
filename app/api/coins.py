@@ -112,9 +112,7 @@ async def create_coin(data: CoinCreate, db: AsyncSession = Depends(get_db)) -> C
 
 
 @router.patch("/{coin_id}", response_model=CoinRead)
-async def update_coin(
-    coin_id: int, data: CoinUpdate, db: AsyncSession = Depends(get_db)
-) -> Coin:
+async def update_coin(coin_id: int, data: CoinUpdate, db: AsyncSession = Depends(get_db)) -> Coin:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
