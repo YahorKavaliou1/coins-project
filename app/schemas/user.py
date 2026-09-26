@@ -25,6 +25,13 @@ class UserUpdate(BaseModel):
     password: str | None = None
 
 
+class UserPublic(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    full_name: str | None
+
+
 class Token(BaseModel):
     access_token: str
     refresh_token: str

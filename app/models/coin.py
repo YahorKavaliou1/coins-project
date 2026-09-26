@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -8,6 +8,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.country import Country
     from app.models.metal import Metal
+    from app.models.user import User
 
 
 class Coin(Base):
@@ -23,8 +24,16 @@ class Coin(Base):
     extra_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     mintage: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_for_sale: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"))
     metal_id: Mapped[int] = mapped_column(ForeignKey("metals.id"))
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     country: Mapped["Country"] = relationship(back_populates="coins")
     metal: Mapped["Metal"] = relationship(back_populates="coins")
+
+    # The user who listed this coin for sale. This never changes after a
+    # purchase — buyer information and purchase history live on Order/OrderItem.
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_id])

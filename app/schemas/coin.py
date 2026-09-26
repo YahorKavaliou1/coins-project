@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.schemas.country import CountryRead
 from app.schemas.metal import MetalRead
+from app.schemas.user import UserPublic
 
 
 class CoinBase(BaseModel):
@@ -12,6 +13,8 @@ class CoinBase(BaseModel):
     composition: str | None = None
     extra_info: str | None = None
     mintage: int | None = None
+    price: float | None = None
+    is_for_sale: bool = True
 
 
 class CoinCreate(CoinBase):
@@ -29,6 +32,8 @@ class CoinUpdate(BaseModel):
     mintage: int | None = None
     country_id: int | None = None
     metal_id: int | None = None
+    price: float | None = None
+    is_for_sale: bool | None = None
 
 
 class CoinRead(BaseModel):
@@ -43,8 +48,11 @@ class CoinRead(BaseModel):
     composition: str | None
     extra_info: str | None
     mintage: int | None
+    price: float | None
+    is_for_sale: bool
     country: CountryRead
     metal: MetalRead
+    owner: UserPublic
 
 
 class Page(BaseModel):

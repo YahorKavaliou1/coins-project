@@ -3,10 +3,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.coin import Coin
 from app.models.country import Country
 from app.models.metal import Metal
+from app.models.user import User
 from app.schemas.coin import CoinCreate, CoinRead, CoinUpdate, Page
 from app.services.coin_naming import build_coin_name
 
@@ -50,12 +52,15 @@ async def list_coins(
     year_from: int | None = None,
     year_to: int | None = None,
     q: str | None = None,
+    for_sale_only: bool = False,
+    owner_id: int | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> Page:
     stmt = select(Coin).options(
         selectinload(Coin.country),
         selectinload(Coin.metal),
+        selectinload(Coin.owner),
     )
 
     if country_id is not None:
@@ -68,6 +73,10 @@ async def list_coins(
         stmt = stmt.where(Coin.year <= year_to)
     if q:
         stmt = stmt.where(Coin.name.ilike(f"%{q}%"))
+    if for_sale_only:
+        stmt = stmt.where(Coin.is_for_sale.is_(True))
+    if owner_id is not None:
+        stmt = stmt.where(Coin.owner_id == owner_id)
 
     total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
 
@@ -82,7 +91,11 @@ async def list_coins(
 async def get_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> Coin:
     stmt = (
         select(Coin)
-        .options(selectinload(Coin.country), selectinload(Coin.metal))
+        .options(
+            selectinload(Coin.country),
+            selectinload(Coin.metal),
+            selectinload(Coin.owner),
+        )
         .where(Coin.id == coin_id)
     )
     coin = (await db.execute(stmt)).scalar_one_or_none()
@@ -92,7 +105,11 @@ async def get_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> Coin:
 
 
 @router.post("", response_model=CoinRead, status_code=201)
-async def create_coin(data: CoinCreate, db: AsyncSession = Depends(get_db)) -> Coin:
+async def create_coin(
+    data: CoinCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Coin:
     name = await _resolve_name(
         db,
         country_id=data.country_id,
@@ -104,18 +121,25 @@ async def create_coin(data: CoinCreate, db: AsyncSession = Depends(get_db)) -> C
         extra_info=data.extra_info,
     )
 
-    coin = Coin(**data.model_dump(), name=name)
+    coin = Coin(**data.model_dump(), name=name, owner_id=current_user.id)
     db.add(coin)
     await db.commit()
-    await db.refresh(coin, attribute_names=["country", "metal"])
+    await db.refresh(coin, attribute_names=["country", "metal", "owner"])
     return coin
 
 
 @router.patch("/{coin_id}", response_model=CoinRead)
-async def update_coin(coin_id: int, data: CoinUpdate, db: AsyncSession = Depends(get_db)) -> Coin:
+async def update_coin(
+    coin_id: int,
+    data: CoinUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Coin:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
+    if coin.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this coin")
 
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(coin, field, value)
@@ -132,14 +156,20 @@ async def update_coin(coin_id: int, data: CoinUpdate, db: AsyncSession = Depends
     )
 
     await db.commit()
-    await db.refresh(coin, attribute_names=["country", "metal"])
+    await db.refresh(coin, attribute_names=["country", "metal", "owner"])
     return coin
 
 
 @router.delete("/{coin_id}", status_code=204)
-async def delete_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> None:
+async def delete_coin(
+    coin_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
+    if coin.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You do not own this coin")
     await db.delete(coin)
     await db.commit()
