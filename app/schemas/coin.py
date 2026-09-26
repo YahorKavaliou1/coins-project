@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.coin_image import CoinImageRead
 from app.schemas.country import CountryRead
 from app.schemas.metal import MetalRead
 from app.schemas.user import UserPublic
@@ -53,6 +54,7 @@ class CoinRead(BaseModel):
     country: CountryRead
     metal: MetalRead
     owner: UserPublic
+    images: list[CoinImageRead] = []
 
 
 class Page(BaseModel):

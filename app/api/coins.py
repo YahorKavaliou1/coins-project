@@ -14,6 +14,13 @@ from app.services.coin_naming import build_coin_name
 
 router = APIRouter(prefix="/coins", tags=["coins"])
 
+COIN_LOAD_OPTIONS = (
+    selectinload(Coin.country),
+    selectinload(Coin.metal),
+    selectinload(Coin.owner),
+    selectinload(Coin.images),
+)
+
 
 async def _resolve_name(
     db: AsyncSession,
@@ -57,11 +64,7 @@ async def list_coins(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> Page:
-    stmt = select(Coin).options(
-        selectinload(Coin.country),
-        selectinload(Coin.metal),
-        selectinload(Coin.owner),
-    )
+    stmt = select(Coin).options(*COIN_LOAD_OPTIONS)
 
     if country_id is not None:
         stmt = stmt.where(Coin.country_id == country_id)
@@ -82,22 +85,14 @@ async def list_coins(
 
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
-    items = list(result.scalars().all())
+    items = list(result.scalars().unique().all())
 
     return Page(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/{coin_id}", response_model=CoinRead)
 async def get_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> Coin:
-    stmt = (
-        select(Coin)
-        .options(
-            selectinload(Coin.country),
-            selectinload(Coin.metal),
-            selectinload(Coin.owner),
-        )
-        .where(Coin.id == coin_id)
-    )
+    stmt = select(Coin).options(*COIN_LOAD_OPTIONS).where(Coin.id == coin_id)
     coin = (await db.execute(stmt)).scalar_one_or_none()
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
@@ -124,7 +119,7 @@ async def create_coin(
     coin = Coin(**data.model_dump(), name=name, owner_id=current_user.id)
     db.add(coin)
     await db.commit()
-    await db.refresh(coin, attribute_names=["country", "metal", "owner"])
+    await db.refresh(coin, attribute_names=["country", "metal", "owner", "images"])
     return coin
 
 
@@ -156,7 +151,7 @@ async def update_coin(
     )
 
     await db.commit()
-    await db.refresh(coin, attribute_names=["country", "metal", "owner"])
+    await db.refresh(coin, attribute_names=["country", "metal", "owner", "images"])
     return coin
 
 

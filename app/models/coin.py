@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.coin_image import CoinImage
     from app.models.country import Country
     from app.models.metal import Metal
     from app.models.user import User
@@ -37,3 +38,10 @@ class Coin(Base):
     # The user who listed this coin for sale. This never changes after a
     # purchase — buyer information and purchase history live on Order/OrderItem.
     owner: Mapped["User"] = relationship(foreign_keys=[owner_id])
+
+    images: Mapped[list["CoinImage"]] = relationship(
+        back_populates="coin",
+        order_by="CoinImage.position",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

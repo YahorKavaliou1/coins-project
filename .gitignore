@@ -18,3 +18,7 @@ __pycache__/
 
 # os
 .DS_Store
+
+# user-uploaded images (keep the directory structure via .gitkeep)
+app/static/uploads/coins/*
+!app/static/uploads/coins/.gitkeep
