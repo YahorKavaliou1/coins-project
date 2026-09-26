@@ -1,0 +1,93 @@
+.PHONY: help venv install run dev migrate makemigrations upgrade downgrade \
+        up down down-v logs psql lint format typecheck check test \
+        precommit clean
+
+# ---- Variables ----
+PYTHON := .venv/bin/python
+UVICORN := .venv/bin/uvicorn
+ALEMBIC := .venv/bin/alembic
+RUFF := .venv/bin/ruff
+MYPY := .venv/bin/mypy
+PYTEST := .venv/bin/pytest
+
+APP := app.main:app
+DB_CONTAINER := coins_postgres
+DB_USER := coins_user
+DB_NAME := coins_db
+
+help: ## Show this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
+
+# ---- Environment ----
+
+venv: ## Create virtualenv via uv
+	uv venv --python 3.12
+
+install: ## Install dependencies from requirements.txt
+	uv pip install -r requirements.txt
+
+# ---- Running the app ----
+
+run: ## Run server (no reload)
+	$(UVICORN) $(APP) --host 0.0.0.0 --port 8000
+
+dev: ## Run server with auto-reload
+	$(UVICORN) $(APP) --reload
+
+# ---- Database / Docker ----
+
+up: ## Start Postgres container
+	docker compose up -d
+
+down: ## Stop and remove containers (data is preserved)
+	docker compose down
+
+down-v: ## Stop containers and remove volume (full data reset)
+	docker compose down -v
+
+logs: ## Follow Postgres container logs
+	docker logs -f $(DB_CONTAINER)
+
+psql: ## Open psql shell inside the container
+	docker exec -it $(DB_CONTAINER) psql -U $(DB_USER) -d $(DB_NAME)
+
+# ---- Migrations ----
+
+makemigrations: ## Create a new migration (make makemigrations m="description")
+	$(ALEMBIC) revision --autogenerate -m "$(m)"
+
+upgrade: ## Apply all migrations
+	$(ALEMBIC) upgrade head
+
+downgrade: ## Roll back the last migration
+	$(ALEMBIC) downgrade -1
+
+migrate: upgrade ## Alias for upgrade
+
+# ---- Linting / formatting ----
+
+lint: ## Check code with the linter
+	$(RUFF) check .
+
+format: ## Auto-format code and fix lint issues
+	$(RUFF) format .
+	$(RUFF) check . --fix
+
+typecheck: ## Run static type checking
+	$(MYPY) app
+
+check: lint typecheck ## Run full check (lint + mypy)
+
+precommit: ## Run all pre-commit hooks on all files
+	.venv/bin/pre-commit run --all-files
+
+# ---- Tests ----
+
+test: ## Run tests
+	$(PYTEST)
+
+# ---- Misc ----
+
+clean: ## Remove caches and temporary files
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf .mypy_cache .ruff_cache .pytest_cache
