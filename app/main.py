@@ -1,18 +1,17 @@
-from fastapi import Depends, FastAPI
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI
 
-from app.db.session import get_db
+from app.api import auth, coins, countries, denominations, metals, users
 
 app = FastAPI(title="Coins API")
+
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(countries.router)
+app.include_router(metals.router)
+app.include_router(denominations.router)
+app.include_router(coins.router)
 
 
 @app.get("/health")
 async def health():
     return {"status": "ok"}
-
-
-@app.get("/db-check")
-async def db_check(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(text("SELECT 1"))
-    return {"db": result.scalar()}
