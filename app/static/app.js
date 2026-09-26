@@ -134,6 +134,7 @@ function renderCoins(page) {
             <p>Country: ${c.country?.name || "-"}</p>
             <p>Metal: ${c.metal?.name || "-"}</p>
             <p>Weight: ${c.weight} ${c.weight_unit}</p>
+            ${c.composition ? `<p>Composition: ${c.composition}</p>` : ""}
             <p>Denomination: ${c.denomination || "-"}</p>
         </div>
     `
@@ -167,6 +168,7 @@ document.getElementById("coin-form").addEventListener("submit", async (e) => {
                 metal_id: parseInt(form.get("metal_id"), 10),
                 weight: parseFloat(form.get("weight")),
                 weight_unit: form.get("weight_unit"),
+                composition: form.get("composition") || null,
                 extra_info: form.get("extra_info") || null,
             }),
         });
