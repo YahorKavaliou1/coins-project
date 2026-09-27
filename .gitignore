@@ -22,3 +22,7 @@ __pycache__/
 # user-uploaded images (keep the directory structure via .gitkeep)
 app/static/uploads/coins/*
 !app/static/uploads/coins/.gitkeep
+
+# frontend
+frontend/node_modules/
+frontend/dist/
