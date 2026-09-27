@@ -68,18 +68,11 @@ async def list_coins(
             Coin.extra_info.ilike(pattern),
         ]
 
-        # Also match numeric fields when the query looks like a number,
-        # e.g. searching "1990" matches coins minted that year, and
-        # searching "1" or "1.5" matches coins with that exact weight.
+        # Also match the year when the query looks like a number,
+        # e.g. searching "1990" matches coins minted that year.
         try:
             q_as_int = int(q)
             conditions.append(Coin.year == q_as_int)
-        except ValueError:
-            pass
-
-        try:
-            q_as_float = float(q)
-            conditions.append(Coin.weight == q_as_float)
         except ValueError:
             pass
 
