@@ -72,7 +72,6 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
         btn.classList.add("active");
         document.getElementById(`tab-${btn.dataset.tab}`).classList.add("active");
 
-        if (btn.dataset.tab === "sell") loadMyListings();
         if (btn.dataset.tab === "browse") loadCoins();
         if (btn.dataset.tab === "cart") loadCart();
         if (btn.dataset.tab === "purchases") loadPurchases();
@@ -257,8 +256,6 @@ function coinCardHtml(c, allowManage = false) {
     let actionHtml = "";
     if (!c.is_for_sale) {
         actionHtml = `<p class="sold-tag">Sold</p>`;
-    } else if (isOwner) {
-        actionHtml = `<p class="sold-tag">Your listing</p>`;
     } else if (canBuy) {
         actionHtml = `
             <div class="coin-actions">
@@ -447,30 +444,13 @@ document.getElementById("coin-form").addEventListener("submit", async (e) => {
             }),
         });
         e.target.reset();
-        await loadMyListings();
+        alert("Coin listed successfully.");
     } catch (err) {
         alert(`Error: ${JSON.stringify(err.data)}`);
     }
 });
 
 document.getElementById("filter-apply").addEventListener("click", loadCoins);
-
-async function loadMyListings() {
-    const container = document.getElementById("my-listings-list");
-    if (!accessToken || currentUserId === null) {
-        container.innerHTML = "<p>Please log in to see your listings.</p>";
-        return;
-    }
-
-    const page = await api(`/coins?owner_id=${currentUserId}&page_size=100`);
-    if (page.items.length === 0) {
-        container.innerHTML = "<p>You have not listed any coins yet.</p>";
-        return;
-    }
-    container.innerHTML = page.items.map((c) => coinCardHtml(c, true)).join("");
-    bindImageHandlers(container);
-    bindEditHandlers(container);
-}
 
 // ---- Cart ----
 
