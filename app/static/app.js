@@ -2,6 +2,28 @@ const API_BASE = "";
 let accessToken = localStorage.getItem("access_token") || null;
 let currentUserId = null;
 
+// Staged (not-yet-saved) image changes per coin, keyed by coin id (as string).
+// { removals: Set<number> (image ids to delete on save),
+//   newFiles: [{ id, file, url }] (files to upload on save) }
+const pendingImageState = new Map();
+
+function getPendingState(coinId) {
+    const key = String(coinId);
+    if (!pendingImageState.has(key)) {
+        pendingImageState.set(key, { removals: new Set(), newFiles: [] });
+    }
+    return pendingImageState.get(key);
+}
+
+function clearPendingState(coinId) {
+    const key = String(coinId);
+    const state = pendingImageState.get(key);
+    if (state) {
+        state.newFiles.forEach((f) => URL.revokeObjectURL(f.url));
+    }
+    pendingImageState.delete(key);
+}
+
 // ---- Helpers ----
 
 function log(elId, msg) {
@@ -15,6 +37,21 @@ async function api(path, options = {}) {
     const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw { status: res.status, data };
+    return data;
+}
+
+async function uploadImage(coinId, file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    const headers = {};
+    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+    const res = await fetch(`/coins/${coinId}/images`, {
+        method: "POST",
+        headers,
+        body: formData,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw { data };
     return data;
 }
 
@@ -195,35 +232,108 @@ async function loadMetals() {
         keepFirst + metals.map((m) => `<option value="${m.id}">${m.name}</option>`).join("");
 }
 
-// ---- Coins ----
+// ---- Coins: read-only gallery (shown always) ----
 
-function coinImagesHtml(c, allowManage) {
+function coinGalleryHtml(c) {
     const images = c.images || [];
-    const imageTags = images
+    if (images.length === 0) return "";
+    const tags = images.map((img) => `<img src="${img.url}" alt="${c.name}">`).join("");
+    return `<div class="coin-images">${tags}</div>`;
+}
+
+// ---- Coins: staged photo editor (inside the Edit form) ----
+
+function renderPhotosSectionHtml(coinId, images) {
+    const state = getPendingState(coinId);
+
+    const existingHtml = images
         .map((img) => {
-            const removeBtn = allowManage
-                ? `<button class="coin-image-remove" data-remove-image="${c.id}:${img.id}" title="Remove">x</button>`
-                : "";
-            return `<div class="coin-image-wrap"><img src="${img.url}" alt="${c.name}">${removeBtn}</div>`;
+            const isRemoved = state.removals.has(img.id);
+            const btn = isRemoved
+                ? `<button type="button" class="coin-image-restore" data-restore-image="${coinId}:${img.id}" title="Undo remove">&#8635;</button>`
+                : `<button type="button" class="coin-image-remove" data-mark-remove="${coinId}:${img.id}" title="Remove">x</button>`;
+            const wrapClass = isRemoved ? "coin-image-wrap removed" : "coin-image-wrap";
+            return `<div class="${wrapClass}"><img src="${img.url}" alt="">${btn}</div>`;
         })
         .join("");
 
-    const uploadHtml = allowManage
-        ? `
+    const pendingHtml = state.newFiles
+        .map(
+            (f) => `
+            <div class="coin-image-wrap pending">
+                <img src="${f.url}" alt="">
+                <button type="button" class="coin-image-remove" data-cancel-pending="${coinId}:${f.id}" title="Cancel">x</button>
+            </div>`
+        )
+        .join("");
+
+    return `
+        <div class="coin-images">${existingHtml}${pendingHtml}</div>
         <div class="upload-row">
-            <input type="file" accept="image/jpeg,image/png,image/webp" data-upload-input="${c.id}">
-            <button data-upload-btn="${c.id}">Upload</button>
-        </div>`
-        : "";
-
-    if (!imageTags && !uploadHtml) return "";
-
-    return `<div class="coin-images">${imageTags}</div>${uploadHtml}`;
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple data-pending-input="${coinId}">
+        </div>
+    `;
 }
+
+function bindPhotosSectionHandlers(container, coinId, images) {
+    const section = container.querySelector(`[data-photos-section="${coinId}"]`);
+    if (!section) return;
+
+    const refresh = () => {
+        section.innerHTML = renderPhotosSectionHtml(coinId, images);
+        bindPhotosSectionHandlers(container, coinId, images);
+    };
+
+    section.querySelectorAll("[data-mark-remove]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const [, imgId] = btn.dataset.markRemove.split(":");
+            getPendingState(coinId).removals.add(parseInt(imgId, 10));
+            refresh();
+        });
+    });
+
+    section.querySelectorAll("[data-restore-image]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const [, imgId] = btn.dataset.restoreImage.split(":");
+            getPendingState(coinId).removals.delete(parseInt(imgId, 10));
+            refresh();
+        });
+    });
+
+    section.querySelectorAll("[data-cancel-pending]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const [, fileId] = btn.dataset.cancelPending.split(":");
+            const state = getPendingState(coinId);
+            const idx = state.newFiles.findIndex((f) => f.id === fileId);
+            if (idx !== -1) {
+                URL.revokeObjectURL(state.newFiles[idx].url);
+                state.newFiles.splice(idx, 1);
+            }
+            refresh();
+        });
+    });
+
+    section.querySelectorAll("[data-pending-input]").forEach((input) => {
+        input.addEventListener("change", () => {
+            const state = getPendingState(coinId);
+            Array.from(input.files).forEach((file) => {
+                const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                state.newFiles.push({ id, file, url: URL.createObjectURL(file) });
+            });
+            input.value = "";
+            refresh();
+        });
+    });
+}
+
+// ---- Coins: edit form (fields + staged photo editor) ----
 
 function coinEditFormHtml(c) {
     return `
         <form class="coin-edit-form" data-edit-form="${c.id}" style="display:none">
+            <h4>Photos</h4>
+            <div data-photos-section="${c.id}">${renderPhotosSectionHtml(c.id, c.images || [])}</div>
+            <h4>Details</h4>
             <input type="text" name="denomination" placeholder="Denomination" value="${c.denomination || ""}">
             <input type="number" name="year" placeholder="Year" value="${c.year}" required>
             <div class="weight-row">
@@ -237,10 +347,6 @@ function coinEditFormHtml(c) {
             <input type="text" name="composition" placeholder="Composition" value="${c.composition || ""}">
             <input type="text" name="extra_info" placeholder="Extra info" value="${c.extra_info || ""}">
             <input type="number" step="0.01" name="price" placeholder="Price" value="${c.price ?? ""}">
-            <label class="checkbox-label">
-                <input type="checkbox" name="is_for_sale" ${c.is_for_sale ? "checked" : ""}>
-                For sale
-            </label>
             <div class="coin-edit-actions">
                 <button type="submit" class="btn-edit">Save</button>
                 <button type="button" class="btn-cancel" data-cancel-edit="${c.id}">Cancel</button>
@@ -249,9 +355,12 @@ function coinEditFormHtml(c) {
     `;
 }
 
-function coinCardHtml(c, allowManage = false) {
+// ---- Coins: card ----
+
+function coinCardHtml(c) {
     const isOwner = currentUserId !== null && c.owner.id === currentUserId;
     const canBuy = accessToken && !isOwner && c.is_for_sale;
+    const canEdit = isOwner && c.is_for_sale;
 
     let actionHtml = "";
     if (!c.is_for_sale) {
@@ -263,7 +372,7 @@ function coinCardHtml(c, allowManage = false) {
             </div>`;
     }
 
-    const editButtonHtml = allowManage
+    const editButtonHtml = canEdit
         ? `<div class="coin-actions"><button class="btn-edit" data-toggle-edit="${c.id}">Edit</button></div>`
         : "";
 
@@ -276,87 +385,50 @@ function coinCardHtml(c, allowManage = false) {
             <p>Weight: ${c.weight} ${c.weight_unit}</p>
             ${c.composition ? `<p>Composition: ${c.composition}</p>` : ""}
             ${c.price !== null ? `<p class="price-tag">$${c.price.toFixed(2)}</p>` : ""}
-            ${coinImagesHtml(c, allowManage)}
+            ${coinGalleryHtml(c)}
             ${actionHtml}
             ${editButtonHtml}
-            ${allowManage ? coinEditFormHtml(c) : ""}
+            ${canEdit ? coinEditFormHtml(c) : ""}
         </div>
     `;
 }
 
-async function uploadCoinImage(coinId, fileInput) {
-    const file = fileInput.files[0];
-    if (!file) {
-        alert("Please choose a file first.");
-        return;
-    }
+// ---- Bind edit-related handlers for a rendered container ----
 
-    const formData = new FormData();
-    formData.append("file", file);
+function bindEditHandlers(container, coins, onDone) {
+    const findCoin = (id) => coins.find((c) => String(c.id) === String(id));
 
-    try {
-        const headers = {};
-        if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-        const res = await fetch(`/coins/${coinId}/images`, {
-            method: "POST",
-            headers,
-            body: formData,
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok) throw { data };
-        await loadMyListings();
-    } catch (err) {
-        alert(`Upload error: ${err.data?.detail || JSON.stringify(err.data)}`);
-    }
-}
-
-async function deleteCoinImage(coinId, imageId) {
-    try {
-        await api(`/coins/${coinId}/images/${imageId}`, { method: "DELETE" });
-        await loadMyListings();
-    } catch (err) {
-        alert(`Error: ${err.data?.detail || JSON.stringify(err.data)}`);
-    }
-}
-
-function bindImageHandlers(container) {
-    container.querySelectorAll("[data-upload-btn]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            const coinId = btn.dataset.uploadBtn;
-            const input = container.querySelector(`[data-upload-input="${coinId}"]`);
-            uploadCoinImage(coinId, input);
-        });
-    });
-
-    container.querySelectorAll("[data-remove-image]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            const [coinId, imageId] = btn.dataset.removeImage.split(":");
-            deleteCoinImage(coinId, imageId);
-        });
-    });
-}
-
-function bindEditHandlers(container) {
     container.querySelectorAll("[data-toggle-edit]").forEach((btn) => {
+        const coinId = btn.dataset.toggleEdit;
         btn.addEventListener("click", () => {
-            const coinId = btn.dataset.toggleEdit;
             const form = container.querySelector(`[data-edit-form="${coinId}"]`);
-            form.style.display = form.style.display === "none" ? "flex" : "none";
+            const opening = form.style.display === "none";
+            form.style.display = opening ? "flex" : "none";
+            if (opening) {
+                const coin = findCoin(coinId);
+                if (coin) bindPhotosSectionHandlers(container, coinId, coin.images || []);
+            }
         });
     });
 
     container.querySelectorAll("[data-cancel-edit]").forEach((btn) => {
+        const coinId = btn.dataset.cancelEdit;
         btn.addEventListener("click", () => {
-            const coinId = btn.dataset.cancelEdit;
+            clearPendingState(coinId);
+            const coin = findCoin(coinId);
+            const section = container.querySelector(`[data-photos-section="${coinId}"]`);
+            if (coin && section) {
+                section.innerHTML = renderPhotosSectionHtml(coinId, coin.images || []);
+            }
             const form = container.querySelector(`[data-edit-form="${coinId}"]`);
             form.style.display = "none";
         });
     });
 
     container.querySelectorAll("[data-edit-form]").forEach((form) => {
+        const coinId = form.dataset.editForm;
         form.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const coinId = form.dataset.editForm;
             const data = new FormData(form);
 
             try {
@@ -371,10 +443,20 @@ function bindEditHandlers(container) {
                         composition: data.get("composition") || null,
                         extra_info: data.get("extra_info") || null,
                         price: data.get("price") ? parseFloat(data.get("price")) : null,
-                        is_for_sale: data.get("is_for_sale") === "on",
                     }),
                 });
-                await loadMyListings();
+
+                const state = getPendingState(coinId);
+
+                for (const imageId of state.removals) {
+                    await api(`/coins/${coinId}/images/${imageId}`, { method: "DELETE" });
+                }
+                for (const pending of state.newFiles) {
+                    await uploadImage(coinId, pending.file);
+                }
+
+                clearPendingState(coinId);
+                if (onDone) await onDone();
             } catch (err) {
                 alert(`Error: ${err.data?.detail || JSON.stringify(err.data)}`);
             }
@@ -382,13 +464,15 @@ function bindEditHandlers(container) {
     });
 }
 
+// ---- Browse ----
+
 function renderCoins(page) {
     const container = document.getElementById("coins-list");
     if (page.items.length === 0) {
         container.innerHTML = "<p>No coins found</p>";
         return;
     }
-    container.innerHTML = page.items.map((c) => coinCardHtml(c, false)).join("");
+    container.innerHTML = page.items.map((c) => coinCardHtml(c)).join("");
 
     container.querySelectorAll("[data-add-to-cart]").forEach((btn) => {
         btn.addEventListener("click", async () => {
@@ -406,6 +490,8 @@ function renderCoins(page) {
             }
         });
     });
+
+    bindEditHandlers(container, page.items, loadCoins);
 }
 
 async function loadCoins() {
@@ -422,12 +508,18 @@ async function loadCoins() {
     renderCoins(page);
 }
 
+document.getElementById("filter-apply").addEventListener("click", loadCoins);
+
+// ---- Sell: create listing (with images attached at creation time) ----
+
 document.getElementById("coin-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!requireAuth()) return;
     const form = new FormData(e.target);
+    const imageFiles = form.getAll("images").filter((f) => f instanceof File && f.size > 0);
+
     try {
-        await api("/coins", {
+        const coin = await api("/coins", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -443,23 +535,27 @@ document.getElementById("coin-form").addEventListener("submit", async (e) => {
                 is_for_sale: true,
             }),
         });
+
+        for (const file of imageFiles) {
+            await uploadImage(coin.id, file);
+        }
+
         e.target.reset();
         alert("Coin listed successfully.");
     } catch (err) {
-        alert(`Error: ${JSON.stringify(err.data)}`);
+        alert(`Error: ${err.data?.detail || JSON.stringify(err.data)}`);
     }
 });
-
-document.getElementById("filter-apply").addEventListener("click", loadCoins);
 
 // ---- Cart ----
 
 function cartRowHtml(item) {
     const c = item.coin;
     const priceLabel = c.price !== null ? `$${c.price.toFixed(2)}` : "Price not set";
-    const thumb = c.images && c.images.length > 0
-        ? `<img src="${c.images[0].url}" alt="${c.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;margin-right:10px;">`
-        : "";
+    const thumb =
+        c.images && c.images.length > 0
+            ? `<img src="${c.images[0].url}" alt="${c.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;margin-right:10px;">`
+            : "";
     return `
         <div class="cart-row">
             <div style="display:flex;align-items:center;">

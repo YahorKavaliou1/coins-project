@@ -184,3 +184,21 @@ li { padding: 4px 0; border-bottom: 1px solid #eee; }
 .btn-cancel:hover { background: #999; }
 .btn-edit { background: #2a5d9e; }
 .btn-edit:hover { background: #3570bd; }
+
+.coin-image-wrap.removed img { opacity: 0.35; filter: grayscale(1); }
+.coin-image-wrap.pending img { border: 2px dashed #2a5d9e; }
+.coin-image-restore {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #2a5d9e;
+    color: #fff;
+    border: none;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}

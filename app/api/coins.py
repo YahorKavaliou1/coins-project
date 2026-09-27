@@ -135,8 +135,13 @@ async def update_coin(
         raise HTTPException(status_code=404, detail="Coin not found")
     if coin.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="You do not own this coin")
+    if not coin.is_for_sale:
+        raise HTTPException(status_code=409, detail="Sold coins cannot be edited")
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    update_data = data.model_dump(exclude_unset=True)
+    update_data.pop("is_for_sale", None)
+
+    for field, value in update_data.items():
         setattr(coin, field, value)
 
     coin.name = await _resolve_name(
