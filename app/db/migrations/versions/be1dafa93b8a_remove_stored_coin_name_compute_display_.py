@@ -1,8 +1,8 @@
-"""add region and is_historical to country; expand seed with historical entities
+"""remove stored coin name, compute display name on the fly
 
-Revision ID: 6c4d7851e3ea
+Revision ID: be1dafa93b8a
 Revises: 
-Create Date: 2026-09-27 11:22:09.160391
+Create Date: 2026-09-27 12:09:46.594524
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6c4d7851e3ea'
+revision: str = 'be1dafa93b8a'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -50,7 +50,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_table('coins',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('year', sa.Integer(), nullable=False),
     sa.Column('weight', sa.Float(), nullable=False),
     sa.Column('weight_unit', sa.String(length=10), server_default='oz', nullable=False),

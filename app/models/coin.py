@@ -16,7 +16,6 @@ class Coin(Base):
     __tablename__ = "coins"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
     year: Mapped[int] = mapped_column(Integer)
     weight: Mapped[float] = mapped_column(Float)
     weight_unit: Mapped[str] = mapped_column(String(10), default="oz", server_default="oz")

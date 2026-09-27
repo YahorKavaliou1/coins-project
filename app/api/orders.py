@@ -6,12 +6,26 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.cart_item import CartItem
+from app.models.coin import Coin
 from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.user import User
 from app.schemas.order import CheckoutRequest, OrderRead
+from app.services.coin_naming import build_coin_name
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+
+def _coin_display_name(coin: Coin) -> str:
+    return build_coin_name(
+        country_name=coin.country.name,
+        year=coin.year,
+        metal_name=coin.metal.name,
+        weight=coin.weight,
+        weight_unit=coin.weight_unit,
+        denomination=coin.denomination,
+        extra_info=coin.extra_info,
+    )
 
 
 @router.post("/checkout", response_model=OrderRead, status_code=201)
@@ -22,7 +36,10 @@ async def checkout(
 ) -> Order:
     cart_result = await db.execute(
         select(CartItem)
-        .options(selectinload(CartItem.coin))
+        .options(
+            selectinload(CartItem.coin).selectinload(Coin.country),
+            selectinload(CartItem.coin).selectinload(Coin.metal),
+        )
         .where(CartItem.user_id == current_user.id)
     )
     cart_items = list(cart_result.scalars().all())
@@ -30,7 +47,9 @@ async def checkout(
     if not cart_items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    unavailable = [item.coin.name for item in cart_items if not item.coin.is_for_sale]
+    unavailable = [
+        _coin_display_name(item.coin) for item in cart_items if not item.coin.is_for_sale
+    ]
     if unavailable:
         raise HTTPException(
             status_code=409,
@@ -55,7 +74,7 @@ async def checkout(
             order_id=order.id,
             coin_id=coin.id,
             seller_id=coin.owner_id,
-            coin_name_snapshot=coin.name,
+            coin_name_snapshot=_coin_display_name(coin),
             price_paid=price,
         )
         db.add(order_item)

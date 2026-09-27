@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,7 +10,6 @@ from app.models.country import Country
 from app.models.metal import Metal
 from app.models.user import User
 from app.schemas.coin import CoinCreate, CoinRead, CoinUpdate, Page
-from app.services.coin_naming import build_coin_name
 
 router = APIRouter(prefix="/coins", tags=["coins"])
 
@@ -22,16 +21,7 @@ COIN_LOAD_OPTIONS = (
 )
 
 
-async def _resolve_name(
-    db: AsyncSession,
-    country_id: int,
-    metal_id: int,
-    year: int,
-    weight: float,
-    weight_unit: str,
-    denomination: str | None,
-    extra_info: str | None,
-) -> str:
+async def _validate_country_and_metal(db: AsyncSession, country_id: int, metal_id: int) -> None:
     country = await db.get(Country, country_id)
     if country is None:
         raise HTTPException(status_code=404, detail="Country not found")
@@ -39,16 +29,6 @@ async def _resolve_name(
     metal = await db.get(Metal, metal_id)
     if metal is None:
         raise HTTPException(status_code=404, detail="Metal not found")
-
-    return build_coin_name(
-        country_name=country.name,
-        year=year,
-        metal_name=metal.name,
-        weight=weight,
-        weight_unit=weight_unit,
-        denomination=denomination,
-        extra_info=extra_info,
-    )
 
 
 @router.get("", response_model=Page)
@@ -64,7 +44,12 @@ async def list_coins(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> Page:
-    stmt = select(Coin).options(*COIN_LOAD_OPTIONS)
+    stmt = (
+        select(Coin)
+        .join(Coin.country)
+        .join(Coin.metal)
+        .options(*COIN_LOAD_OPTIONS)
+    )
 
     if country_id is not None:
         stmt = stmt.where(Coin.country_id == country_id)
@@ -75,13 +60,38 @@ async def list_coins(
     if year_to is not None:
         stmt = stmt.where(Coin.year <= year_to)
     if q:
-        stmt = stmt.where(Coin.name.ilike(f"%{q}%"))
+        pattern = f"%{q}%"
+        conditions: list[ColumnElement[bool]] = [
+            Country.name.ilike(pattern),
+            Metal.name.ilike(pattern),
+            Coin.denomination.ilike(pattern),
+            Coin.extra_info.ilike(pattern),
+        ]
+
+        # Also match numeric fields when the query looks like a number,
+        # e.g. searching "1990" matches coins minted that year, and
+        # searching "1" or "1.5" matches coins with that exact weight.
+        try:
+            q_as_int = int(q)
+            conditions.append(Coin.year == q_as_int)
+        except ValueError:
+            pass
+
+        try:
+            q_as_float = float(q)
+            conditions.append(Coin.weight == q_as_float)
+        except ValueError:
+            pass
+
+        stmt = stmt.where(or_(*conditions))
     if for_sale_only:
         stmt = stmt.where(Coin.is_for_sale.is_(True))
     if owner_id is not None:
         stmt = stmt.where(Coin.owner_id == owner_id)
 
-    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
+    total = (
+        await db.execute(select(func.count()).select_from(stmt.subquery()))
+    ).scalar_one()
 
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
@@ -105,18 +115,9 @@ async def create_coin(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Coin:
-    name = await _resolve_name(
-        db,
-        country_id=data.country_id,
-        metal_id=data.metal_id,
-        year=data.year,
-        weight=data.weight,
-        weight_unit=data.weight_unit,
-        denomination=data.denomination,
-        extra_info=data.extra_info,
-    )
+    await _validate_country_and_metal(db, data.country_id, data.metal_id)
 
-    coin = Coin(**data.model_dump(), name=name, owner_id=current_user.id)
+    coin = Coin(**data.model_dump(), owner_id=current_user.id)
     db.add(coin)
     await db.commit()
     await db.refresh(coin, attribute_names=["country", "metal", "owner", "images"])
@@ -141,19 +142,13 @@ async def update_coin(
     update_data = data.model_dump(exclude_unset=True)
     update_data.pop("is_for_sale", None)
 
+    new_country_id = update_data.get("country_id", coin.country_id)
+    new_metal_id = update_data.get("metal_id", coin.metal_id)
+    if "country_id" in update_data or "metal_id" in update_data:
+        await _validate_country_and_metal(db, new_country_id, new_metal_id)
+
     for field, value in update_data.items():
         setattr(coin, field, value)
-
-    coin.name = await _resolve_name(
-        db,
-        country_id=coin.country_id,
-        metal_id=coin.metal_id,
-        year=coin.year,
-        weight=coin.weight,
-        weight_unit=coin.weight_unit,
-        denomination=coin.denomination,
-        extra_info=coin.extra_info,
-    )
 
     await db.commit()
     await db.refresh(coin, attribute_names=["country", "metal", "owner", "images"])

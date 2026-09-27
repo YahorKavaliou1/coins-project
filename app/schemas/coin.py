@@ -1,9 +1,12 @@
-from pydantic import BaseModel, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.schemas.coin_image import CoinImageRead
 from app.schemas.country import CountryRead
 from app.schemas.metal import MetalRead
 from app.schemas.user import UserPublic
+from app.services.coin_naming import build_coin_name
 
 
 class CoinBase(BaseModel):
@@ -41,7 +44,7 @@ class CoinRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    name: str
+    name: str = ""  # computed in the validator below; placeholder keeps field ordering
     year: int
     weight: float
     weight_unit: str
@@ -55,6 +58,46 @@ class CoinRead(BaseModel):
     metal: MetalRead
     owner: UserPublic
     images: list[CoinImageRead] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def compute_name(cls, data: Any) -> Any:
+        """Derive the display name from country/metal/etc. rather than storing it.
+
+        Runs before field validation, so it works whether `data` is an ORM
+        Coin instance (from_attributes) or a plain dict.
+        """
+        if isinstance(data, dict):
+            return data  # already prepared, e.g. in tests
+
+        country_name = data.country.name
+        metal_name = data.metal.name
+
+        computed_name = build_coin_name(
+            country_name=country_name,
+            year=data.year,
+            metal_name=metal_name,
+            weight=data.weight,
+            weight_unit=data.weight_unit,
+            denomination=data.denomination,
+            extra_info=data.extra_info,
+        )
+
+        # Attach the computed name as an attribute so from_attributes picks it up.
+        # We can't mutate the ORM object's real columns, so we wrap it in a
+        # lightweight namespace-like object instead.
+        return _CoinWithComputedName(data, computed_name)
+
+
+class _CoinWithComputedName:
+    """Thin proxy that exposes all Coin attributes plus a computed `name`."""
+
+    def __init__(self, coin: Any, name: str) -> None:
+        self._coin = coin
+        self.name = name
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._coin, item)
 
 
 class Page(BaseModel):
