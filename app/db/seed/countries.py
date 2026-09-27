@@ -1,58 +1,181 @@
-"""Curated list of countries (ISO 3166-1) for the coin catalog.
+"""Curated list of countries and historical/special coin-issuing entities.
 
-Format: (name, alpha-2 code).
+Format: (name, alpha-2 or custom code, region, is_historical).
+
+`region` is a continent-level label used purely for UI grouping so dropdowns
+don't become one giant flat list. Continent assignment for transcontinental
+countries (Russia, Turkey, Kazakhstan, etc.) follows common convention and
+can be adjusted later without a migration, since it's a plain string column.
+
+`is_historical=True` marks defunct states, empires, and pre-independence
+administrations that no longer issue currency today but are still needed to
+catalog historical coins (a large share of real-world numismatic listings).
 """
 
-COUNTRIES: list[tuple[str, str]] = [
-    ("Afghanistan", "AF"), ("Albania", "AL"), ("Algeria", "DZ"), ("Andorra", "AD"),
-    ("Angola", "AO"), ("Antigua and Barbuda", "AG"), ("Argentina", "AR"), ("Armenia", "AM"),
-    ("Australia", "AU"), ("Austria", "AT"), ("Azerbaijan", "AZ"), ("Bahamas", "BS"),
-    ("Bahrain", "BH"), ("Bangladesh", "BD"), ("Barbados", "BB"), ("Belarus", "BY"),
-    ("Belgium", "BE"), ("Belize", "BZ"), ("Benin", "BJ"), ("Bhutan", "BT"),
-    ("Bolivia", "BO"), ("Bosnia and Herzegovina", "BA"), ("Botswana", "BW"), ("Brazil", "BR"),
-    ("Brunei", "BN"), ("Bulgaria", "BG"), ("Burkina Faso", "BF"), ("Burundi", "BI"),
-    ("Cabo Verde", "CV"), ("Cambodia", "KH"), ("Cameroon", "CM"), ("Canada", "CA"),
-    ("Central African Republic", "CF"), ("Chad", "TD"), ("Chile", "CL"), ("China", "CN"),
-    ("Colombia", "CO"), ("Comoros", "KM"), ("Congo", "CG"),
-    ("Costa Rica", "CR"), ("Croatia", "HR"), ("Cuba", "CU"), ("Cyprus", "CY"),
-    ("Czech Republic", "CZ"), ("Democratic Republic of the Congo", "CD"), ("Denmark", "DK"),
-    ("Djibouti", "DJ"), ("Dominica", "DM"), ("Dominican Republic", "DO"), ("Ecuador", "EC"),
-    ("Egypt", "EG"), ("El Salvador", "SV"), ("Equatorial Guinea", "GQ"), ("Eritrea", "ER"),
-    ("Estonia", "EE"), ("Eswatini", "SZ"), ("Ethiopia", "ET"), ("Fiji", "FJ"),
-    ("Finland", "FI"), ("France", "FR"), ("Gabon", "GA"), ("Gambia", "GM"),
-    ("Georgia", "GE"), ("Germany", "DE"), ("Ghana", "GH"), ("Greece", "GR"),
-    ("Grenada", "GD"), ("Guatemala", "GT"), ("Guinea", "GN"), ("Guinea-Bissau", "GW"),
-    ("Guyana", "GY"), ("Haiti", "HT"), ("Honduras", "HN"), ("Hungary", "HU"),
-    ("Iceland", "IS"), ("India", "IN"), ("Indonesia", "ID"), ("Iran", "IR"),
-    ("Iraq", "IQ"), ("Ireland", "IE"), ("Israel", "IL"), ("Italy", "IT"),
-    ("Ivory Coast", "CI"), ("Jamaica", "JM"), ("Japan", "JP"), ("Jordan", "JO"),
-    ("Kazakhstan", "KZ"), ("Kenya", "KE"), ("Kiribati", "KI"), ("Kosovo", "XK"),
-    ("Kuwait", "KW"), ("Kyrgyzstan", "KG"), ("Laos", "LA"), ("Latvia", "LV"),
-    ("Lebanon", "LB"), ("Lesotho", "LS"), ("Liberia", "LR"), ("Libya", "LY"),
-    ("Liechtenstein", "LI"), ("Lithuania", "LT"), ("Luxembourg", "LU"), ("Madagascar", "MG"),
-    ("Malawi", "MW"), ("Malaysia", "MY"), ("Maldives", "MV"), ("Mali", "ML"),
-    ("Malta", "MT"), ("Marshall Islands", "MH"), ("Mauritania", "MR"), ("Mauritius", "MU"),
-    ("Mexico", "MX"), ("Micronesia", "FM"), ("Moldova", "MD"), ("Monaco", "MC"),
-    ("Mongolia", "MN"), ("Montenegro", "ME"), ("Morocco", "MA"), ("Mozambique", "MZ"),
-    ("Myanmar", "MM"), ("Namibia", "NA"), ("Nauru", "NR"), ("Nepal", "NP"),
-    ("Netherlands", "NL"), ("New Zealand", "NZ"), ("Nicaragua", "NI"), ("Niger", "NE"),
-    ("Nigeria", "NG"), ("North Korea", "KP"), ("North Macedonia", "MK"), ("Norway", "NO"),
-    ("Oman", "OM"), ("Pakistan", "PK"), ("Palau", "PW"), ("Panama", "PA"),
-    ("Papua New Guinea", "PG"), ("Paraguay", "PY"), ("Peru", "PE"), ("Philippines", "PH"),
-    ("Poland", "PL"), ("Portugal", "PT"), ("Qatar", "QA"), ("Romania", "RO"),
-    ("Russia", "RU"), ("Rwanda", "RW"), ("Saint Kitts and Nevis", "KN"), ("Saint Lucia", "LC"),
-    ("Saint Vincent and the Grenadines", "VC"), ("Samoa", "WS"), ("San Marino", "SM"),
-    ("Sao Tome and Principe", "ST"), ("Saudi Arabia", "SA"), ("Senegal", "SN"),
-    ("Serbia", "RS"), ("Seychelles", "SC"), ("Sierra Leone", "SL"), ("Singapore", "SG"),
-    ("Slovakia", "SK"), ("Slovenia", "SI"), ("Solomon Islands", "SB"), ("Somalia", "SO"),
-    ("South Africa", "ZA"), ("South Korea", "KR"), ("South Sudan", "SS"), ("Spain", "ES"),
-    ("Sri Lanka", "LK"), ("Sudan", "SD"), ("Suriname", "SR"), ("Sweden", "SE"),
-    ("Switzerland", "CH"), ("Syria", "SY"), ("Taiwan", "TW"), ("Tajikistan", "TJ"),
-    ("Tanzania", "TZ"), ("Thailand", "TH"), ("Timor-Leste", "TL"), ("Togo", "TG"),
-    ("Tonga", "TO"), ("Trinidad and Tobago", "TT"), ("Tunisia", "TN"), ("Turkey", "TR"),
-    ("Turkmenistan", "TM"), ("Tuvalu", "TV"), ("Uganda", "UG"), ("Ukraine", "UA"),
-    ("United Arab Emirates", "AE"), ("United Kingdom", "GB"), ("United States", "US"),
-    ("Uruguay", "UY"), ("Uzbekistan", "UZ"), ("Vanuatu", "VU"), ("Vatican City", "VA"),
-    ("Venezuela", "VE"), ("Vietnam", "VN"), ("Yemen", "YE"), ("Zambia", "ZM"),
-    ("Zimbabwe", "ZW"),
+# --- Currently existing countries (ISO 3166-1), grouped by continent ---
+
+AFRICA: list[tuple[str, str]] = [
+    ("Algeria", "DZ"), ("Angola", "AO"), ("Benin", "BJ"), ("Botswana", "BW"),
+    ("Burkina Faso", "BF"), ("Burundi", "BI"), ("Cabo Verde", "CV"), ("Cameroon", "CM"),
+    ("Central African Republic", "CF"), ("Chad", "TD"), ("Comoros", "KM"), ("Congo", "CG"),
+    ("Democratic Republic of the Congo", "CD"), ("Ivory Coast", "CI"), ("Djibouti", "DJ"),
+    ("Egypt", "EG"), ("Equatorial Guinea", "GQ"), ("Eritrea", "ER"), ("Eswatini", "SZ"),
+    ("Ethiopia", "ET"), ("Gabon", "GA"), ("Gambia", "GM"), ("Ghana", "GH"), ("Guinea", "GN"),
+    ("Guinea-Bissau", "GW"), ("Kenya", "KE"), ("Lesotho", "LS"), ("Liberia", "LR"),
+    ("Libya", "LY"), ("Madagascar", "MG"), ("Malawi", "MW"), ("Mali", "ML"),
+    ("Mauritania", "MR"), ("Mauritius", "MU"), ("Morocco", "MA"), ("Mozambique", "MZ"),
+    ("Namibia", "NA"), ("Niger", "NE"), ("Nigeria", "NG"), ("Rwanda", "RW"),
+    ("Sao Tome and Principe", "ST"), ("Senegal", "SN"), ("Seychelles", "SC"),
+    ("Sierra Leone", "SL"), ("Somalia", "SO"), ("South Africa", "ZA"), ("South Sudan", "SS"),
+    ("Sudan", "SD"), ("Tanzania", "TZ"), ("Togo", "TG"), ("Tunisia", "TN"), ("Uganda", "UG"),
+    ("Zambia", "ZM"), ("Zimbabwe", "ZW"),
+]
+
+ASIA: list[tuple[str, str]] = [
+    ("Afghanistan", "AF"), ("Armenia", "AM"), ("Azerbaijan", "AZ"), ("Bahrain", "BH"),
+    ("Bangladesh", "BD"), ("Bhutan", "BT"), ("Brunei", "BN"), ("Cambodia", "KH"),
+    ("China", "CN"), ("Georgia", "GE"), ("India", "IN"), ("Indonesia", "ID"),
+    ("Iran", "IR"), ("Iraq", "IQ"), ("Israel", "IL"), ("Japan", "JP"), ("Jordan", "JO"),
+    ("Kazakhstan", "KZ"), ("Kuwait", "KW"), ("Kyrgyzstan", "KG"), ("Laos", "LA"),
+    ("Lebanon", "LB"), ("Malaysia", "MY"), ("Maldives", "MV"), ("Mongolia", "MN"),
+    ("Myanmar", "MM"), ("Nepal", "NP"), ("North Korea", "KP"), ("Oman", "OM"),
+    ("Pakistan", "PK"), ("Philippines", "PH"), ("Qatar", "QA"), ("Saudi Arabia", "SA"),
+    ("Singapore", "SG"), ("South Korea", "KR"), ("Sri Lanka", "LK"), ("Syria", "SY"),
+    ("Taiwan", "TW"), ("Tajikistan", "TJ"), ("Thailand", "TH"), ("Timor-Leste", "TL"),
+    ("Turkey", "TR"), ("Turkmenistan", "TM"), ("United Arab Emirates", "AE"),
+    ("Uzbekistan", "UZ"), ("Vietnam", "VN"), ("Yemen", "YE"),
+]
+
+EUROPE: list[tuple[str, str]] = [
+    ("Albania", "AL"), ("Andorra", "AD"), ("Austria", "AT"), ("Belarus", "BY"),
+    ("Belgium", "BE"), ("Bosnia and Herzegovina", "BA"), ("Bulgaria", "BG"),
+    ("Croatia", "HR"), ("Cyprus", "CY"), ("Czech Republic", "CZ"), ("Denmark", "DK"),
+    ("Estonia", "EE"), ("Finland", "FI"), ("France", "FR"), ("Germany", "DE"),
+    ("Greece", "GR"), ("Hungary", "HU"), ("Iceland", "IS"), ("Ireland", "IE"),
+    ("Italy", "IT"), ("Kosovo", "XK"), ("Latvia", "LV"), ("Liechtenstein", "LI"),
+    ("Lithuania", "LT"), ("Luxembourg", "LU"), ("Malta", "MT"), ("Moldova", "MD"),
+    ("Monaco", "MC"), ("Montenegro", "ME"), ("Netherlands", "NL"),
+    ("North Macedonia", "MK"), ("Norway", "NO"), ("Poland", "PL"), ("Portugal", "PT"),
+    ("Romania", "RO"), ("Russia", "RU"), ("San Marino", "SM"), ("Serbia", "RS"),
+    ("Slovakia", "SK"), ("Slovenia", "SI"), ("Spain", "ES"), ("Sweden", "SE"),
+    ("Switzerland", "CH"), ("Ukraine", "UA"), ("United Kingdom", "GB"),
+    ("Vatican City", "VA"),
+]
+
+NORTH_AMERICA: list[tuple[str, str]] = [
+    ("Antigua and Barbuda", "AG"), ("Bahamas", "BS"), ("Barbados", "BB"), ("Belize", "BZ"),
+    ("Canada", "CA"), ("Costa Rica", "CR"), ("Cuba", "CU"), ("Dominica", "DM"),
+    ("Dominican Republic", "DO"), ("El Salvador", "SV"), ("Grenada", "GD"),
+    ("Guatemala", "GT"), ("Haiti", "HT"), ("Honduras", "HN"), ("Jamaica", "JM"),
+    ("Mexico", "MX"), ("Nicaragua", "NI"), ("Panama", "PA"), ("Saint Kitts and Nevis", "KN"),
+    ("Saint Lucia", "LC"), ("Saint Vincent and the Grenadines", "VC"),
+    ("Trinidad and Tobago", "TT"), ("United States", "US"),
+]
+
+SOUTH_AMERICA: list[tuple[str, str]] = [
+    ("Argentina", "AR"), ("Bolivia", "BO"), ("Brazil", "BR"), ("Chile", "CL"),
+    ("Colombia", "CO"), ("Ecuador", "EC"), ("Guyana", "GY"), ("Paraguay", "PY"),
+    ("Peru", "PE"), ("Suriname", "SR"), ("Uruguay", "UY"), ("Venezuela", "VE"),
+]
+
+OCEANIA: list[tuple[str, str]] = [
+    ("Australia", "AU"), ("Fiji", "FJ"), ("Kiribati", "KI"), ("Marshall Islands", "MH"),
+    ("Micronesia", "FM"), ("Nauru", "NR"), ("New Zealand", "NZ"), ("Palau", "PW"),
+    ("Papua New Guinea", "PG"), ("Samoa", "WS"), ("Solomon Islands", "SB"),
+    ("Tonga", "TO"), ("Tuvalu", "TV"), ("Vanuatu", "VU"),
+]
+
+CURRENT_COUNTRIES: list[tuple[str, str, str, bool]] = [
+    *[(name, code, "Africa", False) for name, code in AFRICA],
+    *[(name, code, "Asia", False) for name, code in ASIA],
+    *[(name, code, "Europe", False) for name, code in EUROPE],
+    *[(name, code, "North America", False) for name, code in NORTH_AMERICA],
+    *[(name, code, "South America", False) for name, code in SOUTH_AMERICA],
+    *[(name, code, "Oceania", False) for name, code in OCEANIA],
+]
+
+# --- Defunct states, empires, and pre-independence administrations ---
+# A large share of real coin listings come from entities that no longer exist.
+
+HISTORICAL_ENTITIES: list[tuple[str, str | None, str, bool]] = [
+    # 20th century dissolved states
+    ("Soviet Union (USSR)", "SU", "Europe", True),
+    ("Yugoslavia", "YU", "Europe", True),
+    ("Czechoslovakia", "CS", "Europe", True),
+    ("East Germany (German Democratic Republic)", "DD", "Europe", True),
+    ("West Germany (Federal Republic, pre-1990)", None, "Europe", True),
+    ("Austria-Hungary", None, "Europe", True),
+    ("Serbia and Montenegro", None, "Europe", True),
+    ("South Vietnam", None, "Asia", True),
+    ("North Yemen", None, "Asia", True),
+    ("South Yemen", None, "Asia", True),
+    ("Zaire", None, "Africa", True),
+    ("Upper Volta", None, "Africa", True),
+    ("Dahomey", None, "Africa", True),
+    ("Newfoundland", None, "North America", True),
+    ("Rhodesia", None, "Africa", True),
+    ("British Honduras", None, "North America", True),
+    ("Ceylon", None, "Asia", True),
+    ("Burma (pre-1989)", None, "Asia", True),
+    # German pre-unification states
+    ("Prussia", None, "Europe", True),
+    ("Bavaria", None, "Europe", True),
+    ("Saxony", None, "Europe", True),
+    ("Wurttemberg", None, "Europe", True),
+    # Empires and pre-modern kingdoms (large numismatic segment)
+    ("Ottoman Empire", None, "Asia", True),
+    ("Roman Empire", None, "Europe", True),
+    ("Byzantine Empire", None, "Europe", True),
+    ("Holy Roman Empire", None, "Europe", True),
+    ("Kingdom of France", None, "Europe", True),
+    ("Kingdom of Italy (1861-1946)", None, "Europe", True),
+    ("Kingdom of Spain (historical)", None, "Europe", True),
+    ("Russian Empire", None, "Europe", True),
+    ("Qing Dynasty (Imperial China)", None, "Asia", True),
+    ("Republic of China (pre-1949)", None, "Asia", True),
+    ("British India", None, "Asia", True),
+    ("French Indochina", None, "Asia", True),
+    ("Kingdom of Hawaii", None, "Oceania", True),
+    ("Confederate States of America", None, "North America", True),
+    # Colonial administrations
+    ("British West Africa", None, "Africa", True),
+    ("British East Africa", None, "Africa", True),
+    ("French West Africa", None, "Africa", True),
+    ("French Equatorial Africa", None, "Africa", True),
+    ("Netherlands East Indies", None, "Asia", True),
+    ("Portuguese India", None, "Asia", True),
+    ("Italian Somaliland", None, "Africa", True),
+    ("German East Africa", None, "Africa", True),
+    ("Straits Settlements", None, "Asia", True),
+]
+
+# --- Special territories that mint or minted their own coinage separately
+# from their sovereign/associated state, and are commonly cataloged as
+# distinct issuers by numismatic sites (not "historical", still current). ---
+
+SPECIAL_TERRITORIES: list[tuple[str, str | None, str, bool]] = [
+    ("Hong Kong", "HK", "Asia", False),
+    ("Macau", "MO", "Asia", False),
+    ("Gibraltar", "GI", "Europe", False),
+    ("Isle of Man", "IM", "Europe", False),
+    ("Jersey", "JE", "Europe", False),
+    ("Guernsey", "GG", "Europe", False),
+    ("Falkland Islands", "FK", "South America", False),
+    ("Bermuda", "BM", "North America", False),
+    ("Cayman Islands", "KY", "North America", False),
+    ("Cook Islands", "CK", "Oceania", False),
+    ("Niue", "NU", "Oceania", False),
+    ("Faroe Islands", "FO", "Europe", False),
+    ("Greenland", "GL", "North America", False),
+    ("Puerto Rico", "PR", "North America", False),
+    ("East Caribbean States", None, "North America", False),
+    ("West African States (CFA)", None, "Africa", False),
+    ("Central African States (CFA)", None, "Africa", False),
+    ("European Union", None, "Europe", False),
+]
+
+COUNTRIES: list[tuple[str, str | None, str, bool]] = [
+    *CURRENT_COUNTRIES,
+    *HISTORICAL_ENTITIES,
+    *SPECIAL_TERRITORIES,
 ]

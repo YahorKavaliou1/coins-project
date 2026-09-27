@@ -168,3 +168,19 @@ li { padding: 4px 0; border-bottom: 1px solid #eee; }
 }
 .upload-row input[type="file"] { flex: 1; font-size: 12px; }
 .upload-row button { flex-shrink: 0; }
+
+.coin-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #ccc;
+}
+.coin-edit-form .weight-row { display: flex; gap: 8px; }
+.coin-edit-actions { display: flex; gap: 8px; margin-top: 4px; }
+.coin-edit-actions button { flex: 1; font-size: 13px; padding: 6px; }
+.btn-cancel { background: #888; }
+.btn-cancel:hover { background: #999; }
+.btn-edit { background: #2a5d9e; }
+.btn-edit:hover { background: #3570bd; }

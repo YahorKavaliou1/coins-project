@@ -7,3 +7,5 @@ class CountryRead(BaseModel):
     id: int
     name: str
     code: str | None = None
+    region: str | None = None
+    is_historical: bool

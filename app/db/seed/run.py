@@ -37,7 +37,9 @@ async def seed_countries() -> None:
         existing = set(result.scalars().all())
 
         new_countries = [
-            Country(name=name, code=code) for name, code in COUNTRIES if name not in existing
+            Country(name=name, code=code, region=region, is_historical=is_historical)
+            for name, code, region, is_historical in COUNTRIES
+            if name not in existing
         ]
 
         if not new_countries:

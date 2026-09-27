@@ -10,8 +10,19 @@ router = APIRouter(prefix="/countries", tags=["countries"])
 
 
 @router.get("", response_model=list[CountryRead])
-async def list_countries(db: AsyncSession = Depends(get_db)) -> list[Country]:
-    result = await db.execute(select(Country).order_by(Country.name))
+async def list_countries(
+    db: AsyncSession = Depends(get_db),
+    region: str | None = None,
+    include_historical: bool = True,
+) -> list[Country]:
+    stmt = select(Country).order_by(Country.name)
+
+    if region is not None:
+        stmt = stmt.where(Country.region == region)
+    if not include_historical:
+        stmt = stmt.where(Country.is_historical.is_(False))
+
+    result = await db.execute(stmt)
     return list(result.scalars().all())
 
 

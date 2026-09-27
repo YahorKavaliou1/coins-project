@@ -1,8 +1,8 @@
-"""add coin images
+"""add region and is_historical to country; expand seed with historical entities
 
-Revision ID: 15587cc65cca
+Revision ID: 6c4d7851e3ea
 Revises: 
-Create Date: 2026-09-26 20:56:11.102166
+Create Date: 2026-09-27 11:22:09.160391
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '15587cc65cca'
+revision: str = '6c4d7851e3ea'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -25,9 +25,12 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
     sa.Column('code', sa.String(length=10), nullable=True),
+    sa.Column('region', sa.String(length=50), nullable=True),
+    sa.Column('is_historical', sa.Boolean(), server_default='false', nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('name')
     )
+    op.create_index(op.f('ix_countries_region'), 'countries', ['region'], unique=False)
     op.create_table('metals',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=100), nullable=False),
@@ -122,5 +125,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('metals')
+    op.drop_index(op.f('ix_countries_region'), table_name='countries')
     op.drop_table('countries')
     # ### end Alembic commands ###

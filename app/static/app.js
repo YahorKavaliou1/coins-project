@@ -131,10 +131,49 @@ document.getElementById("logout-btn").addEventListener("click", async () => {
 
 // ---- Reference data ----
 
+function groupCountriesForSelect(countries) {
+    const current = countries.filter((c) => !c.is_historical);
+    const historical = countries.filter((c) => c.is_historical);
+
+    const byRegion = (list) => {
+        const groups = {};
+        list.forEach((c) => {
+            const region = c.region || "Other";
+            if (!groups[region]) groups[region] = [];
+            groups[region].push(c);
+        });
+        return groups;
+    };
+
+    const renderOptgroups = (groups) =>
+        Object.keys(groups)
+            .sort()
+            .map((region) => {
+                const options = groups[region]
+                    .map((c) => `<option value="${c.id}">${c.name}</option>`)
+                    .join("");
+                return `<optgroup label="${region}">${options}</optgroup>`;
+            })
+            .join("");
+
+    let html = renderOptgroups(byRegion(current));
+    if (historical.length > 0) {
+        html += `<optgroup label="Historical / defunct">${historical
+            .map((c) => `<option value="${c.id}">${c.name}</option>`)
+            .join("")}</optgroup>`;
+    }
+    return html;
+}
+
 async function loadCountries() {
     const countries = await api("/countries");
     const list = document.getElementById("countries-list");
-    list.innerHTML = countries.map((c) => `<li>${c.name} (${c.code || "-"})</li>`).join("");
+    list.innerHTML = countries
+        .map(
+            (c) =>
+                `<li>${c.name} (${c.code || "-"}) — ${c.region || "Unknown"}${c.is_historical ? " · historical" : ""}</li>`
+        )
+        .join("");
 
     const selects = [
         document.querySelector('select[name="country_id"]'),
@@ -142,8 +181,7 @@ async function loadCountries() {
     ];
     selects.forEach((select) => {
         const keepFirst = select.options[0].outerHTML;
-        select.innerHTML =
-            keepFirst + countries.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+        select.innerHTML = keepFirst + groupCountriesForSelect(countries);
     });
 }
 
@@ -184,6 +222,34 @@ function coinImagesHtml(c, allowManage) {
     return `<div class="coin-images">${imageTags}</div>${uploadHtml}`;
 }
 
+function coinEditFormHtml(c) {
+    return `
+        <form class="coin-edit-form" data-edit-form="${c.id}" style="display:none">
+            <input type="text" name="denomination" placeholder="Denomination" value="${c.denomination || ""}">
+            <input type="number" name="year" placeholder="Year" value="${c.year}" required>
+            <div class="weight-row">
+                <input type="number" step="0.01" name="weight" placeholder="Weight" value="${c.weight}" required>
+                <select name="weight_unit">
+                    <option value="oz" ${c.weight_unit === "oz" ? "selected" : ""}>oz</option>
+                    <option value="g" ${c.weight_unit === "g" ? "selected" : ""}>g</option>
+                    <option value="kg" ${c.weight_unit === "kg" ? "selected" : ""}>kg</option>
+                </select>
+            </div>
+            <input type="text" name="composition" placeholder="Composition" value="${c.composition || ""}">
+            <input type="text" name="extra_info" placeholder="Extra info" value="${c.extra_info || ""}">
+            <input type="number" step="0.01" name="price" placeholder="Price" value="${c.price ?? ""}">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_for_sale" ${c.is_for_sale ? "checked" : ""}>
+                For sale
+            </label>
+            <div class="coin-edit-actions">
+                <button type="submit" class="btn-edit">Save</button>
+                <button type="button" class="btn-cancel" data-cancel-edit="${c.id}">Cancel</button>
+            </div>
+        </form>
+    `;
+}
+
 function coinCardHtml(c, allowManage = false) {
     const isOwner = currentUserId !== null && c.owner.id === currentUserId;
     const canBuy = accessToken && !isOwner && c.is_for_sale;
@@ -200,8 +266,12 @@ function coinCardHtml(c, allowManage = false) {
             </div>`;
     }
 
+    const editButtonHtml = allowManage
+        ? `<div class="coin-actions"><button class="btn-edit" data-toggle-edit="${c.id}">Edit</button></div>`
+        : "";
+
     return `
-        <div class="coin-card">
+        <div class="coin-card" data-coin-card="${c.id}">
             <h3>${c.name}</h3>
             <p>Year: ${c.year}</p>
             <p>Country: ${c.country?.name || "-"}</p>
@@ -211,6 +281,8 @@ function coinCardHtml(c, allowManage = false) {
             ${c.price !== null ? `<p class="price-tag">$${c.price.toFixed(2)}</p>` : ""}
             ${coinImagesHtml(c, allowManage)}
             ${actionHtml}
+            ${editButtonHtml}
+            ${allowManage ? coinEditFormHtml(c) : ""}
         </div>
     `;
 }
@@ -263,6 +335,52 @@ function bindImageHandlers(container) {
         btn.addEventListener("click", () => {
             const [coinId, imageId] = btn.dataset.removeImage.split(":");
             deleteCoinImage(coinId, imageId);
+        });
+    });
+}
+
+function bindEditHandlers(container) {
+    container.querySelectorAll("[data-toggle-edit]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const coinId = btn.dataset.toggleEdit;
+            const form = container.querySelector(`[data-edit-form="${coinId}"]`);
+            form.style.display = form.style.display === "none" ? "flex" : "none";
+        });
+    });
+
+    container.querySelectorAll("[data-cancel-edit]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const coinId = btn.dataset.cancelEdit;
+            const form = container.querySelector(`[data-edit-form="${coinId}"]`);
+            form.style.display = "none";
+        });
+    });
+
+    container.querySelectorAll("[data-edit-form]").forEach((form) => {
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const coinId = form.dataset.editForm;
+            const data = new FormData(form);
+
+            try {
+                await api(`/coins/${coinId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        denomination: data.get("denomination") || null,
+                        year: parseInt(data.get("year"), 10),
+                        weight: parseFloat(data.get("weight")),
+                        weight_unit: data.get("weight_unit"),
+                        composition: data.get("composition") || null,
+                        extra_info: data.get("extra_info") || null,
+                        price: data.get("price") ? parseFloat(data.get("price")) : null,
+                        is_for_sale: data.get("is_for_sale") === "on",
+                    }),
+                });
+                await loadMyListings();
+            } catch (err) {
+                alert(`Error: ${err.data?.detail || JSON.stringify(err.data)}`);
+            }
         });
     });
 }
@@ -351,6 +469,7 @@ async function loadMyListings() {
     }
     container.innerHTML = page.items.map((c) => coinCardHtml(c, true)).join("");
     bindImageHandlers(container);
+    bindEditHandlers(container);
 }
 
 // ---- Cart ----
