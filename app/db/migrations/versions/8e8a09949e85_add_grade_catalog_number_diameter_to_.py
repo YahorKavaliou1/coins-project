@@ -1,8 +1,8 @@
-"""remove stored coin name, compute display name on the fly
+"""add grade, catalog_number, diameter to coin
 
-Revision ID: be1dafa93b8a
+Revision ID: 8e8a09949e85
 Revises: 
-Create Date: 2026-09-27 12:09:46.594524
+Create Date: 2026-09-27 18:07:42.337732
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'be1dafa93b8a'
+revision: str = '8e8a09949e85'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -53,8 +53,11 @@ def upgrade() -> None:
     sa.Column('year', sa.Integer(), nullable=False),
     sa.Column('weight', sa.Float(), nullable=False),
     sa.Column('weight_unit', sa.String(length=10), server_default='oz', nullable=False),
+    sa.Column('diameter', sa.Float(), nullable=True),
     sa.Column('denomination', sa.String(length=100), nullable=True),
     sa.Column('composition', sa.String(length=255), nullable=True),
+    sa.Column('grade', sa.String(length=50), nullable=True),
+    sa.Column('catalog_number', sa.String(length=100), nullable=True),
     sa.Column('extra_info', sa.Text(), nullable=True),
     sa.Column('mintage', sa.Integer(), nullable=True),
     sa.Column('price', sa.Float(), nullable=True),

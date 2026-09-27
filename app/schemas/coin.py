@@ -13,8 +13,11 @@ class CoinBase(BaseModel):
     year: int
     weight: float
     weight_unit: str = "oz"
+    diameter: float | None = None
     denomination: str | None = None
     composition: str | None = None
+    grade: str | None = None
+    catalog_number: str | None = None
     extra_info: str | None = None
     mintage: int | None = None
     price: float | None = None
@@ -30,8 +33,11 @@ class CoinUpdate(BaseModel):
     year: int | None = None
     weight: float | None = None
     weight_unit: str | None = None
+    diameter: float | None = None
     denomination: str | None = None
     composition: str | None = None
+    grade: str | None = None
+    catalog_number: str | None = None
     extra_info: str | None = None
     mintage: int | None = None
     country_id: int | None = None
@@ -48,8 +54,11 @@ class CoinRead(BaseModel):
     year: int
     weight: float
     weight_unit: str
+    diameter: float | None
     denomination: str | None
     composition: str | None
+    grade: str | None
+    catalog_number: str | None
     extra_info: str | None
     mintage: int | None
     price: float | None

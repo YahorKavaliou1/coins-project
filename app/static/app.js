@@ -345,6 +345,10 @@ function coinEditFormHtml(c) {
                 </select>
             </div>
             <input type="text" name="composition" placeholder="Composition" value="${c.composition || ""}">
+            <input type="number" step="0.01" name="diameter" placeholder="Diameter (mm)" value="${c.diameter ?? ""}">
+            <input type="number" name="mintage" placeholder="Mintage" value="${c.mintage ?? ""}">
+            <input type="text" name="grade" placeholder="Grade" value="${c.grade || ""}">
+            <input type="text" name="catalog_number" placeholder="Catalog No." value="${c.catalog_number || ""}">
             <input type="text" name="extra_info" placeholder="Extra info" value="${c.extra_info || ""}">
             <input type="number" step="0.01" name="price" placeholder="Price" value="${c.price ?? ""}">
             <div class="coin-edit-actions">
@@ -384,6 +388,10 @@ function coinCardHtml(c) {
             <p>Metal: ${c.metal?.name || "-"}</p>
             <p>Weight: ${c.weight} ${c.weight_unit}</p>
             ${c.composition ? `<p>Composition: ${c.composition}</p>` : ""}
+            ${c.diameter !== null ? `<p>Diameter: ${c.diameter} mm</p>` : ""}
+            ${c.mintage !== null ? `<p>Mintage: ${c.mintage.toLocaleString()}</p>` : ""}
+            ${c.grade ? `<p>Grade: ${c.grade}</p>` : ""}
+            ${c.catalog_number ? `<p>Catalog No.: ${c.catalog_number}</p>` : ""}
             ${c.price !== null ? `<p class="price-tag">$${c.price.toFixed(2)}</p>` : ""}
             ${coinGalleryHtml(c)}
             ${actionHtml}
@@ -441,6 +449,10 @@ function bindEditHandlers(container, coins, onDone) {
                         weight: parseFloat(data.get("weight")),
                         weight_unit: data.get("weight_unit"),
                         composition: data.get("composition") || null,
+                        diameter: data.get("diameter") ? parseFloat(data.get("diameter")) : null,
+                        mintage: data.get("mintage") ? parseInt(data.get("mintage"), 10) : null,
+                        grade: data.get("grade") || null,
+                        catalog_number: data.get("catalog_number") || null,
                         extra_info: data.get("extra_info") || null,
                         price: data.get("price") ? parseFloat(data.get("price")) : null,
                     }),
@@ -530,6 +542,10 @@ document.getElementById("coin-form").addEventListener("submit", async (e) => {
                 weight: parseFloat(form.get("weight")),
                 weight_unit: form.get("weight_unit"),
                 composition: form.get("composition") || null,
+                diameter: form.get("diameter") ? parseFloat(form.get("diameter")) : null,
+                mintage: form.get("mintage") ? parseInt(form.get("mintage"), 10) : null,
+                grade: form.get("grade") || null,
+                catalog_number: form.get("catalog_number") || null,
                 extra_info: form.get("extra_info") || null,
                 price: parseFloat(form.get("price")),
                 is_for_sale: true,
