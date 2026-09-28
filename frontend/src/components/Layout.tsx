@@ -1,5 +1,6 @@
+import { useState, useRef, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ShoppingCart, UserCircle } from "lucide-react";
+import { ShoppingCart, UserCircle, ChevronDown } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
@@ -7,9 +8,7 @@ import { getCart } from "../api/cart";
 
 const tabs = [
   { to: "/reference", label: "Reference data" },
-  { to: "/sell", label: "Sell" },
   { to: "/browse", label: "Browse" },
-  { to: "/purchases", label: "My purchases" },
 ];
 
 export function Layout() {
@@ -18,11 +17,29 @@ export function Layout() {
   const navigate = useNavigate();
   useCurrentUser();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const { data: cart } = useQuery({
     queryKey: ["cart", accessToken],
     queryFn: getCart,
     enabled: !!accessToken,
   });
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function goTo(path: string) {
+    setMenuOpen(false);
+    navigate(path);
+  }
 
   return (
     <div className="min-h-screen">
@@ -67,12 +84,45 @@ export function Layout() {
             )}
 
             {accessToken ? (
-              <>
-                <UserCircle className="w-6 h-6 text-gray-600" />
-                <button onClick={logout} className="text-red-600 underline">
-                  Log out
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen((o) => !o)}
+                  className="flex items-center gap-1 p-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  <UserCircle className="w-6 h-6 text-gray-600" />
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
-              </>
+
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 py-1 z-50 flex flex-col">
+                    <button
+                      type="button"
+                      onClick={() => goTo("/sell")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Sell
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goTo("/purchases")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      My purchases
+                    </button>
+                    <div className="border-t border-gray-200 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        logout();
+                      }}
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    >
+                      Log out
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <button onClick={() => navigate("/auth")} className="text-gray-700 underline">
