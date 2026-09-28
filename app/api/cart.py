@@ -20,6 +20,7 @@ async def _load_cart(db: AsyncSession, user_id: int) -> list[CartItem]:
             selectinload(CartItem.coin).selectinload(Coin.country),
             selectinload(CartItem.coin).selectinload(Coin.metal),
             selectinload(CartItem.coin).selectinload(Coin.owner),
+            selectinload(CartItem.coin).selectinload(Coin.images),
         )
         .where(CartItem.user_id == user_id)
         .order_by(CartItem.created_at)

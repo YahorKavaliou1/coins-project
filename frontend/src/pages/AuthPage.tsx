@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { login, register as registerUser } from "../api/auth";
 import { useAuthStore } from "../store/authStore";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface RegisterForm {
   email: string;
@@ -19,6 +20,7 @@ export function AuthPage() {
   const [log, setLog] = useState<string[]>([]);
   const setToken = useAuthStore((s) => s.setToken);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const registerForm = useForm<RegisterForm>();
   const loginForm = useForm<LoginForm>();
@@ -39,8 +41,8 @@ export function AuthPage() {
     onSuccess: (data) => {
       setToken(data.access_token);
       queryClient.invalidateQueries();
-      setLog((l) => [...l, JSON.stringify({ logged_in: true })]);
       loginForm.reset();
+      navigate("/browse");
     },
     onError: (err: any) => {
       setLog((l) => [...l, JSON.stringify({ error: err.response?.data })]);
