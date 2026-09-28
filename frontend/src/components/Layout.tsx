@@ -9,7 +9,6 @@ const tabs = [
   { to: "/reference", label: "Reference data" },
   { to: "/sell", label: "Sell" },
   { to: "/browse", label: "Browse" },
-  { to: "/cart", label: "Cart" },
   { to: "/purchases", label: "My purchases" },
 ];
 
@@ -30,9 +29,16 @@ export function Layout() {
         <h1 className="text-2xl font-bold">Coins Catalog</h1>
         <div className="flex items-center gap-3 text-sm">
           {accessToken && (
-            <span className="bg-brand text-white px-3 py-1 rounded-full">
+            <NavLink
+              to="/cart"
+              title="Open cart"
+              className={({ isActive }) =>
+                `px-3 py-1 rounded-full text-white transition-colors ${isActive ? "bg-green-700" : "bg-brand hover:bg-brand-light"
+                }`
+              }
+            >
               Cart: {cart?.items.length ?? 0}
-            </span>
+            </NavLink>
           )}
           <span className="text-gray-500">
             {currentUser ? `Logged in as ${currentUser.email}` : "Not logged in"}
@@ -51,8 +57,7 @@ export function Layout() {
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
-              `px-4 py-2 rounded-md text-sm font-medium ${
-                isActive ? "bg-brand text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              `px-4 py-2 rounded-md text-sm font-medium ${isActive ? "bg-brand text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
               }`
             }
           >
