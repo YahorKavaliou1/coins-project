@@ -1,3 +1,4 @@
+import { Heart, ShoppingCart } from "lucide-react";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -15,50 +16,87 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
   const canEdit = isOwner && coin.is_for_sale;
 
+  const images = coin.images.slice(0, 2);
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow">
-      <h3 className="font-semibold">{coin.name}</h3>
-      <p className="text-sm text-gray-600">Year: {coin.year}</p>
-      <p className="text-sm text-gray-600">Country: {coin.country.name}</p>
-      <p className="text-sm text-gray-600">Metal: {coin.metal.name}</p>
-      <p className="text-sm text-gray-600">
-        Weight: {coin.weight} {coin.weight_unit}
-      </p>
-      {coin.composition && <p className="text-sm text-gray-600">Composition: {coin.composition}</p>}
-      {coin.diameter !== null && <p className="text-sm text-gray-600">Diameter: {coin.diameter} mm</p>}
-      {coin.mintage !== null && (
-        <p className="text-sm text-gray-600">Mintage: {coin.mintage.toLocaleString()}</p>
-      )}
-      {coin.grade && <p className="text-sm text-gray-600">Grade: {coin.grade}</p>}
-      {coin.catalog_number && <p className="text-sm text-gray-600">Catalog No.: {coin.catalog_number}</p>}
-      {coin.price !== null && <p className="font-bold text-green-700 mt-1">${coin.price.toFixed(2)}</p>}
+    <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col">
+      {/* Images */}
+      <div className="relative flex bg-gray-100 aspect-[2/1]">
+        {images.length > 0 ? (
+          images.map((img) => (
+            <img key={img.id} src={img.url} alt="" className="w-1/2 h-full object-contain" />
+          ))
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">
+            No image
+          </div>
+        )}
 
-      {coin.images.length > 0 && (
-        <div className="flex gap-2 flex-wrap mt-2">
-          {coin.images.map((img) => (
-            <img key={img.id} src={img.url} alt="" className="w-16 h-16 object-cover rounded border" />
-          ))}
+        {coin.grade && (
+          <span className="absolute top-1.5 left-1.5 bg-accent text-white text-[10px] font-bold px-2 py-0.5 rounded">
+            {coin.grade}
+          </span>
+        )}
+
+        {!coin.is_for_sale && (
+          <span className="absolute top-1.5 right-1.5 bg-gray-700 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+            SOLD
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-3 flex flex-col flex-1">
+        <div className="text-accent text-xs font-semibold uppercase">
+          {coin.country.name}
+          {coin.year ? ` · ${coin.year}` : ""}
         </div>
-      )}
 
-      <div className="mt-3 flex gap-2">
-        {!coin.is_for_sale && <p className="text-gray-400 italic text-sm">Sold</p>}
-        {canBuy && onAddToCart && (
-          <button
-            onClick={() => onAddToCart(coin.id)}
-            className="flex-1 bg-green-700 hover:bg-green-600 text-white text-sm rounded p-2"
-          >
-            Add to cart
-          </button>
-        )}
-        {canEdit && onEdit && (
-          <button
-            onClick={() => onEdit(coin)}
-            className="flex-1 bg-blue-700 hover:bg-blue-600 text-white text-sm rounded p-2"
-          >
-            Edit
-          </button>
-        )}
+        <div className="font-bold text-sm mt-0.5 leading-snug">
+          {coin.denomination || coin.metal.name}
+          {coin.extra_info ? ` - ${coin.extra_info}` : ""}
+        </div>
+
+        <div className="flex items-center justify-between mt-1">
+          {coin.catalog_number ? (
+            <span className="text-gray-400 text-xs">{coin.catalog_number}</span>
+          ) : (
+            <span />
+          )}
+          {coin.price !== null && (
+            <span className="font-bold text-sm whitespace-nowrap">${coin.price.toFixed(2)}</span>
+          )}
+        </div>
+
+        <div className="mt-auto pt-3">
+          {canEdit && onEdit ? (
+            <button
+              onClick={() => onEdit(coin)}
+              className="w-full bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold rounded py-2"
+            >
+              Edit
+            </button>
+          ) : canBuy && onAddToCart ? (
+            <div className="flex items-center gap-2">
+              <button
+                className="border rounded p-2 text-gray-400 hover:text-red-500 hover:border-red-300"
+                title="Favorite (not implemented)"
+                type="button"
+              >
+                <Heart className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onAddToCart(coin.id)}
+                className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white text-xs font-bold uppercase rounded py-2"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Add to cart
+              </button>
+            </div>
+          ) : !coin.is_for_sale ? (
+            <div className="text-center text-gray-400 text-sm italic py-2">Sold</div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
