@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Search, X } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { listCoins } from "../api/coins";
-import { listCountries } from "../api/reference";
 import { addToCart } from "../api/cart";
 import { CoinCard } from "../components/CoinCard";
 import { EditCoinModal } from "../components/EditCoinModal";
@@ -9,30 +9,29 @@ import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
 
 export function BrowsePage() {
-  const [countryId, setCountryId] = useState("");
-  const [q, setQ] = useState("");
+  const [qInput, setQInput] = useState("");
+  const [appliedQ, setAppliedQ] = useState("");
   const [forSaleOnly, setForSaleOnly] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
 
   const accessToken = useAuthStore((s) => s.accessToken);
-  const queryClient = useQueryClient();
-
-  const { data: countries } = useQuery({ queryKey: ["countries"], queryFn: listCountries });
 
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", countryId, q, forSaleOnly],
+    queryKey: ["coins", appliedQ, forSaleOnly],
     queryFn: () =>
       listCoins({
-        country_id: countryId ? parseInt(countryId, 10) : undefined,
-        q: q || undefined,
+        q: appliedQ || undefined,
         for_sale_only: forSaleOnly || undefined,
       }),
   });
 
+  function runSearch() {
+    setAppliedQ(qInput);
+  }
+
   const addToCartMutation = useMutation({
     mutationFn: addToCart,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
       alert("Added to cart.");
     },
     onError: (err: any) => {
@@ -40,53 +39,52 @@ export function BrowsePage() {
     },
   });
 
-  const currentCountries = countries?.filter((c) => !c.is_historical) ?? [];
-  const historicalCountries = countries?.filter((c) => c.is_historical) ?? [];
-  const regions = [...new Set(currentCountries.map((c) => c.region ?? "Other"))].sort();
-
   return (
     <div>
-      <div className="bg-white p-4 rounded-lg shadow mb-4 flex flex-wrap gap-2 items-center">
-        <select value={countryId} onChange={(e) => setCountryId(e.target.value)} className="border rounded p-2">
-          <option value="">All countries</option>
-          {regions.map((region) => (
-            <optgroup key={region} label={region}>
-              {currentCountries
-                .filter((c) => (c.region ?? "Other") === region)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-          {historicalCountries.length > 0 && (
-            <optgroup label="Historical / defunct">
-              {historicalCountries.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+      <div className="bg-white border border-gray-200 rounded-md p-4 mb-4 flex flex-wrap gap-3 items-center justify-end">
+        <div className="relative w-full max-w-xs">
+          <input
+            type="text"
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") runSearch();
+            }}
+            placeholder="Search by name, country, metal, year..."
+            className="w-full border border-gray-300 rounded-sm pl-3 pr-16 py-2 text-sm focus:outline-none focus:border-accent"
+          />
+          <div className="absolute right-0 top-0 h-full flex items-center">
+            {qInput && (
+              <button
+                onClick={() => {
+                  setQInput("");
+                  setAppliedQ("");
+                }}
+                title="Clear"
+                className="h-full px-2 flex items-center justify-center text-gray-400 hover:text-gray-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              onClick={runSearch}
+              title="Search"
+              className="h-full px-3 flex items-center justify-center text-gray-500 hover:text-accent"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
 
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search by name"
-          className="border rounded p-2 flex-1 min-w-[180px]"
-        />
-
-        <label className="flex items-center gap-1 text-sm">
-          <input type="checkbox" checked={forSaleOnly} onChange={(e) => setForSaleOnly(e.target.checked)} />
+        <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
+          <input
+            type="checkbox"
+            checked={forSaleOnly}
+            onChange={(e) => setForSaleOnly(e.target.checked)}
+            className="accent-accent"
+          />
           For sale only
         </label>
-
-        <button onClick={() => refetch()} className="bg-brand text-white rounded p-2 px-4">
-          Apply
-        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
