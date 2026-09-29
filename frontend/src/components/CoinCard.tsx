@@ -1,7 +1,9 @@
 import { Heart, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
+import { addFavourite, removeFavourite } from "../api/favourites";
 
 interface CoinCardProps {
   coin: Coin;
@@ -11,8 +13,20 @@ interface CoinCardProps {
 
 export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const accessToken = useAuthStore((s) => s.accessToken);
   const currentUser = useAuthStore((s) => s.currentUser);
+
+  const toggleFavouriteMutation = useMutation({
+    mutationFn: () =>
+      coin.is_favourite ? removeFavourite(coin.id) : addFavourite(coin.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coins"] });
+      queryClient.invalidateQueries({ queryKey: ["favourites"] });
+      queryClient.invalidateQueries({ queryKey: ["coin", coin.id] });
+    },
+    onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+  });
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
@@ -88,11 +102,16 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
           ) : canBuy && onAddToCart ? (
             <div className="flex items-center gap-2">
               <button
-                className="border rounded p-2 text-gray-400 hover:text-red-500 hover:border-red-300"
-                title="Favorite (not implemented)"
+                onClick={() => toggleFavouriteMutation.mutate()}
+                className={`border rounded p-2 transition-colors ${
+                  coin.is_favourite
+                    ? "text-red-500 border-red-300 bg-red-50"
+                    : "text-gray-400 hover:text-red-500 hover:border-red-300"
+                }`}
+                title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
                 type="button"
               >
-                <Heart className="w-4 h-4" />
+                <Heart className="w-4 h-4" fill={coin.is_favourite ? "currentColor" : "none"} />
               </button>
               <button
                 onClick={() => onAddToCart(coin.id)}

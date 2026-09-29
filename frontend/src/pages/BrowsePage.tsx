@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Search, X } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { listCoins, getCoinFacets } from "../api/coins";
+import { listFavourites } from "../api/favourites";
 import { listCountries } from "../api/reference";
 import { addToCart } from "../api/cart";
 import { CoinCard } from "../components/CoinCard";
@@ -20,6 +21,7 @@ export function BrowsePage() {
   const [selectedMetalIds, setSelectedMetalIds] = useState<number[]>([]);
   const [grade, setGrade] = useState("");
   const [sort, setSort] = useState<CoinSort>("recent");
+  const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
 
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -39,8 +41,11 @@ export function BrowsePage() {
   });
 
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", countryId, grade, appliedQ, forSaleOnly, selectedMetalIds, sort],
-    queryFn: () => listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort }),
+    queryKey: ["coins", countryId, grade, appliedQ, forSaleOnly, selectedMetalIds, sort, favouritesOnly],
+    queryFn: () =>
+      favouritesOnly
+        ? listFavourites()
+        : listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort }),
   });
 
   function runSearch() {
@@ -121,7 +126,12 @@ export function BrowsePage() {
         />
 
         <div className="flex-1">
-          <SortBar value={sort} onChange={setSort} />
+          <SortBar
+            value={sort}
+            onChange={setSort}
+            showFavouritesOnly={favouritesOnly}
+            onToggleFavouritesOnly={() => setFavouritesOnly((v) => !v)}
+          />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {page?.items.length === 0 && <p>No coins found</p>}
           {page?.items.map((coin) => (

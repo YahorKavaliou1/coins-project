@@ -69,10 +69,11 @@ class CoinRead(BaseModel):
     metal: MetalRead
     owner: UserPublic
     images: list[CoinImageRead] = []
+    is_favourite: bool = False
 
     @model_validator(mode="before")
     @classmethod
-    def compute_name(cls, data: Any) -> Any:
+    def compute_name(cls, data: Any, info: Any) -> Any:
         """Derive the display name from country/metal/etc. rather than storing it.
 
         Runs before field validation, so it works whether `data` is an ORM
@@ -94,18 +95,22 @@ class CoinRead(BaseModel):
             extra_info=data.extra_info,
         )
 
-        # Attach the computed name as an attribute so from_attributes picks it up.
-        # We can't mutate the ORM object's real columns, so we wrap it in a
-        # lightweight namespace-like object instead.
-        return _CoinWithComputedName(data, computed_name)
+        favourite_ids: set[int] = (info.context or {}).get("favourite_coin_ids", set())
+        is_favourite = data.id in favourite_ids
+
+        # Attach computed fields so from_attributes picks them up. We can't
+        # mutate the ORM object's real columns, so we wrap it in a
+        # lightweight proxy instead.
+        return _CoinWithComputedName(data, computed_name, is_favourite)
 
 
 class _CoinWithComputedName:
-    """Thin proxy that exposes all Coin attributes plus a computed `name`."""
+    """Thin proxy that exposes all Coin attributes plus computed extras."""
 
-    def __init__(self, coin: Any, name: str) -> None:
+    def __init__(self, coin: Any, name: str, is_favourite: bool) -> None:
         self._coin = coin
         self.name = name
+        self.is_favourite = is_favourite
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self._coin, item)

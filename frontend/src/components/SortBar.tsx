@@ -1,3 +1,4 @@
+import { Heart } from "lucide-react";
 import type { CoinSort } from "../api/coins";
 
 interface SortOption {
@@ -18,9 +19,11 @@ const options: SortOption[] = [
 interface SortBarProps {
   value: CoinSort;
   onChange: (value: CoinSort) => void;
+  showFavouritesOnly: boolean;
+  onToggleFavouritesOnly: () => void;
 }
 
-export function SortBar({ value, onChange }: SortBarProps) {
+export function SortBar({ value, onChange, showFavouritesOnly, onToggleFavouritesOnly }: SortBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 mb-4">
       <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">Sort</span>
@@ -37,6 +40,18 @@ export function SortBar({ value, onChange }: SortBarProps) {
           {opt.label}
         </button>
       ))}
+
+      <button
+        onClick={onToggleFavouritesOnly}
+        className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors ml-auto ${
+          showFavouritesOnly
+            ? "bg-red-600 text-white border-red-600"
+            : "bg-white text-gray-700 border-gray-300 hover:border-red-400 hover:text-red-500"
+        }`}
+      >
+        <Heart className="w-3.5 h-3.5" fill={showFavouritesOnly ? "currentColor" : "none"} />
+        Favourites
+      </button>
     </div>
   );
 }

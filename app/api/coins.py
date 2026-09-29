@@ -5,10 +5,11 @@ from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_optional_current_user
 from app.db.session import get_db
 from app.models.coin import Coin
 from app.models.country import Country
+from app.models.favourite import Favourite
 from app.models.metal import Metal
 from app.models.user import User
 from app.schemas.coin import CoinCreate, CoinFacets, CoinRead, CoinUpdate, MetalFacet, Page
@@ -21,6 +22,13 @@ COIN_LOAD_OPTIONS = (
     selectinload(Coin.owner),
     selectinload(Coin.images),
 )
+
+
+async def _get_favourite_ids(db: AsyncSession, user: User | None) -> set[int]:
+    if user is None:
+        return set()
+    result = await db.execute(select(Favourite.coin_id).where(Favourite.user_id == user.id))
+    return {row[0] for row in result.all()}
 
 
 async def _validate_country_and_metal(db: AsyncSession, country_id: int, metal_id: int) -> None:
@@ -152,6 +160,7 @@ async def list_coins(
     sort: str = Query(default="recent"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> Page:
     stmt = select(Coin).join(Coin.country).join(Coin.metal).options(*COIN_LOAD_OPTIONS)
 
@@ -176,18 +185,30 @@ async def list_coins(
     order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["recent"])
     stmt = stmt.order_by(order_clause).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
-    items = list(result.scalars().unique().all())
+    coins = list(result.scalars().unique().all())
+
+    favourite_ids = await _get_favourite_ids(db, current_user)
+    items = [
+        CoinRead.model_validate(coin, context={"favourite_coin_ids": favourite_ids})
+        for coin in coins
+    ]
 
     return Page(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/{coin_id}", response_model=CoinRead)
-async def get_coin(coin_id: int, db: AsyncSession = Depends(get_db)) -> Coin:
+async def get_coin(
+    coin_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+) -> CoinRead:
     stmt = select(Coin).options(*COIN_LOAD_OPTIONS).where(Coin.id == coin_id)
     coin = (await db.execute(stmt)).scalar_one_or_none()
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
-    return coin
+
+    favourite_ids = await _get_favourite_ids(db, current_user)
+    return CoinRead.model_validate(coin, context={"favourite_coin_ids": favourite_ids})
 
 
 @router.post("", response_model=CoinRead, status_code=201)

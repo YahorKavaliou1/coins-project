@@ -42,6 +42,7 @@ export interface Coin {
   metal: Metal;
   owner: UserPublic;
   images: CoinImage[];
+  is_favourite: boolean;
 }
 
 export interface CoinPage {

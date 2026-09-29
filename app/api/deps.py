@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,5 +35,33 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception
+
+    return user
+
+
+async def get_optional_current_user(
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization.removeprefix("Bearer ")
+    try:
+        payload = decode_token(token)
+    except ValueError:
+        return None
+
+    if payload.get("type") != "access":
+        return None
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        return None
+
+    result = await db.execute(select(User).where(User.id == int(user_id)))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        return None
 
     return user

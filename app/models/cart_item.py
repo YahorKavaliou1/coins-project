@@ -19,9 +19,7 @@ class CartItem(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     coin_id: Mapped[int] = mapped_column(ForeignKey("coins.id"))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     user: Mapped["User"] = relationship()
     coin: Mapped["Coin"] = relationship()
