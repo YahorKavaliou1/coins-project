@@ -17,7 +17,7 @@ export function BrowsePage() {
   const [qInput, setQInput] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
   const [forSaleOnly, setForSaleOnly] = useState(false);
-  const [countryId, setCountryId] = useState("");
+  const [selectedCountryIds, setSelectedCountryIds] = useState<number[]>([]);
   const [selectedMetalIds, setSelectedMetalIds] = useState<number[]>([]);
   const [grade, setGrade] = useState("");
   const [sort, setSort] = useState<CoinSort>("recent");
@@ -29,19 +29,19 @@ export function BrowsePage() {
   const { data: countries } = useQuery({ queryKey: ["countries"], queryFn: listCountries });
 
   const commonFilters = {
-    country_id: countryId ? parseInt(countryId, 10) : undefined,
+    country_id: selectedCountryIds.length > 0 ? selectedCountryIds : undefined,
     grade: grade || undefined,
     q: appliedQ || undefined,
     for_sale_only: forSaleOnly || undefined,
   };
 
   const { data: facets } = useQuery({
-    queryKey: ["coin-facets", countryId, grade, appliedQ, forSaleOnly, selectedMetalIds],
+    queryKey: ["coin-facets", selectedCountryIds, grade, appliedQ, forSaleOnly, selectedMetalIds],
     queryFn: () => getCoinFacets({ ...commonFilters, metal_id: selectedMetalIds }),
   });
 
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", countryId, grade, appliedQ, forSaleOnly, selectedMetalIds, sort, favouritesOnly],
+    queryKey: ["coins", selectedCountryIds, grade, appliedQ, forSaleOnly, selectedMetalIds, sort, favouritesOnly],
     queryFn: () =>
       favouritesOnly
         ? listFavourites()
@@ -115,8 +115,8 @@ export function BrowsePage() {
       <div className="flex gap-6 items-start">
         <BrowseSidebar
           countries={countries ?? []}
-          countryId={countryId}
-          onCountryChange={setCountryId}
+          selectedCountryIds={selectedCountryIds}
+          onCountryChange={setSelectedCountryIds}
           availableMetals={facets?.metals ?? []}
           selectedMetalIds={selectedMetalIds}
           onToggleMetal={toggleMetal}

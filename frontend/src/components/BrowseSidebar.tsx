@@ -1,9 +1,10 @@
 import type { Country, MetalFacet } from "../types";
+import { MultiSelectDropdown } from "./MultiSelectDropdown";
 
 interface BrowseSidebarProps {
   countries: Country[];
-  countryId: string;
-  onCountryChange: (value: string) => void;
+  selectedCountryIds: number[];
+  onCountryChange: (ids: number[]) => void;
 
   availableMetals: MetalFacet[];
   selectedMetalIds: number[];
@@ -16,7 +17,7 @@ interface BrowseSidebarProps {
 
 export function BrowseSidebar({
   countries,
-  countryId,
+  selectedCountryIds,
   onCountryChange,
   availableMetals,
   selectedMetalIds,
@@ -25,34 +26,24 @@ export function BrowseSidebar({
   grade,
   onGradeChange,
 }: BrowseSidebarProps) {
-  const currentCountries = countries.filter((c) => !c.is_historical).sort((a, b) => a.name.localeCompare(b.name));
-  const historicalCountries = countries.filter((c) => c.is_historical).sort((a, b) => a.name.localeCompare(b.name));
+  const countryOptions = countries
+    .map((c) => ({
+      id: c.id,
+      label: c.name,
+      group: c.is_historical ? "Historical / defunct" : c.region ?? "Other",
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <aside className="w-56 shrink-0 flex flex-col gap-6">
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Country / Issuer</h3>
-        <select
-          value={countryId}
-          onChange={(e) => onCountryChange(e.target.value)}
-          className="w-full border border-gray-300 rounded-sm px-2 py-2 text-sm focus:outline-none focus:border-accent"
-        >
-          <option value="">All Countries</option>
-          {currentCountries.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-          {historicalCountries.length > 0 && (
-            <optgroup label="Historical / defunct">
-              {historicalCountries.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+        <MultiSelectDropdown
+          options={countryOptions}
+          selectedIds={selectedCountryIds}
+          onChange={onCountryChange}
+          placeholder="All Countries"
+        />
       </div>
 
       <div>

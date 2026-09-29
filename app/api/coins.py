@@ -43,7 +43,7 @@ async def _validate_country_and_metal(db: AsyncSession, country_id: int, metal_i
 
 def _build_common_conditions(
     *,
-    country_id: int | None,
+    country_id: list[int] | None,
     year_from: int | None,
     year_to: int | None,
     q: str | None,
@@ -58,8 +58,8 @@ def _build_common_conditions(
     """
     conditions: list[ColumnElement[bool]] = []
 
-    if country_id is not None:
-        conditions.append(Coin.country_id == country_id)
+    if country_id:
+        conditions.append(Coin.country_id.in_(country_id))
     if year_from is not None:
         conditions.append(Coin.year >= year_from)
     if year_to is not None:
@@ -86,7 +86,7 @@ def _build_common_conditions(
 @router.get("/facets", response_model=CoinFacets)
 async def get_coin_facets(
     db: AsyncSession = Depends(get_db),
-    country_id: int | None = None,
+    country_id: list[int] | None = Query(default=None),
     metal_id: list[int] | None = Query(default=None),
     grade: str | None = None,
     year_from: int | None = None,
@@ -149,7 +149,7 @@ SORT_OPTIONS: dict[str, ColumnElement] = {
 @router.get("", response_model=Page)
 async def list_coins(
     db: AsyncSession = Depends(get_db),
-    country_id: int | None = None,
+    country_id: list[int] | None = Query(default=None),
     metal_id: list[int] | None = Query(default=None),
     grade: str | None = None,
     year_from: int | None = None,

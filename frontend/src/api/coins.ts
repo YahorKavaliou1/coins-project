@@ -11,7 +11,7 @@ export type CoinSort =
   | "date_desc";
 
 export interface CoinFilters {
-  country_id?: number;
+  country_id?: number[];
   metal_id?: number[];
   grade?: string;
   year_from?: number;
