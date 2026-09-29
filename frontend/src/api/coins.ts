@@ -1,9 +1,10 @@
 import { apiClient } from "./client";
-import type { Coin, CoinCreatePayload, CoinPage, CoinUpdatePayload } from "../types";
+import type { Coin, CoinCreatePayload, CoinFacets, CoinPage, CoinUpdatePayload } from "../types";
 
 export interface CoinFilters {
   country_id?: number;
-  metal_id?: number;
+  metal_id?: number[];
+  grade?: string;
   year_from?: number;
   year_to?: number;
   q?: string;
@@ -13,12 +14,26 @@ export interface CoinFilters {
   page_size?: number;
 }
 
-export async function listCoins(filters: CoinFilters = {}) {
+function buildParams(filters: CoinFilters): URLSearchParams {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value !== undefined && value !== "") params.set(key, String(value));
+    if (value === undefined || value === "") return;
+    if (Array.isArray(value)) {
+      value.forEach((v) => params.append(key, String(v)));
+    } else {
+      params.set(key, String(value));
+    }
   });
-  const { data } = await apiClient.get<CoinPage>(`/coins?${params.toString()}`);
+  return params;
+}
+
+export async function listCoins(filters: CoinFilters = {}) {
+  const { data } = await apiClient.get<CoinPage>(`/coins?${buildParams(filters).toString()}`);
+  return data;
+}
+
+export async function getCoinFacets(filters: CoinFilters = {}) {
+  const { data } = await apiClient.get<CoinFacets>(`/coins/facets?${buildParams(filters).toString()}`);
   return data;
 }
 

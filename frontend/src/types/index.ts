@@ -105,3 +105,8 @@ export interface Order {
   created_at: string;
   items: OrderItemRead[];
 }
+
+export interface CoinFacets {
+  metals: Metal[];
+  grades: string[];
+}

@@ -114,3 +114,13 @@ class Page(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class MetalFacet(BaseModel):
+    id: int
+    name: str
+
+
+class CoinFacets(BaseModel):
+    metals: list[MetalFacet]
+    grades: list[str]

@@ -9,7 +9,7 @@ from app.models.coin import Coin
 from app.models.country import Country
 from app.models.metal import Metal
 from app.models.user import User
-from app.schemas.coin import CoinCreate, CoinRead, CoinUpdate, Page
+from app.schemas.coin import CoinCreate, CoinFacets, CoinRead, CoinUpdate, MetalFacet, Page
 
 router = APIRouter(prefix="/coins", tags=["coins"])
 
@@ -31,11 +31,108 @@ async def _validate_country_and_metal(db: AsyncSession, country_id: int, metal_i
         raise HTTPException(status_code=404, detail="Metal not found")
 
 
+def _build_common_conditions(
+    *,
+    country_id: int | None,
+    year_from: int | None,
+    year_to: int | None,
+    q: str | None,
+    for_sale_only: bool,
+    owner_id: int | None,
+) -> list[ColumnElement[bool]]:
+    """Filters shared by the coin list and the facets endpoint.
+
+    Deliberately excludes metal_id and grade — those are handled separately
+    so that toggling one facet doesn't hide the other available options
+    (standard faceted-search behavior).
+    """
+    conditions: list[ColumnElement[bool]] = []
+
+    if country_id is not None:
+        conditions.append(Coin.country_id == country_id)
+    if year_from is not None:
+        conditions.append(Coin.year >= year_from)
+    if year_to is not None:
+        conditions.append(Coin.year <= year_to)
+    if q:
+        pattern = f"%{q}%"
+        q_conditions: list[ColumnElement[bool]] = [
+            Country.name.ilike(pattern),
+            Metal.name.ilike(pattern),
+            Coin.denomination.ilike(pattern),
+            Coin.extra_info.ilike(pattern),
+        ]
+        try:
+            q_conditions.append(Coin.year == int(q))
+        except ValueError:
+            pass
+        conditions.append(or_(*q_conditions))
+    if for_sale_only:
+        conditions.append(Coin.is_for_sale.is_(True))
+    if owner_id is not None:
+        conditions.append(Coin.owner_id == owner_id)
+
+    return conditions
+
+
+@router.get("/facets", response_model=CoinFacets)
+async def get_coin_facets(
+    db: AsyncSession = Depends(get_db),
+    country_id: int | None = None,
+    metal_id: list[int] | None = Query(default=None),
+    grade: str | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    q: str | None = None,
+    for_sale_only: bool = False,
+) -> CoinFacets:
+    common = _build_common_conditions(
+        country_id=country_id,
+        year_from=year_from,
+        year_to=year_to,
+        q=q,
+        for_sale_only=for_sale_only,
+        owner_id=None,
+    )
+
+    # Metals available given every active filter except the metal filter
+    # itself, so picking one metal doesn't make the others disappear.
+    metals_stmt = select(Metal.id, Metal.name).select_from(Coin).join(Coin.metal).join(Coin.country)
+    for condition in common:
+        metals_stmt = metals_stmt.where(condition)
+    if grade:
+        metals_stmt = metals_stmt.where(Coin.grade == grade)
+    metals_stmt = metals_stmt.distinct().order_by(Metal.name)
+
+    metals_result = await db.execute(metals_stmt)
+    metals = [MetalFacet(id=row.id, name=row.name) for row in metals_result.all()]
+
+    # Grades available given every active filter except the grade filter itself.
+    grades_stmt = (
+        select(Coin.grade)
+        .select_from(Coin)
+        .join(Coin.metal)
+        .join(Coin.country)
+        .where(Coin.grade.is_not(None))
+    )
+    for condition in common:
+        grades_stmt = grades_stmt.where(condition)
+    if metal_id:
+        grades_stmt = grades_stmt.where(Coin.metal_id.in_(metal_id))
+    grades_stmt = grades_stmt.distinct().order_by(Coin.grade)
+
+    grades_result = await db.execute(grades_stmt)
+    grades = [row[0] for row in grades_result.all() if row[0]]
+
+    return CoinFacets(metals=metals, grades=grades)
+
+
 @router.get("", response_model=Page)
 async def list_coins(
     db: AsyncSession = Depends(get_db),
     country_id: int | None = None,
-    metal_id: int | None = None,
+    metal_id: list[int] | None = Query(default=None),
+    grade: str | None = None,
     year_from: int | None = None,
     year_to: int | None = None,
     q: str | None = None,
@@ -44,47 +141,25 @@ async def list_coins(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> Page:
-    stmt = (
-        select(Coin)
-        .join(Coin.country)
-        .join(Coin.metal)
-        .options(*COIN_LOAD_OPTIONS)
+    stmt = select(Coin).join(Coin.country).join(Coin.metal).options(*COIN_LOAD_OPTIONS)
+
+    conditions = _build_common_conditions(
+        country_id=country_id,
+        year_from=year_from,
+        year_to=year_to,
+        q=q,
+        for_sale_only=for_sale_only,
+        owner_id=owner_id,
     )
+    if metal_id:
+        conditions.append(Coin.metal_id.in_(metal_id))
+    if grade:
+        conditions.append(Coin.grade == grade)
 
-    if country_id is not None:
-        stmt = stmt.where(Coin.country_id == country_id)
-    if metal_id is not None:
-        stmt = stmt.where(Coin.metal_id == metal_id)
-    if year_from is not None:
-        stmt = stmt.where(Coin.year >= year_from)
-    if year_to is not None:
-        stmt = stmt.where(Coin.year <= year_to)
-    if q:
-        pattern = f"%{q}%"
-        conditions: list[ColumnElement[bool]] = [
-            Country.name.ilike(pattern),
-            Metal.name.ilike(pattern),
-            Coin.denomination.ilike(pattern),
-            Coin.extra_info.ilike(pattern),
-        ]
+    for condition in conditions:
+        stmt = stmt.where(condition)
 
-        # Also match the year when the query looks like a number,
-        # e.g. searching "1990" matches coins minted that year.
-        try:
-            q_as_int = int(q)
-            conditions.append(Coin.year == q_as_int)
-        except ValueError:
-            pass
-
-        stmt = stmt.where(or_(*conditions))
-    if for_sale_only:
-        stmt = stmt.where(Coin.is_for_sale.is_(True))
-    if owner_id is not None:
-        stmt = stmt.where(Coin.owner_id == owner_id)
-
-    total = (
-        await db.execute(select(func.count()).select_from(stmt.subquery()))
-    ).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
 
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
