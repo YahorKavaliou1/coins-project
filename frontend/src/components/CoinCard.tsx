@@ -1,4 +1,5 @@
 import { Heart, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -9,6 +10,7 @@ interface CoinCardProps {
 }
 
 export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
+  const navigate = useNavigate();
   const accessToken = useAuthStore((s) => s.accessToken);
   const currentUser = useAuthStore((s) => s.currentUser);
 
@@ -18,8 +20,15 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
 
   const images = coin.images.slice(0, 2);
 
+  function stop(e: React.MouseEvent) {
+    e.stopPropagation();
+  }
+
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col">
+    <div
+      onClick={() => navigate(`/coins/${coin.id}`)}
+      className="bg-white rounded-lg shadow overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-shadow"
+    >
       {/* Images */}
       <div className="relative flex bg-gray-100 aspect-[2/1]">
         {images.length > 0 ? (
@@ -33,7 +42,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
         )}
 
         {coin.grade && (
-          <span className="absolute top-1.5 left-1.5 bg-accent text-white text-[10px] font-bold px-2 py-0.5 rounded">
+          <span className="absolute top-1.5 left-1.5 bg-amber-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">
             {coin.grade}
           </span>
         )}
@@ -68,7 +77,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
           )}
         </div>
 
-        <div className="mt-auto pt-3">
+        <div className="mt-auto pt-3" onClick={stop}>
           {canEdit && onEdit ? (
             <button
               onClick={() => onEdit(coin)}

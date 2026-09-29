@@ -7,6 +7,7 @@ import { AuthPage } from "./pages/AuthPage";
 import { ReferencePage } from "./pages/ReferencePage";
 import { SellPage } from "./pages/SellPage";
 import { BrowsePage } from "./pages/BrowsePage";
+import { CoinDetailPage } from "./pages/CoinDetailPage";
 import { CartPage } from "./pages/CartPage";
 import { PurchasesPage } from "./pages/PurchasesPage";
 import "./index.css";
@@ -24,6 +25,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/reference" element={<ReferencePage />} />
             <Route path="/sell" element={<SellPage />} />
             <Route path="/browse" element={<BrowsePage />} />
+            <Route path="/coins/:id" element={<CoinDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/purchases" element={<PurchasesPage />} />
           </Route>
