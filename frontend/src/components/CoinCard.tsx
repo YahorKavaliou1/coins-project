@@ -105,8 +105,8 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
                 onClick={() => toggleFavouriteMutation.mutate()}
                 className={`border rounded p-2 transition-colors ${
                   coin.is_favourite
-                    ? "text-red-500 border-red-300 bg-red-50"
-                    : "text-gray-400 hover:text-red-500 hover:border-red-300"
+                    ? "text-accent border-accent bg-accent/10"
+                    : "text-gray-400 hover:text-accent hover:border-accent"
                 }`}
                 title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
                 type="button"

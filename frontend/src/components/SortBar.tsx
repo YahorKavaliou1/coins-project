@@ -45,8 +45,8 @@ export function SortBar({ value, onChange, showFavouritesOnly, onToggleFavourite
         onClick={onToggleFavouritesOnly}
         className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors ml-auto ${
           showFavouritesOnly
-            ? "bg-red-600 text-white border-red-600"
-            : "bg-white text-gray-700 border-gray-300 hover:border-red-400 hover:text-red-500"
+            ? "bg-accent text-white border-accent"
+            : "bg-white text-gray-700 border-gray-300 hover:border-accent hover:text-accent"
         }`}
       >
         <Heart className="w-3.5 h-3.5" fill={showFavouritesOnly ? "currentColor" : "none"} />

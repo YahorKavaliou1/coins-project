@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, ShoppingCart, ChevronLeft } from "lucide-react";
 import { getCoin } from "../api/coins";
 import { addToCart } from "../api/cart";
+import { addFavourite, removeFavourite } from "../api/favourites";
 import { useAuthStore } from "../store/authStore";
 import { EditCoinModal } from "../components/EditCoinModal";
 
@@ -28,6 +29,17 @@ export function CoinDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       alert("Added to cart.");
+    },
+    onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+  });
+
+  const toggleFavouriteMutation = useMutation({
+    mutationFn: () =>
+      coin?.is_favourite ? removeFavourite(coinId) : addFavourite(coinId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["coin", coinId] });
+      queryClient.invalidateQueries({ queryKey: ["coins"] });
+      queryClient.invalidateQueries({ queryKey: ["favourites"] });
     },
     onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
   });
@@ -152,11 +164,16 @@ export function CoinDetailPage() {
             ) : canBuy ? (
               <div className="flex items-center gap-2">
                 <button
-                  className="border rounded p-3 text-gray-400 hover:text-red-500 hover:border-red-300"
-                  title="Favorite (not implemented)"
+                  onClick={() => toggleFavouriteMutation.mutate()}
+                  className={`border rounded p-3 transition-colors ${
+                    coin.is_favourite
+                      ? "text-accent border-accent bg-accent/10"
+                      : "text-gray-400 hover:text-accent hover:border-accent"
+                  }`}
+                  title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
                   type="button"
                 >
-                  <Heart className="w-5 h-5" />
+                  <Heart className="w-5 h-5" fill={coin.is_favourite ? "currentColor" : "none"} />
                 </button>
                 <button
                   onClick={() => addToCartMutation.mutate(coin.id)}
