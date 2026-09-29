@@ -7,6 +7,8 @@ import { addToCart } from "../api/cart";
 import { CoinCard } from "../components/CoinCard";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { BrowseSidebar } from "../components/BrowseSidebar";
+import { SortBar } from "../components/SortBar";
+import type { CoinSort } from "../api/coins";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
 
@@ -17,6 +19,7 @@ export function BrowsePage() {
   const [countryId, setCountryId] = useState("");
   const [selectedMetalIds, setSelectedMetalIds] = useState<number[]>([]);
   const [grade, setGrade] = useState("");
+  const [sort, setSort] = useState<CoinSort>("recent");
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
 
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -36,8 +39,8 @@ export function BrowsePage() {
   });
 
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", countryId, grade, appliedQ, forSaleOnly, selectedMetalIds],
-    queryFn: () => listCoins({ ...commonFilters, metal_id: selectedMetalIds }),
+    queryKey: ["coins", countryId, grade, appliedQ, forSaleOnly, selectedMetalIds, sort],
+    queryFn: () => listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort }),
   });
 
   function runSearch() {
@@ -117,7 +120,9 @@ export function BrowsePage() {
           onGradeChange={setGrade}
         />
 
-        <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="flex-1">
+          <SortBar value={sort} onChange={setSort} />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {page?.items.length === 0 && <p>No coins found</p>}
           {page?.items.map((coin) => (
             <CoinCard
@@ -127,6 +132,7 @@ export function BrowsePage() {
               onEdit={(c) => setEditingCoin(c)}
             />
           ))}
+          </div>
         </div>
       </div>
 

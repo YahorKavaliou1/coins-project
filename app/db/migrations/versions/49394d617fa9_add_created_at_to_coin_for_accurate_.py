@@ -1,8 +1,8 @@
-"""add grade, catalog_number, diameter to coin
+"""add created_at to coin for accurate recent sorting
 
-Revision ID: 8e8a09949e85
+Revision ID: 49394d617fa9
 Revises: 
-Create Date: 2026-09-27 18:07:42.337732
+Create Date: 2026-09-29 09:20:25.779428
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '8e8a09949e85'
+revision: str = '49394d617fa9'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -62,6 +62,7 @@ def upgrade() -> None:
     sa.Column('mintage', sa.Integer(), nullable=True),
     sa.Column('price', sa.Float(), nullable=True),
     sa.Column('is_for_sale', sa.Boolean(), server_default='true', nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('country_id', sa.Integer(), nullable=False),
     sa.Column('metal_id', sa.Integer(), nullable=False),
     sa.Column('owner_id', sa.Integer(), nullable=False),

@@ -1,6 +1,15 @@
 import { apiClient } from "./client";
 import type { Coin, CoinCreatePayload, CoinFacets, CoinPage, CoinUpdatePayload } from "../types";
 
+export type CoinSort =
+  | "recent"
+  | "price_asc"
+  | "price_desc"
+  | "weight_asc"
+  | "weight_desc"
+  | "date_asc"
+  | "date_desc";
+
 export interface CoinFilters {
   country_id?: number;
   metal_id?: number[];
@@ -10,6 +19,7 @@ export interface CoinFilters {
   q?: string;
   for_sale_only?: boolean;
   owner_id?: number;
+  sort?: CoinSort;
   page?: number;
   page_size?: number;
 }

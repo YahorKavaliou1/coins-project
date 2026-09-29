@@ -1,7 +1,9 @@
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
 
 from app.db.base import Base
 
@@ -29,6 +31,10 @@ class Coin(Base):
 
     price: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_for_sale: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"))
     metal_id: Mapped[int] = mapped_column(ForeignKey("metals.id"))

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -51,6 +52,7 @@ class CoinRead(BaseModel):
 
     id: int
     name: str = ""  # computed in the validator below; placeholder keeps field ordering
+    created_at: datetime
     year: int
     weight: float
     weight_unit: str

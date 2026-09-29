@@ -1,3 +1,5 @@
+import contextlib
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -62,10 +64,8 @@ def _build_common_conditions(
             Coin.denomination.ilike(pattern),
             Coin.extra_info.ilike(pattern),
         ]
-        try:
+        with contextlib.suppress(ValueError):
             q_conditions.append(Coin.year == int(q))
-        except ValueError:
-            pass
         conditions.append(or_(*q_conditions))
     if for_sale_only:
         conditions.append(Coin.is_for_sale.is_(True))
@@ -127,6 +127,17 @@ async def get_coin_facets(
     return CoinFacets(metals=metals, grades=grades)
 
 
+SORT_OPTIONS: dict[str, ColumnElement] = {
+    "recent": Coin.created_at.desc(),
+    "price_asc": Coin.price.asc().nulls_last(),
+    "price_desc": Coin.price.desc().nulls_last(),
+    "weight_asc": Coin.weight.asc(),
+    "weight_desc": Coin.weight.desc(),
+    "date_asc": Coin.year.asc(),
+    "date_desc": Coin.year.desc(),
+}
+
+
 @router.get("", response_model=Page)
 async def list_coins(
     db: AsyncSession = Depends(get_db),
@@ -138,6 +149,7 @@ async def list_coins(
     q: str | None = None,
     for_sale_only: bool = False,
     owner_id: int | None = None,
+    sort: str = Query(default="recent"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
 ) -> Page:
@@ -161,7 +173,8 @@ async def list_coins(
 
     total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
 
-    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+    order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["recent"])
+    stmt = stmt.order_by(order_clause).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)
     items = list(result.scalars().unique().all())
 
