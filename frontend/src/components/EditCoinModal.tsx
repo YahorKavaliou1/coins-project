@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import type { Coin, CoinUpdatePayload } from "../types";
 import { updateCoin, uploadCoinImage, deleteCoinImage } from "../api/coins";
+import type { ApiError } from "../api/client";
 
 interface EditCoinModalProps {
   coin: Coin;
@@ -49,7 +50,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
       newImages.forEach((f) => URL.revokeObjectURL(f.previewUrl));
       onSaved();
     },
-    onError: (err: any) => {
+    onError: (err: ApiError) => {
       alert(`Error: ${err.response?.data?.detail || "unknown error"}`);
     },
   });

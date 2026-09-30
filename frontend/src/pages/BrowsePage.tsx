@@ -12,6 +12,7 @@ import { SortBar } from "../components/SortBar";
 import type { CoinSort } from "../api/coins";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
+import type { ApiError } from "../api/client";
 
 export function BrowsePage() {
   const [qInput, setQInput] = useState("");
@@ -61,7 +62,7 @@ export function BrowsePage() {
   const addToCartMutation = useMutation({
     mutationFn: addToCart,
     onSuccess: () => alert("Added to cart."),
-    onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
   });
 
   return (

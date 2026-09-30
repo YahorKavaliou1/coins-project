@@ -4,6 +4,7 @@ import { login, register as registerUser } from "../api/auth";
 import { useAuthStore } from "../store/authStore";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import type { ApiError } from "../api/client";
 
 interface RegisterForm {
   email: string;
@@ -31,7 +32,7 @@ export function AuthPage() {
       setLog((l) => [...l, JSON.stringify({ registered: data })]);
       registerForm.reset();
     },
-    onError: (err: any) => {
+    onError: (err: ApiError) => {
       setLog((l) => [...l, JSON.stringify({ error: err.response?.data })]);
     },
   });
@@ -44,7 +45,7 @@ export function AuthPage() {
       loginForm.reset();
       navigate("/browse");
     },
-    onError: (err: any) => {
+    onError: (err: ApiError) => {
       setLog((l) => [...l, JSON.stringify({ error: err.response?.data })]);
     },
   });

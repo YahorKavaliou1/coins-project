@@ -3,6 +3,7 @@ import { listUsers, updateUserRole } from "../api/users";
 import { useAuthStore } from "../store/authStore";
 import { USER_ROLES } from "../utils/roles";
 import type { UserRole } from "../types";
+import type { ApiError } from "../api/client";
 
 const roleBadgeClass: Record<UserRole, string> = {
   user: "bg-gray-100 text-gray-700",
@@ -20,7 +21,7 @@ export function AdminUsersPage() {
     mutationFn: ({ userId, role }: { userId: number; role: UserRole }) =>
       updateUserRole(userId, role),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
-    onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
   });
 
   if (isLoading) return <p>Loading...</p>;

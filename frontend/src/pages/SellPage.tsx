@@ -6,6 +6,7 @@ import { listCountries, listMetals } from "../api/reference";
 import { createCoin, uploadCoinImage } from "../api/coins";
 import { MultiSelectDropdown } from "../components/MultiSelectDropdown";
 import type { CoinCreatePayload } from "../types";
+import type { ApiError } from "../api/client";
 
 interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> {
   country_id: string;
@@ -88,7 +89,7 @@ export function SellPage() {
       setMetalSelection([]);
       alert("Coin listed successfully.");
     },
-    onError: (err: any) => {
+    onError: (err: ApiError) => {
       alert(`Error: ${JSON.stringify(err.response?.data)}`);
     },
   });

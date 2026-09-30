@@ -1,5 +1,8 @@
-import axios from "axios";
+import axios, { type AxiosError } from "axios";
 import { useAuthStore } from "../store/authStore";
+
+/** Error thrown by apiClient; FastAPI puts the message into `detail`. */
+export type ApiError = AxiosError<{ detail?: string }>;
 
 export const apiClient = axios.create({
   baseURL: "",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, ShoppingCart, ChevronLeft } from "lucide-react";
 import { getCoin } from "../api/coins";
@@ -8,6 +8,7 @@ import { addFavourite, removeFavourite } from "../api/favourites";
 import { useAuthStore } from "../store/authStore";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { isAdmin } from "../utils/roles";
+import type { ApiError } from "../api/client";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +32,7 @@ export function CoinDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       alert("Added to cart.");
     },
-    onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
   });
 
   const toggleFavouriteMutation = useMutation({
@@ -42,7 +43,7 @@ export function CoinDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["coins"] });
       queryClient.invalidateQueries({ queryKey: ["favourites"] });
     },
-    onError: (err: any) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
   });
 
   if (!coin) return <p>Loading...</p>;

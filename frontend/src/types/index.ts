@@ -110,7 +110,9 @@ export interface Order {
   items: OrderItemRead[];
 }
 
+export type MetalFacet = Pick<Metal, "id" | "name">;
+
 export interface CoinFacets {
-  metals: Metal[];
+  metals: MetalFacet[];
   grades: string[];
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCart, removeFromCart } from "../api/cart";
 import { checkout } from "../api/orders";
 import { useAuthStore } from "../store/authStore";
+import type { ApiError } from "../api/client";
 
 export function CartPage() {
   const [address, setAddress] = useState("");
@@ -28,7 +29,7 @@ export function CartPage() {
       setAddress("");
       queryClient.invalidateQueries({ queryKey: ["cart"] });
     },
-    onError: (err: any) => {
+    onError: (err: ApiError) => {
       setLog((l) => [...l, JSON.stringify({ error: err.response?.data })]);
     },
   });
