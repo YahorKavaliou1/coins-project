@@ -131,6 +131,7 @@ class AWSImageStorage(ImageStorage):
     @staticmethod
     def _create_client() -> Any:
         import boto3
+        from botocore.config import Config
 
         credentials: dict[str, str] = {}
         if settings.s3_access_key_id:
@@ -142,6 +143,14 @@ class AWSImageStorage(ImageStorage):
             "s3",
             region_name=settings.s3_region,
             endpoint_url=settings.s3_endpoint_url or None,
+            # boto3 >= 1.36 adds CRC checksum headers to every upload by default. Several
+            # S3-compatible services (Cloudflare R2, Google Cloud Storage, Backblaze B2...)
+            # reject such requests; "when_required" restores the classic behaviour and is
+            # equally fine for Amazon S3.
+            config=Config(
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
             **credentials,
         )
 
