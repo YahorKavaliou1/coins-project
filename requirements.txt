@@ -30,6 +30,9 @@ boto3
 # --- Batch import (xlsx parsing) ---
 openpyxl
 
+# --- Email templates ---
+jinja2
+
 # --- Dev / testing ---
 pytest
 pytest-asyncio

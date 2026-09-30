@@ -7,6 +7,7 @@ import { formatUtcDateTime } from "../utils/dates";
 import { useAuthStore } from "../store/authStore";
 import { BlockToggleButton, UserStatusBadge } from "../components/UserBlockControls";
 import { blockReasonLabel } from "../utils/roles";
+import { EmailStatusBadge, EmailVerificationActions } from "../components/UserEmailControls";
 
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,6 +61,7 @@ export function AdminUserDetailPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold">User #{user.id}</h1>
           <UserStatusBadge user={user} />
+          <EmailStatusBadge user={user} />
         </div>
         {user.id !== currentUser?.id && <BlockToggleButton user={user} size="md" />}
       </div>
@@ -72,6 +74,18 @@ export function AdminUserDetailPage() {
           </div>
         ))}
       </div>
+
+      {!user.is_verified && (
+        <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm text-amber-900">
+            <div className="font-bold">Email not confirmed</div>
+            {user.verification_deadline
+              ? `The account will be deleted on ${formatUtcDateTime(user.verification_deadline)} if not confirmed.`
+              : "Existing account: the user is asked to confirm on the next login."}
+          </div>
+          <EmailVerificationActions user={user} />
+        </div>
+      )}
 
       <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-3">Purchases</h2>
       {!orders ? (

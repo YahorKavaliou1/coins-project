@@ -17,5 +17,15 @@ services:
       timeout: 3s
       retries: 10
 
+  # Local mail catcher for development: every email the site sends shows up at
+  # http://localhost:8025 and nothing reaches real inboxes.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: coins_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # web UI
+
 volumes:
   pgdata:

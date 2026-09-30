@@ -39,6 +39,11 @@ class User(Base):
     blocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Consecutive wrong-password attempts; reset on successful login or unblock.
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Set on registration; an account still unverified after this moment is deleted.
+    # NULL for accounts that existed before email verification was introduced.
+    verification_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     def block(self, reason: BlockReason) -> None:
         self.is_blocked = True

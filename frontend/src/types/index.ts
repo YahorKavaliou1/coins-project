@@ -87,6 +87,7 @@ export interface User {
   blocked_reason: BlockReason | null;
   blocked_at: string | null;
   failed_login_attempts: number;
+  verification_deadline: string | null;
 }
 
 export interface CartItemRead {

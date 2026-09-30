@@ -1,0 +1,10 @@
+{# Bulletproof button: renders as a button in every client, with the raw link below as a fallback. #}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+  <tr>
+    <td style="background:#7a1f2b;border-radius:3px;">
+      <a href="{{ url }}" style="display:inline-block;padding:12px 28px;font-size:14px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;color:#ffffff;text-decoration:none;">{{ label }}</a>
+    </td>
+  </tr>
+</table>
+<p style="font-size:13px;color:#6b7280;margin:0 0 16px;">If the button doesn't work, copy this link into your browser:<br>
+<a href="{{ url }}" style="color:#7a1f2b;word-break:break-all;">{{ url }}</a></p>

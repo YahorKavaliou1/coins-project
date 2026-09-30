@@ -30,3 +30,13 @@ export async function unblockUser(userId: number) {
   const { data } = await apiClient.post<User>(`/users/${userId}/unblock`);
   return data;
 }
+
+export async function verifyUserManually(userId: number) {
+  const { data } = await apiClient.post<User>(`/users/${userId}/verify`);
+  return data;
+}
+
+export async function resendUserVerification(userId: number) {
+  const { data } = await apiClient.post<{ message: string }>(`/users/${userId}/resend-verification`);
+  return data;
+}

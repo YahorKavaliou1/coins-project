@@ -1,0 +1,3 @@
+{% extends "base.txt" %}
+{% block content %}Your account {{ email }} has been unblocked. You can log in again:
+{{ login_link }}{% endblock %}

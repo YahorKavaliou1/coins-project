@@ -12,6 +12,9 @@ from app.models.user import User, UserRole
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 BLOCKED_USER_DETAIL = "Your account is blocked. Please contact the administrator."
+EMAIL_NOT_VERIFIED_DETAIL = (
+    "Please confirm your email address. We've sent a confirmation link to your inbox."
+)
 
 
 async def get_current_user(
@@ -42,6 +45,10 @@ async def get_current_user(
     # Checked on every request, so blocking takes effect immediately for issued tokens.
     if user.is_blocked:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BLOCKED_USER_DETAIL)
+    # Tokens are only issued to verified users; this also covers tokens issued before
+    # verification became mandatory.
+    if not user.is_verified:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=EMAIL_NOT_VERIFIED_DETAIL)
 
     return user
 
@@ -68,7 +75,7 @@ async def get_optional_current_user(
 
     result = await db.execute(select(User).where(User.id == int(user_id)))
     user = result.scalar_one_or_none()
-    if user is None or not user.is_active or user.is_blocked:
+    if user is None or not user.is_active or user.is_blocked or not user.is_verified:
         return None
 
     return user

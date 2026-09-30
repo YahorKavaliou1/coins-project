@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Lock } from "lucide-react";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff, Lock, MailCheck, MailWarning } from "lucide-react";
 import { login, register as registerUser } from "../api/auth";
 import { useAuthStore } from "../store/authStore";
 import { toast } from "../store/toastStore";
-import { getErrorMessage, isBlockedError, type ApiError } from "../api/client";
+import { getErrorMessage, isBlockedError, isEmailNotVerifiedError, type ApiError } from "../api/client";
 import { inputClass, labelClass } from "../components/formStyles";
+import { AuthCard } from "../components/auth/AuthCard";
+import { ResendVerificationButton } from "../components/auth/ResendVerificationButton";
 
 type Mode = "login" | "register";
 
@@ -30,6 +32,10 @@ export function AuthPage() {
   const mode: Mode = searchParams.get("mode") === "register" ? "register" : "login";
   const [showPassword, setShowPassword] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  // Login succeeded on the password but the email isn't confirmed yet.
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  // Registration finished: show "check your inbox" instead of the form.
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   const accessToken = useAuthStore((s) => s.accessToken);
   const setToken = useAuthStore((s) => s.setToken);
@@ -52,22 +58,50 @@ export function AuthPage() {
 
   const loginMutation = useMutation({
     mutationFn: (data: AuthForm) => signIn(data.email, data.password),
-    onError: (err: ApiError) => {
+    onError: (err: ApiError, data) => {
       if (isBlockedError(err)) setBlockedMessage(getErrorMessage(err));
+      else if (isEmailNotVerifiedError(err)) setUnverifiedEmail(data.email.trim());
       else toast.error(getErrorMessage(err));
     },
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: AuthForm) => {
-      await registerUser(data.email, data.password, data.full_name);
-      await signIn(data.email, data.password);
-    },
-    onSuccess: () => toast.success("Account created. Welcome!"),
+    mutationFn: (data: AuthForm) => registerUser(data.email, data.password, data.full_name),
+    onSuccess: (_, data) => setRegisteredEmail(data.email.trim()),
     onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
   if (accessToken) return <Navigate to="/browse" replace />;
+
+  if (registeredEmail) {
+    return (
+      <AuthCard
+        icon={<MailCheck className="w-10 h-10 text-accent" />}
+        title="Check your inbox"
+        subtitle={
+          <>
+            We've sent a confirmation link to <strong className="text-gray-800">{registeredEmail}</strong>. Open it to
+            activate your account — the link is valid for 24 hours.
+          </>
+        }
+      >
+        <p className="text-sm text-gray-500">
+          Didn't get it? Check your spam folder, then{" "}
+          <ResendVerificationButton email={registeredEmail} justSent />
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setRegisteredEmail(null);
+            switchMode("login");
+          }}
+          className="mt-6 w-full border border-gray-300 rounded-sm py-3 text-sm font-bold uppercase tracking-wide text-gray-700 hover:border-accent hover:text-accent"
+        >
+          Back to log in
+        </button>
+      </AuthCard>
+    );
+  }
 
   const isRegister = mode === "register";
   const isPending = loginMutation.isPending || registerMutation.isPending;
@@ -75,6 +109,7 @@ export function AuthPage() {
   function switchMode(next: Mode) {
     clearErrors();
     setBlockedMessage(null);
+    setUnverifiedEmail(null);
     setSearchParams(next === "register" ? { mode: "register" } : {}, { replace: true });
   }
 
@@ -106,6 +141,7 @@ export function AuthPage() {
           noValidate
           onSubmit={handleSubmit((data) => {
             setBlockedMessage(null);
+            setUnverifiedEmail(null);
             if (isRegister) registerMutation.mutate(data);
             else loginMutation.mutate(data);
           })}
@@ -117,6 +153,17 @@ export function AuthPage() {
               <div>
                 <div className="text-sm font-bold text-red-800">Account blocked</div>
                 <div className="text-sm text-red-700">{blockedMessage}</div>
+              </div>
+            </div>
+          )}
+
+          {unverifiedEmail && (
+            <div role="alert" className="flex gap-3 border border-amber-200 bg-amber-50 rounded-sm p-3">
+              <MailWarning className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-900">
+                <div className="font-bold">Confirm your email</div>
+                We've sent a confirmation link to <strong>{unverifiedEmail}</strong>. Open it to log in.{" "}
+                <ResendVerificationButton email={unverifiedEmail} justSent />
               </div>
             </div>
           )}
@@ -155,9 +202,16 @@ export function AuthPage() {
           )}
 
           <div>
-            <label htmlFor="auth-password" className={labelClass}>
-              Password
-            </label>
+            <div className="flex items-baseline justify-between">
+              <label htmlFor="auth-password" className={labelClass}>
+                Password
+              </label>
+              {!isRegister && (
+                <Link to="/forgot-password" className="text-xs font-semibold text-accent hover:underline">
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <div className="relative">
               <input
                 id="auth-password"

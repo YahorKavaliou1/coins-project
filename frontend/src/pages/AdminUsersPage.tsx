@@ -8,6 +8,7 @@ import type { UserRole } from "../types";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { BlockToggleButton, UserStatusBadge } from "../components/UserBlockControls";
+import { EmailStatusBadge } from "../components/UserEmailControls";
 
 const roleBadgeClass: Record<UserRole, string> = {
   user: "bg-gray-100 text-gray-700",
@@ -48,6 +49,7 @@ export function AdminUsersPage() {
               <th className="text-left px-4 py-3">Name</th>
               <th className="text-left px-4 py-3">Registered (UTC)</th>
               <th className="text-left px-4 py-3">Role</th>
+              <th className="text-left px-4 py-3">Email</th>
               <th className="text-left px-4 py-3">Status</th>
               <th className="px-4 py-3" />
             </tr>
@@ -96,6 +98,9 @@ export function AdminUsersPage() {
                         ))}
                       </select>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <EmailStatusBadge user={user} />
                   </td>
                   <td className="px-4 py-3">
                     <UserStatusBadge user={user} />

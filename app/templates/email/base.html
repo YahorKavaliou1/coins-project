@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+<!-- Preheader: shown as the preview line in most inboxes. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{% block preheader %}{% endblock %}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e5e7eb;border-radius:6px;">
+        <tr>
+          <td style="padding:24px 32px;border-bottom:3px solid #7a1f2b;">
+            <span style="font-size:18px;font-weight:bold;color:#111827;">{{ site_name }}</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px;font-size:15px;line-height:1.6;color:#374151;">
+            {% block content %}{% endblock %}
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px;border-top:1px solid #e5e7eb;font-size:12px;line-height:1.5;color:#9ca3af;">
+            {% block footer_note %}You received this email because of activity on your {{ site_name }} account.{% endblock %}<br>
+            <a href="{{ site_url }}" style="color:#9ca3af;">{{ site_url }}</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

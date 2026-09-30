@@ -12,6 +12,7 @@ from app.models.order_item import OrderItem
 from app.models.user import User
 from app.schemas.order import CheckoutRequest, OrderRead
 from app.services.coin_naming import build_coin_name
+from app.services.notifications import send_order_emails
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -65,6 +66,7 @@ async def checkout(
     db.add(order)
     await db.flush()  # get order.id before creating order items
 
+    order_items: list[OrderItem] = []
     for cart_item in cart_items:
         coin = cart_item.coin
         price = coin.price or 0.0
@@ -78,6 +80,7 @@ async def checkout(
             price_paid=price,
         )
         db.add(order_item)
+        order_items.append(order_item)
 
         # The coin's owner (the seller who listed it) never changes.
         # Purchase history and buyer information live on Order/OrderItem instead.
@@ -86,6 +89,8 @@ async def checkout(
         await db.delete(cart_item)
 
     order.total_price = total_price
+    # Queued in the same transaction: no email for a failed order, none lost for a placed one.
+    await send_order_emails(db, order, order_items, current_user)
     await db.commit()
 
     result = await db.execute(

@@ -1,0 +1,8 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %},
+
+Please confirm that {{ email }} is your email address to activate your {{ site_name }} account:
+
+{{ link }}
+
+This link expires in {{ ttl_hours }} hours. If you didn't create an account, you can safely ignore this email.{% endblock %}

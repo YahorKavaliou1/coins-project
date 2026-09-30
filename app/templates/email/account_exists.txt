@@ -1,0 +1,7 @@
+{% extends "base.txt" %}
+{% block content %}Someone (hopefully you) tried to create a new {{ site_name }} account with {{ email }}. This address already has an account, so nothing was changed.
+
+If you forgot your password, you can reset it here:
+{{ reset_link }}
+
+If this wasn't you, you can ignore this email - your account is safe.{% endblock %}

@@ -7,8 +7,12 @@ export interface Token {
   token_type: string;
 }
 
+export interface MessageResponse {
+  message: string;
+}
+
 export async function register(email: string, password: string, fullName?: string) {
-  const { data } = await apiClient.post<User>("/auth/register", {
+  const { data } = await apiClient.post<MessageResponse>("/auth/register", {
     email,
     password,
     full_name: fullName || null,
@@ -28,5 +32,25 @@ export async function login(email: string, password: string) {
 
 export async function getCurrentUser() {
   const { data } = await apiClient.get<User>("/users/me");
+  return data;
+}
+
+export async function verifyEmail(token: string) {
+  const { data } = await apiClient.post<Token>("/auth/verify-email", { token });
+  return data;
+}
+
+export async function resendVerification(email: string) {
+  const { data } = await apiClient.post<MessageResponse>("/auth/resend-verification", { email });
+  return data;
+}
+
+export async function forgotPassword(email: string) {
+  const { data } = await apiClient.post<MessageResponse>("/auth/forgot-password", { email });
+  return data;
+}
+
+export async function resetPassword(token: string, password: string) {
+  const { data } = await apiClient.post<MessageResponse>("/auth/reset-password", { token, password });
   return data;
 }

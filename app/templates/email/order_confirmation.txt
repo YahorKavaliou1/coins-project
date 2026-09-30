@@ -1,0 +1,11 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, your order #{{ order_id }} is confirmed. The sellers have been notified and will ship your coins.
+
+{% for item in items %}- {{ item.name }}: ${{ "%.2f"|format(item.price) }}
+{% endfor %}
+Total: ${{ "%.2f"|format(total) }}
+
+Shipping to:
+{{ shipping_address }}
+
+View your purchases: {{ orders_link }}{% endblock %}

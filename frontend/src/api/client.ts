@@ -16,8 +16,16 @@ export function getErrorMessage(err: ApiError): string {
 /** Must match BLOCKED_USER_DETAIL in app/api/deps.py. */
 export const BLOCKED_USER_DETAIL = "Your account is blocked. Please contact the administrator.";
 
+/** Must match EMAIL_NOT_VERIFIED_DETAIL in app/api/deps.py. */
+export const EMAIL_NOT_VERIFIED_DETAIL =
+  "Please confirm your email address. We've sent a confirmation link to your inbox.";
+
 export function isBlockedError(err: ApiError): boolean {
   return err.response?.status === 403 && err.response.data?.detail === BLOCKED_USER_DETAIL;
+}
+
+export function isEmailNotVerifiedError(err: ApiError): boolean {
+  return err.response?.status === 403 && err.response.data?.detail === EMAIL_NOT_VERIFIED_DETAIL;
 }
 
 export const apiClient = axios.create({
@@ -42,6 +50,10 @@ apiClient.interceptors.response.use(
       // The account was blocked while logged in: end the session once.
       logout();
       toast.error(BLOCKED_USER_DETAIL);
+    } else if (isEmailNotVerifiedError(error) && accessToken) {
+      // A session from before email confirmation became mandatory.
+      logout();
+      toast.error("Please log in again and confirm your email address.");
     }
     return Promise.reject(error);
   }

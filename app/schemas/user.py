@@ -1,13 +1,15 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import BlockReason, UserRole
+
+MIN_PASSWORD_LENGTH = 6
 
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH)
     full_name: str | None = None
 
 
@@ -25,11 +27,12 @@ class UserRead(BaseModel):
     blocked_reason: BlockReason | None
     blocked_at: datetime | None
     failed_login_attempts: int
+    verification_deadline: datetime | None
 
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
-    password: str | None = None
+    password: str | None = Field(default=None, min_length=MIN_PASSWORD_LENGTH)
 
 
 class UserRoleUpdate(BaseModel):
@@ -51,3 +54,20 @@ class Token(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
+class EmailRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=MIN_PASSWORD_LENGTH)

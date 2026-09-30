@@ -1,3 +1,9 @@
+import asyncio
+import contextlib
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -13,8 +19,27 @@ from app.api import (
     orders,
     users,
 )
+from app.core.config import settings
+from app.services.email.worker import run_email_worker
 
-app = FastAPI(title="Coins API")
+logging.getLogger("app").setLevel(logging.INFO)
+if not logging.getLogger("app").handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:     [%(name)s] %(message)s"))
+    logging.getLogger("app").addHandler(_handler)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    worker = asyncio.create_task(run_email_worker()) if settings.email_worker_enabled else None
+    yield
+    if worker is not None:
+        worker.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await worker
+
+
+app = FastAPI(title="Coins API", lifespan=lifespan)
 
 app.include_router(auth.router)
 app.include_router(users.router)

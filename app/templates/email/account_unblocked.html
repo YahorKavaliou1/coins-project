@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block preheader %}Your {{ site_name }} account is active again.{% endblock %}
+{% block content %}
+<h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Your account is active again</h1>
+<p style="margin:0 0 16px;">Your account <strong>{{ email }}</strong> has been unblocked. You can log in again.</p>
+{% with url=login_link, label="Log in" %}{% include "_button.html" %}{% endwith %}
+{% endblock %}

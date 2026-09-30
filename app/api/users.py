@@ -9,7 +9,13 @@ from app.db.session import get_db
 from app.models.order import Order
 from app.models.user import BlockReason, User
 from app.schemas.order import OrderRead
-from app.schemas.user import UserRead, UserRoleUpdate, UserUpdate
+from app.schemas.user import MessageResponse, UserRead, UserRoleUpdate, UserUpdate
+from app.services.notifications import (
+    send_account_blocked_email,
+    send_account_unblocked_email,
+    send_password_changed_email,
+    send_verification_email,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -29,6 +35,7 @@ async def update_current_user(
         current_user.full_name = data.full_name
     if data.password is not None:
         current_user.hashed_password = hash_password(data.password)
+        send_password_changed_email(db, current_user)
 
     await db.commit()
     await db.refresh(current_user)
@@ -105,6 +112,7 @@ async def block_user(
         raise HTTPException(status_code=400, detail="You cannot block yourself")
     if not user.is_blocked:
         user.block(BlockReason.ADMIN)
+        send_account_blocked_email(db, user)
         await db.commit()
         await db.refresh(user)
     return user
@@ -117,7 +125,42 @@ async def unblock_user(
     _: User = Depends(require_admin),
 ) -> User:
     user = await _get_user_or_404(db, user_id)
+    was_blocked = user.is_blocked
     user.unblock()
+    if was_blocked:
+        send_account_unblocked_email(db, user)
     await db.commit()
     await db.refresh(user)
     return user
+
+
+@router.post("/{user_id}/verify", response_model=UserRead)
+async def verify_user_manually(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> User:
+    """Support action: mark the email as confirmed without the link."""
+    user = await _get_user_or_404(db, user_id)
+    user.is_verified = True
+    user.verification_deadline = None
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/{user_id}/resend-verification", response_model=MessageResponse)
+async def resend_verification_for_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> MessageResponse:
+    user = await _get_user_or_404(db, user_id)
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="This user's email is already confirmed")
+    if not await send_verification_email(db, user):
+        raise HTTPException(
+            status_code=429, detail="A link was sent recently. Try again in a minute."
+        )
+    await db.commit()
+    return MessageResponse(message=f"Confirmation email sent to {user.email}")
