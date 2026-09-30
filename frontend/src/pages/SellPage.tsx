@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { listCountries, listMetals } from "../api/reference";
 import { createCoin, uploadCoinImage } from "../api/coins";
+import { MultiSelectDropdown } from "../components/MultiSelectDropdown";
 import type { CoinCreatePayload } from "../types";
 
 interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> {
@@ -10,14 +12,51 @@ interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> 
   metal_id: string;
 }
 
+const inputClass =
+  "w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-accent";
+const labelClass = "text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1 block";
+
+function Required() {
+  return <span className="text-accent">*</span>;
+}
+
 export function SellPage() {
   const [files, setFiles] = useState<File[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function addFiles(newFiles: FileList | File[]) {
+    setFiles((prev) => [...prev, ...Array.from(newFiles)]);
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
   const { data: countries } = useQuery({ queryKey: ["countries"], queryFn: listCountries });
   const { data: metals } = useQuery({ queryKey: ["metals"], queryFn: listMetals });
 
-  const { register, handleSubmit, reset } = useForm<FormValues>({
-    defaultValues: { weight_unit: "oz" },
+  const [countrySelection, setCountrySelection] = useState<number[]>([]);
+  const [metalSelection, setMetalSelection] = useState<number[]>([]);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: { weight_unit: "oz", country_id: "", metal_id: "" },
   });
+
+  function handleCountryChange(ids: number[]) {
+    setCountrySelection(ids);
+    setValue("country_id", ids[0] ? String(ids[0]) : "", { shouldValidate: true });
+  }
+
+  function handleMetalChange(ids: number[]) {
+    setMetalSelection(ids);
+    setValue("metal_id", ids[0] ? String(ids[0]) : "", { shouldValidate: true });
+  }
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
@@ -39,6 +78,8 @@ export function SellPage() {
     onSuccess: () => {
       reset();
       setFiles([]);
+      setCountrySelection([]);
+      setMetalSelection([]);
       alert("Coin listed successfully.");
     },
     onError: (err: any) => {
@@ -46,78 +87,231 @@ export function SellPage() {
     },
   });
 
-  const currentCountries = countries?.filter((c) => !c.is_historical) ?? [];
-  const historicalCountries = countries?.filter((c) => c.is_historical) ?? [];
-  const regions = [...new Set(currentCountries.map((c) => c.region ?? "Other"))].sort();
+  const countryOptions = (countries ?? [])
+    .map((c) => ({
+      id: c.id,
+      label: c.name,
+      group: c.is_historical ? "Historical / defunct" : c.region ?? "Other",
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const metalOptions = (metals ?? [])
+    .map((m) => ({ id: m.id, label: m.name }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow max-w-lg">
-      <h2 className="font-semibold mb-3">Add coin (list for sale)</h2>
-      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="flex flex-col gap-2">
-        <select {...register("country_id", { required: true })} className="border rounded p-2">
-          <option value="">Country</option>
-          {regions.map((region) => (
-            <optgroup key={region} label={region}>
-              {currentCountries
-                .filter((c) => (c.region ?? "Other") === region)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </optgroup>
-          ))}
-          {historicalCountries.length > 0 && (
-            <optgroup label="Historical / defunct">
-              {historicalCountries.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+    <div className="max-w-2xl">
+      <h1 className="text-xl font-bold mb-1">List a coin for sale</h1>
+      <p className="text-sm text-gray-500 mb-6">Fields marked with <Required /> are required.</p>
+
+      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="flex flex-col gap-6">
+        {/* Identification */}
+        <section className="bg-white border border-gray-200 rounded-md p-5">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Identification</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className={labelClass}>
+                Country <Required />
+              </label>
+              <input
+                type="hidden"
+                {...register("country_id", { required: true })}
+              />
+              <MultiSelectDropdown
+                options={countryOptions}
+                selectedIds={countrySelection}
+                onChange={handleCountryChange}
+                placeholder="Select a country"
+                multiple={false}
+                hasError={!!errors.country_id}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Year <Required />
+              </label>
+              <input
+                {...register("year", { required: true })}
+                type="number"
+                placeholder="e.g. 1990"
+                className={`${inputClass} ${errors.year ? "border-red-400" : ""}`}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Denomination</label>
+              <input {...register("denomination")} placeholder="e.g. 1 Dollar" className={inputClass} />
+            </div>
+          </div>
+        </section>
+
+        {/* Physical characteristics */}
+        <section className="bg-white border border-gray-200 rounded-md p-5">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Physical characteristics</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>
+                Metal <Required />
+              </label>
+              <input type="hidden" {...register("metal_id", { required: true })} />
+              <MultiSelectDropdown
+                options={metalOptions}
+                selectedIds={metalSelection}
+                onChange={handleMetalChange}
+                placeholder="Select a metal"
+                multiple={false}
+                hasError={!!errors.metal_id}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>Composition</label>
+              <input
+                {...register("composition")}
+                placeholder="e.g. 92.5% Ag, 7.5% Cu"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Weight <Required />
+              </label>
+              <div className="flex gap-2">
+                <input
+                  {...register("weight", { required: true })}
+                  type="number"
+                  step="0.01"
+                  placeholder="0.00"
+                  className={`${inputClass} w-2/3 ${errors.weight ? "border-red-400" : ""}`}
+                />
+                <select {...register("weight_unit")} className={`${inputClass} w-1/3`}>
+                  <option value="oz">oz</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Diameter (mm)</label>
+              <input {...register("diameter")} type="number" step="0.01" placeholder="0.00" className={inputClass} />
+            </div>
+          </div>
+        </section>
+
+        {/* Grading & details */}
+        <section className="bg-white border border-gray-200 rounded-md p-5">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Grading &amp; details</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Grade</label>
+              <input {...register("grade")} placeholder="e.g. MS-65, XF-40" className={inputClass} />
+            </div>
+
+            <div>
+              <label className={labelClass}>Catalog No.</label>
+              <input {...register("catalog_number")} placeholder="e.g. KM# 123" className={inputClass} />
+            </div>
+
+            <div>
+              <label className={labelClass}>Mintage</label>
+              <input {...register("mintage")} type="number" placeholder="e.g. 500000" className={inputClass} />
+            </div>
+
+            <div className="col-span-2">
+              <label className={labelClass}>Extra info</label>
+              <input {...register("extra_info")} placeholder="e.g. Walking Liberty" className={inputClass} />
+            </div>
+          </div>
+        </section>
+
+        {/* Photos */}
+        <section className="bg-white border border-gray-200 rounded-md p-5">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Photos</h2>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onChange={(e) => {
+              if (e.target.files) addFiles(e.target.files);
+              e.target.value = "";
+            }}
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files) addFiles(e.dataTransfer.files);
+            }}
+            className={`w-full flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-md py-8 transition-colors ${
+              dragOver ? "border-accent bg-accent/5" : "border-gray-300 hover:border-accent hover:bg-gray-50"
+            }`}
+          >
+            <ImagePlus className="w-8 h-8 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Click to upload or drag and drop</span>
+            <span className="text-xs text-gray-400">JPEG, PNG or WEBP</span>
+          </button>
+
+          {files.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              {files.map((file, idx) => (
+                <div key={`${file.name}-${idx}`} className="relative">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt={file.name}
+                    className="w-16 h-16 object-cover rounded border border-gray-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-700 text-white text-xs flex items-center justify-center"
+                    title="Remove"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               ))}
-            </optgroup>
+            </div>
           )}
-        </select>
+        </section>
 
-        <input {...register("denomination")} placeholder="Denomination (optional, e.g. 1 Dollar)" className="border rounded p-2" />
-        <input {...register("year", { required: true })} type="number" placeholder="Year" className="border rounded p-2" />
+        {/* Price & submit */}
+        <section className="bg-white border border-gray-200 rounded-md p-5">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Price</h2>
+          <div className="max-w-xs">
+            <label className={labelClass}>
+              Price (USD) <Required />
+            </label>
+            <input
+              {...register("price", { required: true })}
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              className={`${inputClass} ${errors.price ? "border-red-400" : ""}`}
+            />
+          </div>
 
-        <select {...register("metal_id", { required: true })} className="border rounded p-2">
-          <option value="">Metal</option>
-          {metals?.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-
-        <div className="flex gap-2">
-          <input {...register("weight", { required: true })} type="number" step="0.01" placeholder="Weight" className="border rounded p-2 flex-1" />
-          <select {...register("weight_unit")} className="border rounded p-2">
-            <option value="oz">oz</option>
-            <option value="g">g</option>
-            <option value="kg">kg</option>
-          </select>
-        </div>
-
-        <input {...register("composition")} placeholder="Composition (optional, e.g. 92.5% Ag, 7.5% Cu)" className="border rounded p-2" />
-        <input {...register("diameter")} type="number" step="0.01" placeholder="Diameter (mm, optional)" className="border rounded p-2" />
-        <input {...register("mintage")} type="number" placeholder="Mintage (optional)" className="border rounded p-2" />
-        <input {...register("grade")} placeholder="Grade (optional, e.g. MS-65, XF-40)" className="border rounded p-2" />
-        <input {...register("catalog_number")} placeholder="Catalog No. (optional, e.g. KM# 123)" className="border rounded p-2" />
-        <input {...register("extra_info")} placeholder="Extra info (e.g. Walking Liberty)" className="border rounded p-2" />
-        <input {...register("price", { required: true })} type="number" step="0.01" placeholder="Price (USD)" className="border rounded p-2" />
-
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-          className="text-sm"
-        />
-
-        <button type="submit" className="bg-brand text-white rounded p-2 mt-2">
-          Create listing
-        </button>
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="mt-5 w-full bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm py-3 disabled:opacity-50"
+          >
+            {mutation.isPending ? "Creating listing..." : "Create listing"}
+          </button>
+        </section>
       </form>
     </div>
   );

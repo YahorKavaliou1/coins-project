@@ -12,9 +12,18 @@ interface MultiSelectDropdownProps {
   selectedIds: number[];
   onChange: (ids: number[]) => void;
   placeholder: string;
+  multiple?: boolean;
+  hasError?: boolean;
 }
 
-export function MultiSelectDropdown({ options, selectedIds, onChange, placeholder }: MultiSelectDropdownProps) {
+export function MultiSelectDropdown({
+  options,
+  selectedIds,
+  onChange,
+  placeholder,
+  multiple = true,
+  hasError = false,
+}: MultiSelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,24 +46,32 @@ export function MultiSelectDropdown({ options, selectedIds, onChange, placeholde
     return a.localeCompare(b);
   });
 
-  function toggle(id: number) {
-    onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+  function select(id: number) {
+    if (multiple) {
+      onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+    } else {
+      onChange([id]);
+      setSearch("");
+      setOpen(false);
+    }
   }
 
   const selectedLabels = options.filter((o) => selectedIds.includes(o.id)).map((o) => o.label);
   const triggerText =
     selectedLabels.length === 0
       ? placeholder
-      : selectedLabels.length === 1
-        ? selectedLabels[0]
-        : `${selectedLabels.length} selected`;
+      : multiple && selectedLabels.length > 1
+        ? `${selectedLabels.length} selected`
+        : selectedLabels[0];
 
   return (
     <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between border border-gray-300 rounded-sm px-2 py-2 text-sm text-left focus:outline-none focus:border-accent"
+        className={`w-full flex items-center justify-between border rounded-sm px-3 py-2 text-sm text-left focus:outline-none focus:border-accent ${
+          hasError ? "border-red-400" : "border-gray-300"
+        }`}
       >
         <span className={selectedLabels.length === 0 ? "text-gray-500" : "text-gray-900"}>{triggerText}</span>
         <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 ml-1" />
@@ -91,9 +108,9 @@ export function MultiSelectDropdown({ options, selectedIds, onChange, placeholde
                       className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
                     >
                       <input
-                        type="checkbox"
+                        type={multiple ? "checkbox" : "radio"}
                         checked={selectedIds.includes(o.id)}
-                        onChange={() => toggle(o.id)}
+                        onChange={() => select(o.id)}
                         className="accent-accent"
                       />
                       {o.label}
@@ -103,7 +120,7 @@ export function MultiSelectDropdown({ options, selectedIds, onChange, placeholde
             ))}
           </div>
 
-          {selectedIds.length > 0 && (
+          {multiple && selectedIds.length > 0 && (
             <button
               type="button"
               onClick={() => onChange([])}
