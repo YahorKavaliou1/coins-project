@@ -6,6 +6,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 import { getCart } from "../api/cart";
 import { canSell, isAdmin } from "../utils/roles";
+import { formatUtcDate } from "../utils/dates";
 
 const tabs = [{ to: "/browse", label: "Shop" }];
 
@@ -103,6 +104,12 @@ export function Layout() {
                         <div className="text-xs text-gray-500 truncate">{currentUser.email}</div>
                         <div className="text-[10px] font-semibold uppercase tracking-wide text-accent mt-0.5">
                           {currentUser.role}
+                        </div>
+                        <div
+                          className="text-[10px] text-gray-400 mt-0.5"
+                          title={`Account created ${currentUser.created_at}`}
+                        >
+                          Member since {formatUtcDate(currentUser.created_at)} (UTC)
                         </div>
                       </div>
                     )}

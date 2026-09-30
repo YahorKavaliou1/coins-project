@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { listUsers, updateUserRole } from "../api/users";
 import { useAuthStore } from "../store/authStore";
 import { USER_ROLES } from "../utils/roles";
+import { formatUtcDateTime } from "../utils/dates";
 import type { UserRole } from "../types";
 import type { ApiError } from "../api/client";
 
@@ -13,6 +15,7 @@ const roleBadgeClass: Record<UserRole, string> = {
 
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.currentUser);
 
   const { data: users, isLoading } = useQuery({ queryKey: ["users"], queryFn: listUsers });
@@ -20,7 +23,10 @@ export function AdminUsersPage() {
   const roleMutation = useMutation({
     mutationFn: ({ userId, role }: { userId: number; role: UserRole }) =>
       updateUserRole(userId, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: (user) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["user", user.id] });
+    },
     onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
   });
 
@@ -29,7 +35,7 @@ export function AdminUsersPage() {
   return (
     <div>
       <h1 className="text-xl font-bold mb-1">Users</h1>
-      <p className="text-sm text-gray-500 mb-6">Manage user roles.</p>
+      <p className="text-sm text-gray-500 mb-6">Manage user roles. Click a user to see their purchases.</p>
 
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -38,7 +44,7 @@ export function AdminUsersPage() {
               <th className="text-left px-4 py-3">ID</th>
               <th className="text-left px-4 py-3">Email</th>
               <th className="text-left px-4 py-3">Name</th>
-              <th className="text-left px-4 py-3">Registered</th>
+              <th className="text-left px-4 py-3">Registered (UTC)</th>
               <th className="text-left px-4 py-3">Role</th>
             </tr>
           </thead>
@@ -46,15 +52,19 @@ export function AdminUsersPage() {
             {users?.map((user) => {
               const isSelf = user.id === currentUser?.id;
               return (
-                <tr key={user.id} className="border-t border-gray-200">
+                <tr
+                  key={user.id}
+                  onClick={() => navigate(`/admin/users/${user.id}`)}
+                  className="border-t border-gray-200 cursor-pointer hover:bg-gray-50"
+                >
                   <td className="px-4 py-3 text-gray-500">{user.id}</td>
                   <td className="px-4 py-3">
                     {user.email}
                     {isSelf && <span className="ml-2 text-xs text-gray-400">(you)</span>}
                   </td>
                   <td className="px-4 py-3">{user.full_name || "—"}</td>
-                  <td className="px-4 py-3 text-gray-500">
-                    {new Date(user.created_at).toLocaleDateString()}
+                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                    {formatUtcDateTime(user.created_at)}
                   </td>
                   <td className="px-4 py-3">
                     {isSelf ? (
@@ -66,6 +76,7 @@ export function AdminUsersPage() {
                     ) : (
                       <select
                         value={user.role}
+                        onClick={(e) => e.stopPropagation()}
                         disabled={roleMutation.isPending}
                         onChange={(e) =>
                           roleMutation.mutate({ userId: user.id, role: e.target.value as UserRole })

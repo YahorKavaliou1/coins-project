@@ -10,6 +10,7 @@ import { CoinDetailPage } from "./pages/CoinDetailPage";
 import { CartPage } from "./pages/CartPage";
 import { PurchasesPage } from "./pages/PurchasesPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { AdminUserDetailPage } from "./pages/AdminUserDetailPage";
 import { RequireRole } from "./components/RequireRole";
 import "./index.css";
 
@@ -40,6 +41,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               element={
                 <RequireRole roles={["admin"]}>
                   <AdminUsersPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/admin/users/:id"
+              element={
+                <RequireRole roles={["admin"]}>
+                  <AdminUserDetailPage />
                 </RequireRole>
               }
             />
