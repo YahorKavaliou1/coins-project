@@ -1,4 +1,4 @@
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart, Pencil, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Coin } from "../types";
@@ -97,8 +97,9 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
           {canEdit && onEdit ? (
             <button
               onClick={() => onEdit(coin)}
-              className="w-full bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold rounded py-2"
+              className="w-full flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"
             >
+              <Pencil className="w-4 h-4" />
               Edit
             </button>
           ) : canBuy && onAddToCart ? (

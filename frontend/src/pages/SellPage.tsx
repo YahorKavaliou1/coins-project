@@ -5,6 +5,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { listCountries, listMetals } from "../api/reference";
 import { createCoin, uploadCoinImage } from "../api/coins";
 import { MultiSelectDropdown } from "../components/MultiSelectDropdown";
+import { inputClass, labelClass } from "../components/formStyles";
+import { toCountryOptions, toMetalOptions } from "../utils/referenceOptions";
 import type { CoinCreatePayload } from "../types";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
@@ -14,9 +16,6 @@ interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> 
   metal_id: string;
 }
 
-const inputClass =
-  "w-full border border-gray-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-accent";
-const labelClass = "text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1 block";
 
 function Required() {
   return <span className="text-accent">*</span>;
@@ -95,17 +94,8 @@ export function SellPage() {
     },
   });
 
-  const countryOptions = (countries ?? [])
-    .map((c) => ({
-      id: c.id,
-      label: c.name,
-      group: c.is_historical ? "Historical / defunct" : c.region ?? "Other",
-    }))
-    .sort((a, b) => a.label.localeCompare(b.label));
-
-  const metalOptions = (metals ?? [])
-    .map((m) => ({ id: m.id, label: m.name }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+  const countryOptions = toCountryOptions(countries);
+  const metalOptions = toMetalOptions(metals);
 
   return (
     <div className="max-w-2xl">
