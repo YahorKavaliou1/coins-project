@@ -6,10 +6,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 import { getCart } from "../api/cart";
 
-const tabs = [
-  { to: "/reference", label: "Reference data" },
-  { to: "/browse", label: "Browse" },
-];
+const tabs = [{ to: "/browse", label: "Shop" }];
 
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);

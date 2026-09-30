@@ -85,7 +85,7 @@ export function CoinDetailPage() {
       <div className="text-xs text-gray-500 mb-3 flex items-center gap-1">
         <button onClick={() => navigate("/browse")} className="flex items-center gap-1 hover:text-accent">
           <ChevronLeft className="w-3 h-3" />
-          Browse
+          Shop
         </button>
         <span>/</span>
         <span className="text-gray-700">{coin.name}</span>
