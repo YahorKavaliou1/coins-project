@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { ShoppingCart, UserCircle, ChevronDown } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -9,7 +9,12 @@ import { Toaster } from "./Toaster";
 import { canSell, isAdmin } from "../utils/roles";
 import { formatUtcDate } from "../utils/dates";
 
-const tabs = [{ to: "/browse", label: "Shop" }];
+const tabs = [
+  // `end`: "/" would otherwise also be active on every other page.
+  { to: "/", label: "Home", end: true },
+  { to: "/browse", label: "Shop", end: false },
+  { to: "/contact", label: "Contact", end: false },
+];
 
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -46,13 +51,16 @@ export function Layout() {
     <div className="min-h-screen">
       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-6">
-          <h1 className="text-lg font-bold text-gray-900 whitespace-nowrap">Coins Catalog</h1>
+          <Link to="/" className="text-lg font-bold text-gray-900 whitespace-nowrap hover:text-accent">
+            Coins Catalog
+          </Link>
 
           <nav className="flex gap-6 flex-1 justify-center">
             {tabs.map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
+                end={tab.end}
                 className={({ isActive }) =>
                   `text-sm font-medium uppercase tracking-wide pb-1 border-b-2 transition-colors whitespace-nowrap ${
                     isActive
