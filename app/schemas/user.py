@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.models.user import UserRole
+from app.models.user import BlockReason, UserRole
 
 
 class UserCreate(BaseModel):
@@ -21,6 +21,10 @@ class UserRead(BaseModel):
     is_active: bool
     is_verified: bool
     created_at: datetime
+    is_blocked: bool
+    blocked_reason: BlockReason | None
+    blocked_at: datetime | None
+    failed_login_attempts: int
 
 
 class UserUpdate(BaseModel):

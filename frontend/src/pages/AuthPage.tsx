@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { login, register as registerUser } from "../api/auth";
 import { useAuthStore } from "../store/authStore";
 import { toast } from "../store/toastStore";
-import { getErrorMessage, type ApiError } from "../api/client";
+import { getErrorMessage, isBlockedError, type ApiError } from "../api/client";
 import { inputClass, labelClass } from "../components/formStyles";
 
 type Mode = "login" | "register";
@@ -29,6 +29,7 @@ export function AuthPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode: Mode = searchParams.get("mode") === "register" ? "register" : "login";
   const [showPassword, setShowPassword] = useState(false);
+  const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
 
   const accessToken = useAuthStore((s) => s.accessToken);
   const setToken = useAuthStore((s) => s.setToken);
@@ -51,7 +52,10 @@ export function AuthPage() {
 
   const loginMutation = useMutation({
     mutationFn: (data: AuthForm) => signIn(data.email, data.password),
-    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
+    onError: (err: ApiError) => {
+      if (isBlockedError(err)) setBlockedMessage(getErrorMessage(err));
+      else toast.error(getErrorMessage(err));
+    },
   });
 
   const registerMutation = useMutation({
@@ -70,6 +74,7 @@ export function AuthPage() {
 
   function switchMode(next: Mode) {
     clearErrors();
+    setBlockedMessage(null);
     setSearchParams(next === "register" ? { mode: "register" } : {}, { replace: true });
   }
 
@@ -99,11 +104,23 @@ export function AuthPage() {
 
         <form
           noValidate
-          onSubmit={handleSubmit((data) =>
-            isRegister ? registerMutation.mutate(data) : loginMutation.mutate(data)
-          )}
+          onSubmit={handleSubmit((data) => {
+            setBlockedMessage(null);
+            if (isRegister) registerMutation.mutate(data);
+            else loginMutation.mutate(data);
+          })}
           className="flex flex-col gap-4"
         >
+          {blockedMessage && (
+            <div role="alert" className="flex gap-3 border border-red-200 bg-red-50 rounded-sm p-3">
+              <Lock className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
+              <div>
+                <div className="text-sm font-bold text-red-800">Account blocked</div>
+                <div className="text-sm text-red-700">{blockedMessage}</div>
+              </div>
+            </div>
+          )}
+
           <div>
             <label htmlFor="auth-email" className={labelClass}>
               Email

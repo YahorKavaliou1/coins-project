@@ -73,6 +73,8 @@ export type CoinUpdatePayload = Partial<Omit<CoinCreatePayload, "is_for_sale">>;
 
 export type UserRole = "user" | "seller" | "admin";
 
+export type BlockReason = "admin" | "too_many_failed_logins";
+
 export interface User {
   id: number;
   email: string;
@@ -81,6 +83,10 @@ export interface User {
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
+  is_blocked: boolean;
+  blocked_reason: BlockReason | null;
+  blocked_at: string | null;
+  failed_login_attempts: number;
 }
 
 export interface CartItemRead {

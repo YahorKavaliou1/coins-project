@@ -20,3 +20,13 @@ export async function listUserOrders(userId: number) {
   const { data } = await apiClient.get<Order[]>(`/users/${userId}/orders`);
   return data;
 }
+
+export async function blockUser(userId: number) {
+  const { data } = await apiClient.post<User>(`/users/${userId}/block`);
+  return data;
+}
+
+export async function unblockUser(userId: number) {
+  const { data } = await apiClient.post<User>(`/users/${userId}/unblock`);
+  return data;
+}

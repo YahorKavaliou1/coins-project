@@ -11,6 +11,8 @@ from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+BLOCKED_USER_DETAIL = "Your account is blocked. Please contact the administrator."
+
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -37,6 +39,9 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise credentials_exception
+    # Checked on every request, so blocking takes effect immediately for issued tokens.
+    if user.is_blocked:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=BLOCKED_USER_DETAIL)
 
     return user
 
@@ -63,7 +68,7 @@ async def get_optional_current_user(
 
     result = await db.execute(select(User).where(User.id == int(user_id)))
     user = result.scalar_one_or_none()
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.is_blocked:
         return None
 
     return user

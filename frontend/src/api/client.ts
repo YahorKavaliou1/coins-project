@@ -1,5 +1,6 @@
 import axios, { type AxiosError } from "axios";
 import { useAuthStore } from "../store/authStore";
+import { toast } from "../store/toastStore";
 
 /** Error thrown by apiClient; FastAPI puts the message into `detail`. */
 export type ApiError = AxiosError<{ detail?: string | { msg: string }[] }>;
@@ -10,6 +11,13 @@ export function getErrorMessage(err: ApiError): string {
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
   return "Unknown error";
+}
+
+/** Must match BLOCKED_USER_DETAIL in app/api/deps.py. */
+export const BLOCKED_USER_DETAIL = "Your account is blocked. Please contact the administrator.";
+
+export function isBlockedError(err: ApiError): boolean {
+  return err.response?.status === 403 && err.response.data?.detail === BLOCKED_USER_DETAIL;
 }
 
 export const apiClient = axios.create({
@@ -27,8 +35,13 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const { accessToken, logout } = useAuthStore.getState();
     if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
+      logout();
+    } else if (isBlockedError(error) && accessToken) {
+      // The account was blocked while logged in: end the session once.
+      logout();
+      toast.error(BLOCKED_USER_DETAIL);
     }
     return Promise.reject(error);
   }

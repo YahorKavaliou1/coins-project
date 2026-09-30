@@ -7,6 +7,7 @@ import { formatUtcDateTime } from "../utils/dates";
 import type { UserRole } from "../types";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
+import { BlockToggleButton, UserStatusBadge } from "../components/UserBlockControls";
 
 const roleBadgeClass: Record<UserRole, string> = {
   user: "bg-gray-100 text-gray-700",
@@ -36,7 +37,7 @@ export function AdminUsersPage() {
   return (
     <div>
       <h1 className="text-xl font-bold mb-1">Users</h1>
-      <p className="text-sm text-gray-500 mb-6">Manage user roles. Click a user to see their purchases.</p>
+      <p className="text-sm text-gray-500 mb-6">Manage roles and access. Click a user to see their purchases.</p>
 
       <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
         <table className="w-full text-sm">
@@ -47,6 +48,8 @@ export function AdminUsersPage() {
               <th className="text-left px-4 py-3">Name</th>
               <th className="text-left px-4 py-3">Registered (UTC)</th>
               <th className="text-left px-4 py-3">Role</th>
+              <th className="text-left px-4 py-3">Status</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -56,7 +59,9 @@ export function AdminUsersPage() {
                 <tr
                   key={user.id}
                   onClick={() => navigate(`/admin/users/${user.id}`)}
-                  className="border-t border-gray-200 cursor-pointer hover:bg-gray-50"
+                  className={`border-t border-gray-200 cursor-pointer hover:bg-gray-50 ${
+                    user.is_blocked ? "bg-red-50/40" : ""
+                  }`}
                 >
                   <td className="px-4 py-3 text-gray-500">{user.id}</td>
                   <td className="px-4 py-3">
@@ -91,6 +96,12 @@ export function AdminUsersPage() {
                         ))}
                       </select>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <UserStatusBadge user={user} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {!isSelf && <BlockToggleButton user={user} />}
                   </td>
                 </tr>
               );

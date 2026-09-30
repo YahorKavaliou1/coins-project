@@ -4,11 +4,15 @@ import { ChevronLeft } from "lucide-react";
 import { getUser, listUserOrders } from "../api/users";
 import { OrderCard } from "../components/OrderCard";
 import { formatUtcDateTime } from "../utils/dates";
+import { useAuthStore } from "../store/authStore";
+import { BlockToggleButton, UserStatusBadge } from "../components/UserBlockControls";
+import { blockReasonLabel } from "../utils/roles";
 
 export function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
   const userId = Number(id);
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.currentUser);
 
   const { data: user, isError: userError } = useQuery({
     queryKey: ["user", userId],
@@ -34,7 +38,12 @@ export function AdminUserDetailPage() {
     ["Registered (UTC)", formatUtcDateTime(user.created_at)],
     ["Orders", orders ? String(orders.length) : "…"],
     ["Total spent", orders ? `$${totalSpent.toFixed(2)}` : "…"],
+    ["Failed login attempts", String(user.failed_login_attempts)],
   ];
+  if (user.is_blocked) {
+    details.push(["Blocked", blockReasonLabel(user.blocked_reason)]);
+    if (user.blocked_at) details.push(["Blocked at (UTC)", formatUtcDateTime(user.blocked_at)]);
+  }
 
   return (
     <div>
@@ -47,7 +56,13 @@ export function AdminUserDetailPage() {
         <span className="text-gray-700">{user.email}</span>
       </div>
 
-      <h1 className="text-xl font-bold mb-4">User #{user.id}</h1>
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-xl font-bold">User #{user.id}</h1>
+          <UserStatusBadge user={user} />
+        </div>
+        {user.id !== currentUser?.id && <BlockToggleButton user={user} size="md" />}
+      </div>
 
       <div className="bg-white border border-gray-200 rounded-md p-4 mb-6 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
         {details.map(([label, value]) => (

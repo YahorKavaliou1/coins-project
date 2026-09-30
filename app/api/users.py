@@ -7,7 +7,7 @@ from app.api.deps import get_current_user, require_admin
 from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.order import Order
-from app.models.user import User
+from app.models.user import BlockReason, User
 from app.schemas.order import OrderRead
 from app.schemas.user import UserRead, UserRoleUpdate, UserUpdate
 
@@ -89,6 +89,35 @@ async def update_user_role(
         raise HTTPException(status_code=400, detail="You cannot change your own role")
 
     user.role = data.role
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/{user_id}/block", response_model=UserRead)
+async def block_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> User:
+    user = await _get_user_or_404(db, user_id)
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot block yourself")
+    if not user.is_blocked:
+        user.block(BlockReason.ADMIN)
+        await db.commit()
+        await db.refresh(user)
+    return user
+
+
+@router.post("/{user_id}/unblock", response_model=UserRead)
+async def unblock_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> User:
+    user = await _get_user_or_404(db, user_id)
+    user.unblock()
     await db.commit()
     await db.refresh(user)
     return user

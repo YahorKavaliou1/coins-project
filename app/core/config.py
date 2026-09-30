@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Role assigned to newly registered users: "user", "seller" or "admin".
     default_user_role: Literal["user", "seller", "admin"] = "admin"
 
+    # Consecutive wrong passwords after which the account is blocked.
+    max_failed_login_attempts: int = 8
+
     # hide_input_in_errors: never echo SECRET_KEY (or other values) into startup logs.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
