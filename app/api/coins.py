@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
 from app.api.deps import get_optional_current_user, require_seller
 from app.db.session import get_db
@@ -29,6 +29,7 @@ IdsQuery = Annotated[list[int] | None, Query(max_length=100)]
 YearQuery = Annotated[int | None, Query(ge=-1000, le=2100)]
 SearchQuery = Annotated[str | None, Query(max_length=100)]
 GradeQuery = Annotated[str | None, Query(max_length=50)]
+CategoryQuery = Annotated[str | None, Query(max_length=50)]
 
 COIN_LOAD_OPTIONS = (
     selectinload(Coin.country),
@@ -66,9 +67,8 @@ def _build_common_conditions(
 ) -> list[ColumnElement[bool]]:
     """Filters shared by the coin list and the facets endpoint.
 
-    Deliberately excludes metal_id and grade — those are handled separately
-    so that toggling one facet doesn't hide the other available options
-    (standard faceted-search behavior).
+    Deliberately excludes the facet filters (metal, grade, category): see
+    _facet_conditions.
     """
     conditions: list[ColumnElement[bool]] = []
 
@@ -99,12 +99,32 @@ def _build_common_conditions(
     return conditions
 
 
+def _facet_conditions(
+    *, metal_id: list[int] | None, grade: str | None, category: str | None
+) -> dict[str, ColumnElement[bool]]:
+    """The active facet filters by facet name.
+
+    Each facet's options are computed with every active filter except its own, so picking
+    one value doesn't make the other values of the same facet disappear (standard
+    faceted-search behaviour).
+    """
+    conditions: dict[str, ColumnElement[bool]] = {}
+    if metal_id:
+        conditions["metal"] = Coin.metal_id.in_(metal_id)
+    if grade:
+        conditions["grade"] = Coin.grade == grade
+    if category:
+        conditions["category"] = Coin.category == category
+    return conditions
+
+
 @router.get("/facets", response_model=CoinFacets)
 async def get_coin_facets(
     db: AsyncSession = Depends(get_db),
     country_id: IdsQuery = None,
     metal_id: IdsQuery = None,
     grade: GradeQuery = None,
+    category: CategoryQuery = None,
     year_from: YearQuery = None,
     year_to: YearQuery = None,
     q: SearchQuery = None,
@@ -118,37 +138,39 @@ async def get_coin_facets(
         for_sale_only=for_sale_only,
         owner_id=None,
     )
+    facets = _facet_conditions(metal_id=metal_id, grade=grade, category=category)
 
-    # Metals available given every active filter except the metal filter
-    # itself, so picking one metal doesn't make the others disappear.
-    metals_stmt = select(Metal.id, Metal.name).select_from(Coin).join(Coin.metal).join(Coin.country)
-    for condition in common:
-        metals_stmt = metals_stmt.where(condition)
-    if grade:
-        metals_stmt = metals_stmt.where(Coin.grade == grade)
-    metals_stmt = metals_stmt.distinct().order_by(Metal.name)
+    def filtered_except(facet: str) -> list[ColumnElement[bool]]:
+        return [*common, *(cond for name, cond in facets.items() if name != facet)]
 
-    metals_result = await db.execute(metals_stmt)
-    metals = [MetalFacet(id=row.id, name=row.name) for row in metals_result.all()]
-
-    # Grades available given every active filter except the grade filter itself.
-    grades_stmt = (
-        select(Coin.grade)
+    metals_stmt = (
+        select(Metal.id, Metal.name)
         .select_from(Coin)
         .join(Coin.metal)
         .join(Coin.country)
-        .where(Coin.grade.is_not(None))
+        .where(*filtered_except("metal"))
+        .distinct()
+        .order_by(Metal.name)
     )
-    for condition in common:
-        grades_stmt = grades_stmt.where(condition)
-    if metal_id:
-        grades_stmt = grades_stmt.where(Coin.metal_id.in_(metal_id))
-    grades_stmt = grades_stmt.distinct().order_by(Coin.grade)
+    metals = [MetalFacet(id=row.id, name=row.name) for row in (await db.execute(metals_stmt))]
 
-    grades_result = await db.execute(grades_stmt)
-    grades = [row[0] for row in grades_result.all() if row[0]]
+    async def distinct_values(column: InstrumentedAttribute[str | None], facet: str) -> list[str]:
+        stmt = (
+            select(column)
+            .select_from(Coin)
+            .join(Coin.metal)
+            .join(Coin.country)
+            .where(column.is_not(None), column != "", *filtered_except(facet))
+            .distinct()
+            .order_by(column)
+        )
+        return [row[0] for row in await db.execute(stmt)]
 
-    return CoinFacets(metals=metals, grades=grades)
+    return CoinFacets(
+        metals=metals,
+        grades=await distinct_values(Coin.grade, "grade"),
+        categories=await distinct_values(Coin.category, "category"),
+    )
 
 
 SORT_OPTIONS: dict[str, ColumnElement] = {
@@ -168,6 +190,7 @@ async def list_coins(
     country_id: IdsQuery = None,
     metal_id: IdsQuery = None,
     grade: GradeQuery = None,
+    category: CategoryQuery = None,
     year_from: YearQuery = None,
     year_to: YearQuery = None,
     q: SearchQuery = None,
@@ -188,10 +211,7 @@ async def list_coins(
         for_sale_only=for_sale_only,
         owner_id=owner_id,
     )
-    if metal_id:
-        conditions.append(Coin.metal_id.in_(metal_id))
-    if grade:
-        conditions.append(Coin.grade == grade)
+    conditions.extend(_facet_conditions(metal_id=metal_id, grade=grade, category=category).values())
 
     for condition in conditions:
         stmt = stmt.where(condition)

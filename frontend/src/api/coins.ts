@@ -14,6 +14,7 @@ export interface CoinFilters {
   country_id?: number[];
   metal_id?: number[];
   grade?: string;
+  category?: string;
   year_from?: number;
   year_to?: number;
   q?: string;

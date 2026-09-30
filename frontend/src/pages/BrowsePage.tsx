@@ -23,6 +23,7 @@ export function BrowsePage() {
   const [selectedCountryIds, setSelectedCountryIds] = useState<number[]>([]);
   const [selectedMetalIds, setSelectedMetalIds] = useState<number[]>([]);
   const [grade, setGrade] = useState("");
+  const [category, setCategory] = useState("");
   const [sort, setSort] = useState<CoinSort>("recent");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
@@ -34,17 +35,18 @@ export function BrowsePage() {
   const commonFilters = {
     country_id: selectedCountryIds.length > 0 ? selectedCountryIds : undefined,
     grade: grade || undefined,
+    category: category || undefined,
     q: appliedQ || undefined,
     for_sale_only: forSaleOnly || undefined,
   };
 
   const { data: facets } = useQuery({
-    queryKey: ["coin-facets", selectedCountryIds, grade, appliedQ, forSaleOnly, selectedMetalIds],
+    queryKey: ["coin-facets", selectedCountryIds, grade, category, appliedQ, forSaleOnly, selectedMetalIds],
     queryFn: () => getCoinFacets({ ...commonFilters, metal_id: selectedMetalIds }),
   });
 
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", selectedCountryIds, grade, appliedQ, forSaleOnly, selectedMetalIds, sort, favouritesOnly],
+    queryKey: ["coins", selectedCountryIds, grade, category, appliedQ, forSaleOnly, selectedMetalIds, sort, favouritesOnly],
     queryFn: () =>
       favouritesOnly
         ? listFavourites()
@@ -129,6 +131,9 @@ export function BrowsePage() {
           availableGrades={facets?.grades ?? []}
           grade={grade}
           onGradeChange={setGrade}
+          availableCategories={facets?.categories ?? []}
+          category={category}
+          onCategoryChange={setCategory}
         />
 
         <div className="flex-1">

@@ -12,6 +12,7 @@ import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { useSearchParams } from "react-router-dom";
 import { BatchImport } from "../components/batch/BatchImport";
+import { CATEGORY_DATALIST_ID, CategoryDatalist } from "../components/CategoryDatalist";
 
 interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> {
   country_id: string;
@@ -207,6 +208,19 @@ function SingleListingForm() {
             <div>
               <label className={labelClass}>Grade</label>
               <input {...register("grade")} placeholder="e.g. MS-65, XF-40" className={inputClass} />
+            </div>
+
+            <div>
+              <label className={labelClass}>Category</label>
+              <input
+                {...register("category")}
+                list={CATEGORY_DATALIST_ID}
+                maxLength={50}
+                placeholder="e.g. Bullion, Commemorative"
+                autoComplete="off"
+                className={inputClass}
+              />
+              <CategoryDatalist />
             </div>
 
             <div>

@@ -14,6 +14,7 @@ export type FieldKey =
   | "weight_unit"
   | "diameter"
   | "grade"
+  | "category"
   | "catalog_number"
   | "mintage"
   | "extra_info"
@@ -40,6 +41,7 @@ export const FIELDS: FieldDef[] = [
   { key: "weight", label: "Weight", required: true, synonyms: ["weight", "вес", "масса"] },
   { key: "diameter", label: "Diameter (mm)", required: false, synonyms: ["diameter", "диаметр", "diametermm", "size"] },
   { key: "grade", label: "Grade", required: false, synonyms: ["grade", "состояние", "сохранность", "condition"] },
+  { key: "category", label: "Category", required: false, synonyms: ["category", "категория", "group", "группа", "series", "серия"] },
   { key: "catalog_number", label: "Catalog No.", required: false, synonyms: ["catalognumber", "catalogno", "catalog", "каталог", "номерпокаталогу", "km", "kmnumber"] },
   { key: "mintage", label: "Mintage", required: false, synonyms: ["mintage", "тираж"] },
   { key: "extra_info", label: "Extra info", required: false, synonyms: ["extrainfo", "extra", "description", "описание", "notes", "note", "comment", "comments", "комментарий", "примечание", "info", "name", "название"] },
@@ -184,6 +186,7 @@ export function buildDraftRows(
         weight_unit: resolvedUnit,
         diameter: cell(row, "diameter"),
         grade: cell(row, "grade"),
+        category: cell(row, "category"),
         catalog_number: cell(row, "catalog_number"),
         mintage: cell(row, "mintage"),
         extra_info: cell(row, "extra_info"),
@@ -257,6 +260,8 @@ export function validateRow(row: DraftRow, photos: PhotoIndex): RowErrors {
     errors.mintage = "Mintage must be a whole number";
   }
 
+  if (v.category.trim().length > 50) errors.category = "At most 50 characters";
+
   const photoProblems: string[] = [];
   for (const name of splitPhotoNames(row.photos)) {
     const file = photos.get(name.toLowerCase());
@@ -284,6 +289,7 @@ export function toBatchItem(row: DraftRow): CoinBatchItem {
     composition: optionalText(v.composition),
     diameter: optionalNumber(v.diameter),
     grade: optionalText(v.grade),
+    category: optionalText(v.category),
     catalog_number: optionalText(v.catalog_number),
     mintage: optionalNumber(v.mintage),
     extra_info: optionalText(v.extra_info),

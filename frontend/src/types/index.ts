@@ -33,6 +33,7 @@ export interface Coin {
   denomination: string | null;
   composition: string | null;
   grade: string | null;
+  category: string | null;
   catalog_number: string | null;
   extra_info: string | null;
   mintage: number | null;
@@ -62,6 +63,7 @@ export interface CoinCreatePayload {
   denomination?: string | null;
   composition?: string | null;
   grade?: string | null;
+  category?: string | null;
   catalog_number?: string | null;
   extra_info?: string | null;
   mintage?: number | null;
@@ -140,6 +142,7 @@ export type MetalFacet = Pick<Metal, "id" | "name">;
 export interface CoinFacets {
   metals: MetalFacet[];
   grades: string[];
+  categories: string[];
 }
 
 export interface ImportTable {
@@ -159,6 +162,7 @@ export interface CoinBatchItem {
   composition: string | null;
   diameter: number | null;
   grade: string | null;
+  category: string | null;
   catalog_number: string | null;
   mintage: number | null;
   extra_info: string | null;

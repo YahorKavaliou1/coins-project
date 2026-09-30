@@ -8,7 +8,7 @@ instead of a database error (value too long, integer out of range) or a nonsensi
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from pydantic import Field, PlainSerializer, StringConstraints
+from pydantic import AfterValidator, Field, PlainSerializer, StringConstraints
 
 # Largest value of a PostgreSQL INTEGER column.
 MAX_DB_INT = 2_147_483_647
@@ -36,3 +36,13 @@ Text50 = Annotated[str, StringConstraints(strip_whitespace=True, max_length=50)]
 Text100 = Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)]
 Text255 = Annotated[str, StringConstraints(strip_whitespace=True, max_length=255)]
 Text1000 = Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)]
+
+
+def _blank_to_none(value: str) -> str | None:
+    return value or None
+
+
+# A blank category means "none", so the shop filter never offers an empty option.
+Category = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=50), AfterValidator(_blank_to_none)
+]

@@ -13,7 +13,14 @@ interface BrowseSidebarProps {
   availableGrades: string[];
   grade: string;
   onGradeChange: (value: string) => void;
+
+  availableCategories: string[];
+  category: string;
+  onCategoryChange: (value: string) => void;
 }
+
+const selectClass =
+  "w-full border border-gray-300 rounded-sm px-2 py-2 text-sm focus:outline-none focus:border-accent";
 
 export function BrowseSidebar({
   countries,
@@ -25,6 +32,9 @@ export function BrowseSidebar({
   availableGrades,
   grade,
   onGradeChange,
+  availableCategories,
+  category,
+  onCategoryChange,
 }: BrowseSidebarProps) {
   const countryOptions = countries
     .map((c) => ({
@@ -66,15 +76,23 @@ export function BrowseSidebar({
 
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Grade / Conservation</h3>
-        <select
-          value={grade}
-          onChange={(e) => onGradeChange(e.target.value)}
-          className="w-full border border-gray-300 rounded-sm px-2 py-2 text-sm focus:outline-none focus:border-accent"
-        >
+        <select value={grade} onChange={(e) => onGradeChange(e.target.value)} className={selectClass}>
           <option value="">All Grades</option>
           {availableGrades.map((g) => (
             <option key={g} value={g}>
               {g}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Category</h3>
+        <select value={category} onChange={(e) => onCategoryChange(e.target.value)} className={selectClass}>
+          <option value="">All Categories</option>
+          {availableCategories.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>

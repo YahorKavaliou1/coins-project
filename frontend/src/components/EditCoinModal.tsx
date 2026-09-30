@@ -10,6 +10,7 @@ import { toast } from "../store/toastStore";
 import { toCountryOptions, toMetalOptions } from "../utils/referenceOptions";
 import { MultiSelectDropdown } from "./MultiSelectDropdown";
 import { inputClass, labelClass, sectionTitleClass } from "./formStyles";
+import { CATEGORY_DATALIST_ID, CategoryDatalist } from "./CategoryDatalist";
 
 interface EditCoinModalProps {
   coin: Coin;
@@ -45,6 +46,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
       diameter: coin.diameter ?? undefined,
       mintage: coin.mintage ?? undefined,
       grade: coin.grade ?? "",
+      category: coin.category ?? "",
       catalog_number: coin.catalog_number ?? "",
       extra_info: coin.extra_info ?? "",
       price: coin.price ?? undefined,
@@ -242,6 +244,18 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
               <div>
                 <label className={labelClass}>Grade</label>
                 <input {...register("grade")} placeholder="e.g. MS-65, XF-40" className={inputClass} />
+              </div>
+              <div>
+                <label className={labelClass}>Category</label>
+                <input
+                  {...register("category")}
+                  list={CATEGORY_DATALIST_ID}
+                  maxLength={50}
+                  placeholder="e.g. Bullion, Commemorative"
+                  autoComplete="off"
+                  className={inputClass}
+                />
+                <CategoryDatalist />
               </div>
               <div>
                 <label className={labelClass}>Catalog No.</label>

@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from app.schemas.coin_image import CoinImageRead
 from app.schemas.country import CountryRead
 from app.schemas.fields import (
+    Category,
     DbId,
     DiameterMm,
     Mintage,
@@ -32,6 +33,7 @@ class CoinBase(BaseModel):
     denomination: Text100 | None = None
     composition: Text255 | None = None
     grade: Text50 | None = None
+    category: Category | None = None
     catalog_number: Text100 | None = None
     extra_info: Text1000 | None = None
     mintage: Mintage | None = None
@@ -54,6 +56,7 @@ class CoinUpdate(BaseModel):
     denomination: Text100 | None = None
     composition: Text255 | None = None
     grade: Text50 | None = None
+    category: Category | None = None
     catalog_number: Text100 | None = None
     extra_info: Text1000 | None = None
     mintage: Mintage | None = None
@@ -88,6 +91,7 @@ class CoinRead(BaseModel):
     denomination: str | None
     composition: str | None
     grade: str | None
+    category: str | None
     catalog_number: str | None
     extra_info: str | None
     mintage: int | None
@@ -159,3 +163,4 @@ class MetalFacet(BaseModel):
 class CoinFacets(BaseModel):
     metals: list[MetalFacet]
     grades: list[str]
+    categories: list[str]

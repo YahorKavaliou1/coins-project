@@ -37,6 +37,8 @@ class Coin(Base):
     denomination: Mapped[str | None] = mapped_column(String(100), nullable=True)
     composition: Mapped[str | None] = mapped_column(String(255), nullable=True)
     grade: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Free-form grouping of lots (e.g. "Bullion", "Commemorative"); the shop filters by it.
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     catalog_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     extra_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     mintage: Mapped[int | None] = mapped_column(Integer, nullable=True)
