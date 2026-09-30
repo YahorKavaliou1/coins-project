@@ -9,7 +9,8 @@ export type ApiError = AxiosError<{ detail?: string | { msg: string }[] }>;
 export function getErrorMessage(err: ApiError): string {
   const detail = err.response?.data?.detail;
   if (typeof detail === "string") return detail;
-  if (Array.isArray(detail)) return detail.map((d) => d.msg).join("; ");
+  // Pydantic prefixes custom validator messages with "Value error, ".
+  if (Array.isArray(detail)) return detail.map((d) => d.msg.replace(/^Value error, /, "")).join("; ");
   return "Unknown error";
 }
 

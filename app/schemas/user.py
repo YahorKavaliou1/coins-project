@@ -1,15 +1,41 @@
+from collections.abc import Callable
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import BlockReason, UserRole
 
 MIN_PASSWORD_LENGTH = 6
 
+# (requirement text, check) — the frontend shows the same list in utils/password.ts.
+PASSWORD_RULES: list[tuple[str, Callable[[str], bool]]] = [
+    ("an uppercase letter", str.isupper),
+    ("a lowercase letter", str.islower),
+    ("a digit", str.isdigit),
+    ("a special character", lambda c: not c.isalnum() and not c.isspace()),
+]
+
+
+def check_password_strength(password: str) -> str:
+    """Applied wherever a password is set (registration, reset, profile), never at login,
+    so accounts created before this rule can still log in."""
+    missing = [
+        text for text, is_match in PASSWORD_RULES if not any(is_match(char) for char in password)
+    ]
+    if missing:
+        raise ValueError("Password must contain " + ", ".join(missing))
+    return password
+
+
+StrongPassword = Annotated[
+    str, Field(min_length=MIN_PASSWORD_LENGTH), AfterValidator(check_password_strength)
+]
+
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=MIN_PASSWORD_LENGTH)
+    password: StrongPassword
     full_name: str | None = None
 
 
@@ -32,7 +58,7 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: str | None = None
-    password: str | None = Field(default=None, min_length=MIN_PASSWORD_LENGTH)
+    password: StrongPassword | None = None
 
 
 class UserRoleUpdate(BaseModel):
@@ -70,4 +96,4 @@ class VerifyEmailRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     token: str
-    password: str = Field(min_length=MIN_PASSWORD_LENGTH)
+    password: StrongPassword

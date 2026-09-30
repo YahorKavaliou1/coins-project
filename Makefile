@@ -1,4 +1,4 @@
-.PHONY: help venv install run dev migrate makemigrations upgrade downgrade seed \
+.PHONY: help venv install run dev migrate makemigrations upgrade downgrade seed admin \
         up down down-v logs psql lint format typecheck check test \
         precommit clean
 
@@ -99,3 +99,7 @@ clean: ## Remove caches and temporary files
 
 seed: ## Populate reference tables with curated data (metals, etc.)
 	$(PYTHON) -m app.db.seed.run
+
+admin: ## Make a registered account admin (make admin email=you@example.com)
+	@test -n "$(email)" || (echo 'Usage: make admin email=you@example.com' && exit 1)
+	$(PYTHON) -m app.scripts.set_role "$(email)" admin

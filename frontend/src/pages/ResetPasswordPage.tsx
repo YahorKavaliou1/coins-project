@@ -7,8 +7,9 @@ import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { AuthCard } from "../components/auth/AuthCard";
 import { inputClass, labelClass } from "../components/formStyles";
+import { PasswordRequirements } from "../components/auth/PasswordRequirements";
+import { passwordError } from "../utils/password";
 
-const MIN_PASSWORD_LENGTH = 6;
 
 export function ResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -48,7 +49,7 @@ export function ResetPasswordPage() {
     );
   }
 
-  const tooShort = password.length < MIN_PASSWORD_LENGTH;
+  const weak = passwordError(password) !== null;
   const mismatch = password !== confirm;
 
   return (
@@ -62,7 +63,7 @@ export function ResetPasswordPage() {
         onSubmit={(e) => {
           e.preventDefault();
           setTouched(true);
-          if (!tooShort && !mismatch) mutation.mutate();
+          if (!weak && !mismatch) mutation.mutate();
         }}
         className="flex flex-col gap-4"
       >
@@ -77,8 +78,8 @@ export function ResetPasswordPage() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-              className={`${inputClass} pr-10 ${touched && tooShort ? "border-red-400" : ""}`}
+              placeholder="Create a strong password"
+              className={`${inputClass} pr-10 ${touched && weak ? "border-red-400" : ""}`}
             />
             <button
               type="button"
@@ -89,9 +90,7 @@ export function ResetPasswordPage() {
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          {touched && tooShort && (
-            <p className="text-xs text-red-700 mt-1">Password must be at least {MIN_PASSWORD_LENGTH} characters</p>
-          )}
+          <PasswordRequirements password={password} showErrors={touched} />
         </div>
         <div>
           <label htmlFor="confirm-password" className={labelClass}>

@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 30
 
     # Role assigned to newly registered users: "user", "seller" or "admin".
-    default_user_role: Literal["user", "seller", "admin"] = "admin"
+    # Admins are appointed explicitly with `make admin email=...` (app/scripts/set_role.py).
+    default_user_role: Literal["user", "seller", "admin"] = "user"
 
     # Consecutive wrong passwords after which the account is blocked.
     max_failed_login_attempts: int = 8

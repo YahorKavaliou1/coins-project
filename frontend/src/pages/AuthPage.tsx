@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Lock, MailCheck, MailWarning } from "lucide-react";
@@ -10,6 +10,8 @@ import { getErrorMessage, isBlockedError, isEmailNotVerifiedError, type ApiError
 import { inputClass, labelClass } from "../components/formStyles";
 import { AuthCard } from "../components/auth/AuthCard";
 import { ResendVerificationButton } from "../components/auth/ResendVerificationButton";
+import { PasswordRequirements } from "../components/auth/PasswordRequirements";
+import { passwordError } from "../utils/password";
 
 type Mode = "login" | "register";
 
@@ -19,7 +21,6 @@ interface AuthForm {
   full_name?: string;
 }
 
-const MIN_PASSWORD_LENGTH = 6;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function FieldError({ message }: { message?: string }) {
@@ -46,8 +47,10 @@ export function AuthPage() {
     register,
     handleSubmit,
     clearErrors,
+    control,
     formState: { errors },
   } = useForm<AuthForm>();
+  const passwordValue = useWatch({ control, name: "password" }) ?? "";
 
   async function signIn(email: string, password: string) {
     const token = await login(email, password);
@@ -217,13 +220,11 @@ export function AuthPage() {
                 id="auth-password"
                 type={showPassword ? "text" : "password"}
                 autoComplete={isRegister ? "new-password" : "current-password"}
-                placeholder={isRegister ? `At least ${MIN_PASSWORD_LENGTH} characters` : "Your password"}
+                placeholder={isRegister ? "Create a strong password" : "Your password"}
                 {...register("password", {
                   required: "Password is required",
-                  validate: (value) =>
-                    !isRegister ||
-                    value.length >= MIN_PASSWORD_LENGTH ||
-                    `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+                  // Only new passwords must follow the rules; old accounts can still log in.
+                  validate: (value) => !isRegister || passwordError(value) || true,
                 })}
                 className={`${inputClass} pr-10 ${errors.password ? "border-red-400" : ""}`}
               />
@@ -236,7 +237,11 @@ export function AuthPage() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            <FieldError message={errors.password?.message} />
+            {isRegister ? (
+              <PasswordRequirements password={passwordValue} showErrors={!!errors.password} />
+            ) : (
+              <FieldError message={errors.password?.message} />
+            )}
           </div>
 
           <button
