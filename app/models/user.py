@@ -44,11 +44,18 @@ class User(Base):
     verification_deadline: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Copied into every JWT as "ver"; tokens with another value are rejected.
+    # Bumping it logs the user out everywhere (password change/reset, block).
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    def revoke_tokens(self) -> None:
+        self.token_version += 1
 
     def block(self, reason: BlockReason) -> None:
         self.is_blocked = True
         self.blocked_reason = reason
         self.blocked_at = datetime.now(UTC)
+        self.revoke_tokens()
 
     def unblock(self) -> None:
         self.is_blocked = False

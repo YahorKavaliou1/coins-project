@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, MailX } from "lucide-react";
+import { Eye, EyeOff, MailCheck, MailX } from "lucide-react";
 import { verifyEmail } from "../api/auth";
-import { getErrorMessage, isBlockedError, type ApiError } from "../api/client";
+import { getErrorMessage, INVALID_LINK_DETAIL, isBlockedError, type ApiError } from "../api/client";
 import { useAuthStore } from "../store/authStore";
 import { toast } from "../store/toastStore";
 import { AuthCard } from "../components/auth/AuthCard";
@@ -17,9 +17,13 @@ export function VerifyEmailPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
+  // The server asks for the account password as well as the link, so someone who registered
+  // this address before its owner can't end up with an account they know the password of.
   const mutation = useMutation({
-    mutationFn: () => verifyEmail(token),
+    mutationFn: () => verifyEmail(token, password),
     onSuccess: (tokens) => {
       setToken(tokens.access_token);
       queryClient.invalidateQueries();
@@ -28,25 +32,64 @@ export function VerifyEmailPage() {
     },
   });
 
-  // The token is single-use: StrictMode runs effects twice in development, so guard with a ref.
-  const started = useRef(false);
-  useEffect(() => {
-    if (!token || started.current) return;
-    started.current = true;
-    mutation.mutate();
-  }, [token, mutation]);
-
-  if (token && !mutation.isError) {
-    return (
-      <AuthCard
-        icon={<Loader2 className="w-10 h-10 text-accent animate-spin" />}
-        title="Confirming your email…"
-      />
-    );
-  }
-
   const error = mutation.error as ApiError | null;
   const blocked = error ? isBlockedError(error) : false;
+  const linkBroken = !token || error?.response?.data?.detail === INVALID_LINK_DETAIL;
+
+  if (!blocked && !linkBroken) {
+    return (
+      <AuthCard
+        icon={<MailCheck className="w-10 h-10 text-accent" />}
+        title="Confirm your email"
+        subtitle="Enter the password you chose when registering to activate your account."
+      >
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (password) mutation.mutate();
+          }}
+          className="flex flex-col gap-4"
+        >
+          <div>
+            <label htmlFor="verify-password" className={labelClass}>
+              Password
+            </label>
+            <div className="relative">
+              <input
+                id="verify-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                autoFocus
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${inputClass} pr-10 ${error ? "border-red-400" : ""}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-700"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {error && <p className="text-xs text-red-700 mt-1">{getErrorMessage(error)}</p>}
+          </div>
+          <button
+            type="submit"
+            disabled={mutation.isPending || !password}
+            className="mt-2 w-full bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm py-3 disabled:opacity-50"
+          >
+            {mutation.isPending ? "Confirming…" : "Confirm email"}
+          </button>
+          <Link to="/forgot-password" className="text-sm text-center text-gray-500 hover:text-accent">
+            Forgot password?
+          </Link>
+        </form>
+      </AuthCard>
+    );
+  }
 
   return (
     <AuthCard

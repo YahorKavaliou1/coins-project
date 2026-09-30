@@ -16,18 +16,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def _create_token(subject: str, expires_delta: timedelta, token_type: str) -> str:
+def _create_token(subject: str, version: int, expires_delta: timedelta, token_type: str) -> str:
     expire = datetime.now(UTC) + expires_delta
-    payload = {"sub": subject, "exp": expire, "type": token_type}
+    # "ver" must equal User.token_version, which lets the server revoke issued tokens.
+    payload = {"sub": subject, "ver": version, "exp": expire, "type": token_type}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
-def create_access_token(subject: str) -> str:
-    return _create_token(subject, timedelta(minutes=settings.access_token_expire_minutes), "access")
+def create_access_token(subject: str, version: int) -> str:
+    return _create_token(
+        subject, version, timedelta(minutes=settings.access_token_expire_minutes), "access"
+    )
 
 
-def create_refresh_token(subject: str) -> str:
-    return _create_token(subject, timedelta(days=settings.refresh_token_expire_days), "refresh")
+def create_refresh_token(subject: str, version: int) -> str:
+    return _create_token(
+        subject, version, timedelta(days=settings.refresh_token_expire_days), "refresh"
+    )
 
 
 def decode_token(token: str) -> dict:

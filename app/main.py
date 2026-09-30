@@ -58,5 +58,6 @@ async def health():
     return {"status": "ok"}
 
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
-app.mount("/", StaticFiles(directory="app/static", html=True), name="root")
+# Only user-uploaded coin photos are served (stored URLs look like /static/uploads/coins/...).
+# The UI is the React app in frontend/; nothing else in app/static is exposed.
+app.mount("/static/uploads", StaticFiles(directory="app/static/uploads"), name="uploads")

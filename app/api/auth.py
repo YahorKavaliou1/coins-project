@@ -5,12 +5,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import BLOCKED_USER_DETAIL, EMAIL_NOT_VERIFIED_DETAIL
+from app.api.deps import BLOCKED_USER_DETAIL, EMAIL_NOT_VERIFIED_DETAIL, user_from_token
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
-    decode_token,
     hash_password,
     verify_password,
 )
@@ -39,6 +38,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 INCORRECT_CREDENTIALS_DETAIL = "Incorrect email or password"
 INVALID_LINK_DETAIL = "This link is invalid or has expired."
+VERIFY_PASSWORD_MISMATCH_DETAIL = (
+    "The password doesn't match. If you registered more than once, use the password from "
+    'your latest registration, or set a new one with "Forgot password".'
+)
 # The same answers whether or not the address has an account, so these endpoints
 # can't be used to find out who is registered.
 REGISTERED_MESSAGE = "Check your inbox: we've sent you a link to confirm your email address."
@@ -62,8 +65,8 @@ async def _find_user(db: AsyncSession, email: str, *, for_update: bool = False) 
 
 def _issue_tokens(user: User) -> Token:
     return Token(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=create_access_token(str(user.id), user.token_version),
+        refresh_token=create_refresh_token(str(user.id), user.token_version),
     )
 
 
@@ -85,8 +88,13 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)) -> Mess
         await db.flush()
         await send_verification_email(db, user)
     elif not existing.is_verified:
-        # Don't overwrite the password of an unconfirmed account: just resend the link
-        # to the address owner.
+        # Nobody has proven they own this address yet, so the latest registration wins.
+        # Confirming the email requires this password, so an attacker who pre-registered
+        # someone else's address can't end up with a verified account they know the
+        # password of (pre-account takeover).
+        existing.hashed_password = hash_password(data.password)
+        existing.full_name = data.full_name
+        existing.revoke_tokens()
         await send_verification_email(db, existing)
     else:
         await send_account_exists_email(db, existing)
@@ -135,10 +143,17 @@ async def login(
 
 @router.post("/verify-email", response_model=Token)
 async def verify_email(data: VerifyEmailRequest, db: AsyncSession = Depends(get_db)) -> Token:
-    """Confirms the address from the email link and logs the user in."""
+    """Confirms the address from the email link and logs the user in.
+
+    Requires the account password: the link proves control of the mailbox, the password
+    proves this person set the account up."""
     user = await consume_token(db, data.token, TokenPurpose.VERIFY_EMAIL)
     if user is None:
         raise HTTPException(status_code=400, detail=INVALID_LINK_DETAIL)
+    if not verify_password(data.password, user.hashed_password):
+        # Not committed: the token stays valid for another attempt.
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=VERIFY_PASSWORD_MISMATCH_DETAIL)
 
     user.is_verified = True
     user.verification_deadline = None
@@ -188,6 +203,8 @@ async def reset_password(
 
     user.hashed_password = hash_password(data.password)
     user.failed_login_attempts = 0
+    # Log out every existing session: the old password may have been compromised.
+    user.revoke_tokens()
     # The reset proves the user controls the mailbox.
     user.is_verified = True
     user.verification_deadline = None
@@ -202,15 +219,7 @@ async def reset_password(
 
 @router.post("/refresh", response_model=Token)
 async def refresh(data: TokenRefreshRequest, db: AsyncSession = Depends(get_db)) -> Token:
-    try:
-        payload = decode_token(data.refresh_token)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail="Invalid refresh token") from e
-
-    if payload.get("type") != "refresh":
-        raise HTTPException(status_code=401, detail="Invalid token type")
-
-    user = await db.get(User, int(payload["sub"]))
+    user = await user_from_token(db, data.refresh_token, "refresh")
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     if user.is_blocked:

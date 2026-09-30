@@ -17,6 +17,9 @@ export function getErrorMessage(err: ApiError): string {
 /** Must match BLOCKED_USER_DETAIL in app/api/deps.py. */
 export const BLOCKED_USER_DETAIL = "Your account is blocked. Please contact the administrator.";
 
+/** Must match INVALID_LINK_DETAIL in app/api/auth.py. */
+export const INVALID_LINK_DETAIL = "This link is invalid or has expired.";
+
 /** Must match EMAIL_NOT_VERIFIED_DETAIL in app/api/deps.py. */
 export const EMAIL_NOT_VERIFIED_DETAIL =
   "Please confirm your email address. We've sent a confirmation link to your inbox.";

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, require_admin
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.db.session import get_db
 from app.models.order import Order
 from app.models.user import BlockReason, User
@@ -34,7 +34,13 @@ async def update_current_user(
     if data.full_name is not None:
         current_user.full_name = data.full_name
     if data.password is not None:
+        if data.current_password is None or not verify_password(
+            data.current_password, current_user.hashed_password
+        ):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
         current_user.hashed_password = hash_password(data.password)
+        # Ends every session, including this one: the client logs in with the new password.
+        current_user.revoke_tokens()
         send_password_changed_email(db, current_user)
 
     await db.commit()

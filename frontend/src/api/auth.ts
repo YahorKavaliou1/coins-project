@@ -35,8 +35,8 @@ export async function getCurrentUser() {
   return data;
 }
 
-export async function verifyEmail(token: string) {
-  const { data } = await apiClient.post<Token>("/auth/verify-email", { token });
+export async function verifyEmail(token: string, password: string) {
+  const { data } = await apiClient.post<Token>("/auth/verify-email", { token, password });
   return data;
 }
 

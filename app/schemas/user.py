@@ -59,6 +59,8 @@ class UserRead(BaseModel):
 class UserUpdate(BaseModel):
     full_name: str | None = None
     password: StrongPassword | None = None
+    # Required when `password` is set, so a stolen access token can't take over the account.
+    current_password: str | None = None
 
 
 class UserRoleUpdate(BaseModel):
@@ -92,6 +94,8 @@ class EmailRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     token: str
+    # The account password; checked against the stored hash, so no strength rules here.
+    password: str
 
 
 class ResetPasswordRequest(BaseModel):

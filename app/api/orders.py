@@ -35,6 +35,15 @@ async def checkout(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Order:
+    # Lock the cart's coins before checking availability, so two concurrent checkouts can't
+    # both see a coin as for sale. The second one waits here, then sees it sold (or its cart
+    # already emptied). Ordered by id so overlapping carts can't deadlock.
+    await db.execute(
+        select(Coin.id)
+        .where(Coin.id.in_(select(CartItem.coin_id).where(CartItem.user_id == current_user.id)))
+        .order_by(Coin.id)
+        .with_for_update()
+    )
     cart_result = await db.execute(
         select(CartItem)
         .options(

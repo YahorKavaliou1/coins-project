@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Float, ForeignKey, String
+from sqlalchemy import Float, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 class OrderItem(Base):
     __tablename__ = "order_items"
+    # A coin can be sold only once (backs up the row lock taken in checkout).
+    __table_args__ = (UniqueConstraint("coin_id", name="uq_order_items_coin_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
