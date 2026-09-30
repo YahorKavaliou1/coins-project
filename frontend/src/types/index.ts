@@ -122,3 +122,25 @@ export interface CoinFacets {
   metals: MetalFacet[];
   grades: string[];
 }
+
+export interface ImportTable {
+  filename: string;
+  columns: string[];
+  rows: string[][];
+}
+
+export interface CoinBatchItem {
+  country_id: number;
+  metal_id: number;
+  year: number;
+  weight: number;
+  weight_unit: "oz" | "g" | "kg";
+  price: number;
+  denomination: string | null;
+  composition: string | null;
+  diameter: number | null;
+  grade: string | null;
+  catalog_number: string | null;
+  mintage: number | null;
+  extra_info: string | null;
+}

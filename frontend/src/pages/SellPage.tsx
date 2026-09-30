@@ -10,6 +10,8 @@ import { toCountryOptions, toMetalOptions } from "../utils/referenceOptions";
 import type { CoinCreatePayload } from "../types";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
+import { useSearchParams } from "react-router-dom";
+import { BatchImport } from "../components/batch/BatchImport";
 
 interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> {
   country_id: string;
@@ -21,7 +23,7 @@ function Required() {
   return <span className="text-accent">*</span>;
 }
 
-export function SellPage() {
+function SingleListingForm() {
   const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,7 +101,6 @@ export function SellPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-xl font-bold mb-1">List a coin for sale</h1>
       <p className="text-sm text-gray-500 mb-6">Fields marked with <Required /> are required.</p>
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="flex flex-col gap-6">
@@ -311,6 +312,39 @@ export function SellPage() {
           </button>
         </section>
       </form>
+    </div>
+  );
+}
+
+type SellTab = "single" | "batch";
+
+const SELL_TABS: { key: SellTab; label: string }[] = [
+  { key: "single", label: "List a coin for sale" },
+  { key: "batch", label: "Batch upload" },
+];
+
+export function SellPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: SellTab = searchParams.get("tab") === "batch" ? "batch" : "single";
+
+  return (
+    <div>
+      <div className="flex gap-6 border-b border-gray-200 mb-6">
+        {SELL_TABS.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setSearchParams(key === "batch" ? { tab: "batch" } : {})}
+            className={`-mb-px pb-3 text-lg font-bold border-b-2 transition-colors ${
+              tab === key ? "text-gray-900 border-accent" : "text-gray-400 border-transparent hover:text-gray-700"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "single" ? <SingleListingForm /> : <BatchImport />}
     </div>
   );
 }

@@ -27,6 +27,9 @@ meilisearch-python-sdk
 pillow
 boto3
 
+# --- Batch import (xlsx parsing) ---
+openpyxl
+
 # --- Dev / testing ---
 pytest
 pytest-asyncio

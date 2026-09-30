@@ -1,7 +1,18 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, cart, coin_images, coins, countries, favourites, metals, orders, users
+from app.api import (
+    auth,
+    cart,
+    coin_images,
+    coin_import,
+    coins,
+    countries,
+    favourites,
+    metals,
+    orders,
+    users,
+)
 
 app = FastAPI(title="Coins API")
 
@@ -9,6 +20,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(countries.router)
 app.include_router(metals.router)
+app.include_router(coin_import.router)
 app.include_router(coins.router)
 app.include_router(favourites.router)
 app.include_router(coin_images.router)
