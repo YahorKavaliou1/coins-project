@@ -45,6 +45,22 @@ class Settings(BaseSettings):
     # Newly registered accounts that never confirm their email are deleted after this.
     unverified_account_ttl_days: int = 7
 
+    # --- Coin photo storage ---
+    # "local": files in app/static/uploads (default). "s3": Amazon S3 or any S3-compatible
+    # service (Cloudflare R2, Scaleway, MinIO...), see AWSImageStorage.
+    image_storage: Literal["local", "s3"] = "local"
+    s3_bucket: str = ""
+    s3_region: str = "eu-central-1"
+    # Credentials; leave empty to use the standard AWS chain (env vars, ~/.aws, IAM role).
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    # Only for S3-compatible services, e.g. https://<account>.r2.cloudflarestorage.com
+    s3_endpoint_url: str = ""
+    # Public base URL for reading photos (bucket URL or CDN). Default: the AWS bucket URL.
+    s3_public_base_url: str = ""
+    # Folder inside the bucket.
+    s3_key_prefix: str = "coins"
+
     # hide_input_in_errors: never echo SECRET_KEY (or other values) into startup logs.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
@@ -75,6 +91,15 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SMTP_SECURITY=none is only allowed for a local server such as Mailpit"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_image_storage(self) -> "Settings":
+        if self.image_storage == "s3":
+            if not self.s3_bucket:
+                raise ValueError("IMAGE_STORAGE=s3 requires S3_BUCKET")
+            if bool(self.s3_access_key_id) != bool(self.s3_secret_access_key):
+                raise ValueError("Set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither")
         return self
 
 
