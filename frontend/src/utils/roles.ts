@@ -12,8 +12,12 @@ export function isAdmin(user: User | null): boolean {
 
 const BLOCK_REASON_LABELS: Record<BlockReason, string> = {
   admin: "by admin",
-  too_many_failed_logins: "too many failed logins",
 };
+
+/** Temporarily locked after too many wrong passwords (ends by itself). */
+export function isLocked(user: User): boolean {
+  return user.locked_until !== null && new Date(user.locked_until) > new Date();
+}
 
 export function blockReasonLabel(reason: BlockReason | null): string {
   return reason ? BLOCK_REASON_LABELS[reason] : "";

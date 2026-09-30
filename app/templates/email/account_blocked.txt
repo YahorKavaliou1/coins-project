@@ -1,7 +1,4 @@
 {% extends "base.txt" %}
-{% block content %}{% if too_many_attempts %}Your account {{ email }} was blocked after too many failed login attempts. This protects you in case someone is trying to guess your password.
+{% block content %}Your account {{ email }} has been blocked by an administrator.
 
-To unlock it, set a new password:
-{{ reset_link }}{% else %}Your account {{ email }} has been blocked by an administrator.
-
-If you think this is a mistake, please contact the site administrator.{% endif %}{% endblock %}
+If you think this is a mistake, please contact the site administrator.{% endblock %}

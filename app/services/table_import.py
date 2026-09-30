@@ -6,6 +6,7 @@ data rows as strings. Mapping columns to coin fields happens in the UI.
 
 import csv
 import io
+import zipfile
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,10 @@ from fastapi import HTTPException
 
 MAX_TABLE_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 MAX_TABLE_ROWS = 1000
+# An .xlsx is a zip archive: a small file can unpack to gigabytes ("zip bomb").
+# Real 1000-row sheets unpack to a few MB.
+MAX_XLSX_UNPACKED_BYTES = 50 * 1024 * 1024
+MAX_XLSX_ENTRIES = 500
 SUPPORTED_EXTENSIONS = {".csv", ".xlsx"}
 CSV_ENCODINGS = ("utf-8-sig", "cp1251", "latin-1")
 # Order matters on ties: prefer ";" and tab over ",".
@@ -61,9 +66,26 @@ def _read_csv(data: bytes) -> list[list[str]]:
     return [[cell.strip() for cell in row] for row in reader]
 
 
+def _check_xlsx_archive(data: bytes) -> None:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            entries = archive.infolist()
+    except zipfile.BadZipFile as e:
+        raise HTTPException(status_code=400, detail="Could not read the Excel file") from e
+    # zipfile never unpacks more than an entry's declared size, so the sum is a real bound.
+    if (
+        len(entries) > MAX_XLSX_ENTRIES
+        or sum(entry.file_size for entry in entries) > MAX_XLSX_UNPACKED_BYTES
+    ):
+        raise HTTPException(status_code=400, detail="The Excel file is too large when unpacked")
+
+
 def _read_xlsx(data: bytes) -> list[list[str]]:
+    # openpyxl parses XML with defusedxml when it is installed (see requirements), which
+    # blocks entity-expansion ("billion laughs") and external-entity attacks.
     from openpyxl import load_workbook
 
+    _check_xlsx_archive(data)
     try:
         workbook = load_workbook(io.BytesIO(data), read_only=True, data_only=True)
     except Exception as e:
@@ -93,7 +115,9 @@ def _unique_headers(raw: list[str]) -> list[str]:
 
 
 def parse_table(filename: str, data: bytes) -> tuple[list[str], list[list[str]]]:
-    """Returns (columns, rows). Every row has exactly len(columns) cells."""
+    """Returns (columns, rows). Every row has exactly len(columns) cells.
+
+    CPU-heavy: call it in a thread."""
     extension = Path(filename).suffix.lower()
     if extension not in SUPPORTED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Unsupported file type. Use .csv or .xlsx")

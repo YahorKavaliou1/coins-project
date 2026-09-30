@@ -1,0 +1,5 @@
+{% extends "base.txt" %}
+{% block content %}There were too many failed login attempts for your account {{ email }}, so logging in is paused until {{ locked_until }} (UTC). This protects you in case someone is trying to guess your password.
+
+If it was you, wait until then or set a new password now to unlock the account right away:
+{{ reset_link }}{% endblock %}

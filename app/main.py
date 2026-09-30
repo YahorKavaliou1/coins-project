@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from slowapi.errors import RateLimitExceeded
 
 from app.api import (
     auth,
@@ -19,7 +20,9 @@ from app.api import (
     orders,
     users,
 )
+from app.core.body_limit import BodySizeLimitMiddleware
 from app.core.config import settings
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 from app.services.email.worker import run_email_worker
 
 logging.getLogger("app").setLevel(logging.INFO)
@@ -40,6 +43,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Coins API", lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+app.add_middleware(BodySizeLimitMiddleware)
 
 app.include_router(auth.router)
 app.include_router(users.router)

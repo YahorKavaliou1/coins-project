@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.models.email_outbox import EmailOutbox
 from app.models.order import Order
 from app.models.order_item import OrderItem
-from app.models.user import BlockReason, User
+from app.models.user import User
 from app.models.user_token import TokenPurpose
 from app.services.email.outbox import enqueue_email
 from app.services.tokens import can_issue_token, issue_token
@@ -102,9 +102,21 @@ def send_account_blocked_email(db: AsyncSession, user: User) -> None:
         to_email=user.email,
         template="account_blocked",
         user_id=user.id,
+        context={"email": user.email},
+    )
+
+
+def send_account_locked_email(db: AsyncSession, user: User) -> None:
+    """Too many wrong passwords: tells the owner, who may not have caused it."""
+    assert user.locked_until is not None
+    enqueue_email(
+        db,
+        to_email=user.email,
+        template="account_locked",
+        user_id=user.id,
         context={
             "email": user.email,
-            "too_many_attempts": user.blocked_reason == BlockReason.TOO_MANY_FAILED_LOGINS,
+            "locked_until": user.locked_until.strftime("%d %b %Y, %H:%M"),
             "reset_link": _link("/forgot-password"),
         },
     )

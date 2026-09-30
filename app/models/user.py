@@ -16,7 +16,6 @@ class UserRole(StrEnum):
 
 class BlockReason(StrEnum):
     ADMIN = "admin"
-    TOO_MANY_FAILED_LOGINS = "too_many_failed_logins"
 
 
 class User(Base):
@@ -37,8 +36,11 @@ class User(Base):
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     blocked_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
     blocked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Consecutive wrong-password attempts; reset on successful login or unblock.
+    # Consecutive wrong-password attempts; reset on successful login, password reset or unblock.
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Temporary lock after too many wrong passwords (see app/api/auth.py). Unlike a block,
+    # it ends by itself, so guessing can't lock the owner out for good.
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Set on registration; an account still unverified after this moment is deleted.
     # NULL for accounts that existed before email verification was introduced.
     verification_deadline: Mapped[datetime | None] = mapped_column(
@@ -61,7 +63,14 @@ class User(Base):
         self.is_blocked = False
         self.blocked_reason = None
         self.blocked_at = None
+        self.clear_login_failures()
+
+    def clear_login_failures(self) -> None:
         self.failed_login_attempts = 0
+        self.locked_until = None
+
+    def is_locked(self, now: datetime) -> bool:
+        return self.locked_until is not None and self.locked_until > now
 
     @property
     def can_sell(self) -> bool:

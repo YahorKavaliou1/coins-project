@@ -1,6 +1,6 @@
 .PHONY: help venv install run dev migrate makemigrations upgrade downgrade seed admin \
         up down down-v logs psql lint format typecheck check test \
-        precommit clean
+        precommit clean lock audit
 
 # ---- Variables ----
 PYTHON := .venv/bin/python
@@ -23,8 +23,15 @@ help: ## Show this help message
 venv: ## Create virtualenv via uv
 	uv venv --python 3.12
 
-install: ## Install dependencies from requirements.txt
-	uv pip install -r requirements.txt
+install: ## Install dependencies from requirements.txt (exact versions, hash-checked)
+	uv pip sync requirements.txt
+
+lock: ## Re-pin requirements.txt after editing requirements.in (make lock up=pkg to upgrade one)
+	uv pip compile requirements.in --python-version 3.12 --generate-hashes -o requirements.txt $(if $(up),-P $(up),)
+
+audit: ## Check Python and npm dependencies for known vulnerabilities
+	.venv/bin/pip-audit -r requirements.txt --disable-pip
+	cd frontend && npm audit
 
 # ---- Running the app ----
 

@@ -29,6 +29,12 @@ logger = logging.getLogger("app.images")
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
 MAX_DIMENSION = 1600  # px, longest side
+# Checked before decoding: a small, highly compressed file can declare a huge canvas
+# (a "decompression bomb") and take gigabytes of memory once decoded. 40 Mpx covers
+# photos from any current camera.
+MAX_PIXELS = 40_000_000
+MAX_IMAGES_PER_COIN = 12
+PILLOW_FORMATS = ["JPEG", "PNG", "WEBP"]
 
 EXTENSION_CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 
@@ -51,16 +57,29 @@ class ImageStorage(ABC):
     def process_image(self, data: bytes) -> tuple[bytes, str]:
         """Validate, downscale if needed, and re-encode the image.
 
-        Returns (processed_bytes, file_extension).
+        CPU-heavy: call it in a thread. Returns (processed_bytes, file_extension).
         """
+        invalid = HTTPException(status_code=400, detail="Invalid or corrupted image file.")
         try:
-            image: Image.Image = Image.open(io.BytesIO(data))
-            image.load()
-        except (UnidentifiedImageError, OSError) as e:
-            raise HTTPException(status_code=400, detail="Invalid or corrupted image file.") from e
+            # Only the declared formats are tried, whatever the file claims to be.
+            image: Image.Image = Image.open(io.BytesIO(data), formats=PILLOW_FORMATS)
+        except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as e:
+            raise invalid from e
+
+        # open() only reads the header, so this runs before any pixel is decoded.
+        if image.width * image.height > MAX_PIXELS:
+            raise HTTPException(status_code=400, detail="Image resolution is too large.")
 
         fmt = (image.format or "JPEG").upper()
-        ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}.get(fmt, "jpg")
+        ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}[fmt]
+
+        if fmt == "JPEG":
+            # Let the decoder downscale by up to 8x while decoding: less memory and CPU.
+            image.draft(None, (MAX_DIMENSION, MAX_DIMENSION))
+        try:
+            image.load()
+        except (OSError, Image.DecompressionBombError) as e:
+            raise invalid from e
 
         if image.width > MAX_DIMENSION or image.height > MAX_DIMENSION:
             image.thumbnail((MAX_DIMENSION, MAX_DIMENSION))

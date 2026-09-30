@@ -73,7 +73,7 @@ export type CoinUpdatePayload = Partial<Omit<CoinCreatePayload, "is_for_sale">>;
 
 export type UserRole = "user" | "seller" | "admin";
 
-export type BlockReason = "admin" | "too_many_failed_logins";
+export type BlockReason = "admin";
 
 export interface User {
   id: number;
@@ -87,6 +87,8 @@ export interface User {
   blocked_reason: BlockReason | null;
   blocked_at: string | null;
   failed_login_attempts: number;
+  /** Temporary lock after too many wrong passwords; in the past once it has expired. */
+  locked_until: string | null;
   verification_deadline: string | null;
 }
 

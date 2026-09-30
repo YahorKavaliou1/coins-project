@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block preheader %}Your {{ site_name }} account is temporarily locked.{% endblock %}
+{% block content %}
+<h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Your account is temporarily locked</h1>
+<p style="margin:0 0 16px;">There were too many failed login attempts for your account <strong>{{ email }}</strong>, so logging in is paused until {{ locked_until }} (UTC). This protects you in case someone is trying to guess your password.</p>
+<p style="margin:0 0 16px;">If it was you, wait until then or set a new password now to unlock the account right away:</p>
+{% with url=reset_link, label="Reset password" %}{% include "_button.html" %}{% endwith %}
+{% endblock %}

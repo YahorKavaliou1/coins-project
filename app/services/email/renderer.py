@@ -19,6 +19,7 @@ SUBJECTS: dict[str, str] = {
     "order_confirmation": "Order #{order_id} confirmed",
     "coin_sold": "You sold a coin — order #{order_id}",
     "account_blocked": "Your account has been blocked",
+    "account_locked": "Your account is temporarily locked",
     "account_unblocked": "Your account is active again",
 }
 

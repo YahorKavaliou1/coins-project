@@ -7,6 +7,8 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 from app.models.user import BlockReason, UserRole
 
 MIN_PASSWORD_LENGTH = 6
+# Keeps hashing cost bounded; no real password is longer.
+MAX_PASSWORD_LENGTH = 128
 
 # (requirement text, check) — the frontend shows the same list in utils/password.ts.
 PASSWORD_RULES: list[tuple[str, Callable[[str], bool]]] = [
@@ -29,8 +31,12 @@ def check_password_strength(password: str) -> str:
 
 
 StrongPassword = Annotated[
-    str, Field(min_length=MIN_PASSWORD_LENGTH), AfterValidator(check_password_strength)
+    str,
+    Field(min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH),
+    AfterValidator(check_password_strength),
 ]
+# An existing password to check: no strength rules, which apply only when a password is set.
+CurrentPassword = Annotated[str, Field(max_length=MAX_PASSWORD_LENGTH)]
 
 
 class UserCreate(BaseModel):
@@ -53,6 +59,7 @@ class UserRead(BaseModel):
     blocked_reason: BlockReason | None
     blocked_at: datetime | None
     failed_login_attempts: int
+    locked_until: datetime | None
     verification_deadline: datetime | None
 
 
@@ -60,7 +67,7 @@ class UserUpdate(BaseModel):
     full_name: str | None = None
     password: StrongPassword | None = None
     # Required when `password` is set, so a stolen access token can't take over the account.
-    current_password: str | None = None
+    current_password: CurrentPassword | None = None
 
 
 class UserRoleUpdate(BaseModel):
@@ -94,8 +101,7 @@ class EmailRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     token: str
-    # The account password; checked against the stored hash, so no strength rules here.
-    password: str
+    password: CurrentPassword
 
 
 class ResetPasswordRequest(BaseModel):

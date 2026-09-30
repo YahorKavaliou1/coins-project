@@ -6,7 +6,7 @@ import { OrderCard } from "../components/OrderCard";
 import { formatUtcDateTime } from "../utils/dates";
 import { useAuthStore } from "../store/authStore";
 import { BlockToggleButton, UserStatusBadge } from "../components/UserBlockControls";
-import { blockReasonLabel } from "../utils/roles";
+import { blockReasonLabel, isLocked } from "../utils/roles";
 import { EmailStatusBadge, EmailVerificationActions } from "../components/UserEmailControls";
 
 export function AdminUserDetailPage() {
@@ -41,6 +41,7 @@ export function AdminUserDetailPage() {
     ["Total spent", orders ? `$${totalSpent.toFixed(2)}` : "…"],
     ["Failed login attempts", String(user.failed_login_attempts)],
   ];
+  if (isLocked(user)) details.push(["Locked until (UTC)", formatUtcDateTime(user.locked_until!)]);
   if (user.is_blocked) {
     details.push(["Blocked", blockReasonLabel(user.blocked_reason)]);
     if (user.blocked_at) details.push(["Blocked at (UTC)", formatUtcDateTime(user.blocked_at)]);

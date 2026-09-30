@@ -14,7 +14,8 @@ class Settings(BaseSettings):
 
     # Signs JWT tokens. Required: the app refuses to start without a real key.
     secret_key: str
-    algorithm: str = "HS256"
+    # Only HMAC algorithms: SECRET_KEY is a shared secret, and "none" must never be accepted.
+    algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
 
@@ -22,8 +23,18 @@ class Settings(BaseSettings):
     # Admins are appointed explicitly with `make admin email=...` (app/scripts/set_role.py).
     default_user_role: Literal["user", "seller", "admin"] = "user"
 
-    # Consecutive wrong passwords after which the account is blocked.
+    # Consecutive wrong passwords after which the account is locked temporarily. Each further
+    # failure after a lock expires locks it again for twice as long (capped at 24 hours).
+    # A successful password reset lifts the lock at once.
     max_failed_login_attempts: int = 8
+    login_lockout_minutes: int = 15
+
+    # --- Rate limiting (per client IP) ---
+    # Behind a reverse proxy run uvicorn with --proxy-headers --forwarded-allow-ips=<proxy IP>,
+    # otherwise every request appears to come from the proxy.
+    rate_limit_enabled: bool = True
+    # "memory://" works for a single process; use "redis://host:6379" with several workers.
+    rate_limit_storage_uri: str = "memory://"
 
     # --- Email (SMTP) ---
     # Brevo: host smtp-relay.brevo.com, port 587, security starttls, username = SMTP login,

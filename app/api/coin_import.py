@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+import asyncio
+
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_seller
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.coin import Coin
 from app.models.country import Country
@@ -15,13 +18,15 @@ router = APIRouter(prefix="/coins", tags=["coin-import"])
 
 
 @router.post("/import/parse", response_model=TableParseResult)
+@limiter.limit("20/minute")
 async def parse_import_table(
+    request: Request,
     file: UploadFile = File(...),
     _: User = Depends(require_seller),
 ) -> TableParseResult:
     """Reads a CSV/XLSX table and returns its columns and rows as plain strings."""
     data = await file.read(MAX_TABLE_FILE_SIZE_BYTES + 1)
-    columns, rows = parse_table(file.filename or "", data)
+    columns, rows = await asyncio.to_thread(parse_table, file.filename or "", data)
     return TableParseResult(filename=file.filename or "", columns=columns, rows=rows)
 
 

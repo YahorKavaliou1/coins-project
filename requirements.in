@@ -1,0 +1,46 @@
+# Direct dependencies. requirements.txt is generated from this file with exact versions
+# and hashes: edit here, then run `make lock` (and `make audit` to check for known CVEs).
+
+# --- Backend core ---
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+email-validator
+python-multipart
+
+# --- DB ---
+sqlalchemy
+alembic
+asyncpg
+
+# --- Auth ---
+pyjwt
+# Argon2id for new hashes; bcrypt to verify (and upgrade) hashes created before.
+pwdlib[argon2,bcrypt]
+
+# --- Rate limiting ---
+slowapi
+# Shared limit storage for several workers (RATE_LIMIT_STORAGE_URI=redis://...).
+redis
+
+# --- Images ---
+pillow
+boto3
+
+# --- Batch import (xlsx parsing) ---
+openpyxl
+# openpyxl uses it automatically: safe XML parsing of uploaded files.
+defusedxml
+
+# --- Email templates ---
+jinja2
+
+# --- Dev / testing ---
+pytest
+pytest-asyncio
+httpx
+ruff
+mypy
+pre-commit
+pip-audit

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, require_admin
+from app.core.rate_limit import limiter
 from app.core.security import hash_password, verify_password
 from app.db.session import get_db
 from app.models.order import Order
@@ -26,7 +27,10 @@ async def read_current_user(current_user: User = Depends(get_current_user)) -> U
 
 
 @router.patch("/me", response_model=UserRead)
+# Checks the current password, so it is limited like login.
+@limiter.limit("10/minute")
 async def update_current_user(
+    request: Request,
     data: UserUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -34,11 +38,11 @@ async def update_current_user(
     if data.full_name is not None:
         current_user.full_name = data.full_name
     if data.password is not None:
-        if data.current_password is None or not verify_password(
+        if data.current_password is None or not await verify_password(
             data.current_password, current_user.hashed_password
         ):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
-        current_user.hashed_password = hash_password(data.password)
+        current_user.hashed_password = await hash_password(data.password)
         # Ends every session, including this one: the client logs in with the new password.
         current_user.revoke_tokens()
         send_password_changed_email(db, current_user)
@@ -132,6 +136,7 @@ async def unblock_user(
 ) -> User:
     user = await _get_user_or_404(db, user_id)
     was_blocked = user.is_blocked
+    # Also lifts a temporary lock after failed logins.
     user.unblock()
     if was_blocked:
         send_account_unblocked_email(db, user)

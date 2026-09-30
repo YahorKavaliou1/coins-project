@@ -2,12 +2,6 @@
 {% block preheader %}Your {{ site_name }} account has been blocked.{% endblock %}
 {% block content %}
 <h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Your account has been blocked</h1>
-{% if too_many_attempts %}
-<p style="margin:0 0 16px;">Your account <strong>{{ email }}</strong> was blocked after too many failed login attempts. This protects you in case someone is trying to guess your password.</p>
-<p style="margin:0 0 16px;">To unlock it, set a new password:</p>
-{% with url=reset_link, label="Reset password" %}{% include "_button.html" %}{% endwith %}
-{% else %}
 <p style="margin:0 0 16px;">Your account <strong>{{ email }}</strong> has been blocked by an administrator.</p>
 <p style="margin:0;">If you think this is a mistake, please contact the site administrator.</p>
-{% endif %}
 {% endblock %}
