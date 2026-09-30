@@ -5,7 +5,8 @@ import { useAuthStore } from "../store/authStore";
 import { USER_ROLES } from "../utils/roles";
 import { formatUtcDateTime } from "../utils/dates";
 import type { UserRole } from "../types";
-import type { ApiError } from "../api/client";
+import { getErrorMessage, type ApiError } from "../api/client";
+import { toast } from "../store/toastStore";
 
 const roleBadgeClass: Record<UserRole, string> = {
   user: "bg-gray-100 text-gray-700",
@@ -27,7 +28,7 @@ export function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["user", user.id] });
     },
-    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
   if (isLoading) return <p>Loading...</p>;

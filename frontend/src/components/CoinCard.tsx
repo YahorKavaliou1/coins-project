@@ -4,7 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { addFavourite, removeFavourite } from "../api/favourites";
-import type { ApiError } from "../api/client";
+import { getErrorMessage, type ApiError } from "../api/client";
+import { toast } from "../store/toastStore";
 
 interface CoinCardProps {
   coin: Coin;
@@ -26,7 +27,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
       queryClient.invalidateQueries({ queryKey: ["favourites"] });
       queryClient.invalidateQueries({ queryKey: ["coin", coin.id] });
     },
-    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;

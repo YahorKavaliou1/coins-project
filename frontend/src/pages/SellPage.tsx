@@ -6,7 +6,8 @@ import { listCountries, listMetals } from "../api/reference";
 import { createCoin, uploadCoinImage } from "../api/coins";
 import { MultiSelectDropdown } from "../components/MultiSelectDropdown";
 import type { CoinCreatePayload } from "../types";
-import type { ApiError } from "../api/client";
+import { getErrorMessage, type ApiError } from "../api/client";
+import { toast } from "../store/toastStore";
 
 interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> {
   country_id: string;
@@ -87,10 +88,10 @@ export function SellPage() {
       setFiles([]);
       setCountrySelection([]);
       setMetalSelection([]);
-      alert("Coin listed successfully.");
+      toast.success("Coin listed successfully.");
     },
     onError: (err: ApiError) => {
-      alert(`Error: ${JSON.stringify(err.response?.data)}`);
+      toast.error(getErrorMessage(err));
     },
   });
 

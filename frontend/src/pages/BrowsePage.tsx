@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Search, X } from "lucide-react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listCoins, getCoinFacets } from "../api/coins";
 import { listFavourites } from "../api/favourites";
 import { listCountries } from "../api/reference";
@@ -12,9 +12,11 @@ import { SortBar } from "../components/SortBar";
 import type { CoinSort } from "../api/coins";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
-import type { ApiError } from "../api/client";
+import { getErrorMessage, type ApiError } from "../api/client";
+import { toast } from "../store/toastStore";
 
 export function BrowsePage() {
+  const queryClient = useQueryClient();
   const [qInput, setQInput] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
   const [forSaleOnly, setForSaleOnly] = useState(false);
@@ -61,8 +63,11 @@ export function BrowsePage() {
 
   const addToCartMutation = useMutation({
     mutationFn: addToCart,
-    onSuccess: () => alert("Added to cart."),
-    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cart"] });
+      toast.success("Added to cart.");
+    },
+    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
   return (

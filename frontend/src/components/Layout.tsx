@@ -5,6 +5,7 @@ import { useAuthStore } from "../store/authStore";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 import { getCart } from "../api/cart";
+import { Toaster } from "./Toaster";
 import { canSell, isAdmin } from "../utils/roles";
 import { formatUtcDate } from "../utils/dates";
 
@@ -178,6 +179,8 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+
+      <Toaster />
     </div>
   );
 }

@@ -8,7 +8,8 @@ import { addFavourite, removeFavourite } from "../api/favourites";
 import { useAuthStore } from "../store/authStore";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { isAdmin } from "../utils/roles";
-import type { ApiError } from "../api/client";
+import { getErrorMessage, type ApiError } from "../api/client";
+import { toast } from "../store/toastStore";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,9 +31,9 @@ export function CoinDetailPage() {
     mutationFn: addToCart,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["cart"] });
-      alert("Added to cart.");
+      toast.success("Added to cart.");
     },
-    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
   const toggleFavouriteMutation = useMutation({
@@ -43,7 +44,7 @@ export function CoinDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["coins"] });
       queryClient.invalidateQueries({ queryKey: ["favourites"] });
     },
-    onError: (err: ApiError) => alert(`Error: ${err.response?.data?.detail || "unknown error"}`),
+    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
   if (!coin) return <p>Loading...</p>;
