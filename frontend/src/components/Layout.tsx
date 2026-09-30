@@ -5,12 +5,14 @@ import { useAuthStore } from "../store/authStore";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 import { getCart } from "../api/cart";
+import { canSell, isAdmin } from "../utils/roles";
 
 const tabs = [{ to: "/browse", label: "Shop" }];
 
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const logout = useAuthStore((s) => s.logout);
+  const currentUser = useAuthStore((s) => s.currentUser);
   const navigate = useNavigate();
   useCurrentUser();
 
@@ -96,13 +98,23 @@ export function Layout() {
 
                 {menuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg py-1 z-50 flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => goTo("/sell")}
-                      className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
-                    >
-                      Sell
-                    </button>
+                    {currentUser && (
+                      <div className="px-4 py-2 border-b border-gray-200 mb-1">
+                        <div className="text-xs text-gray-500 truncate">{currentUser.email}</div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wide text-accent mt-0.5">
+                          {currentUser.role}
+                        </div>
+                      </div>
+                    )}
+                    {canSell(currentUser) && (
+                      <button
+                        type="button"
+                        onClick={() => goTo("/sell")}
+                        className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
+                      >
+                        Sell
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => goTo("/purchases")}
@@ -110,6 +122,15 @@ export function Layout() {
                     >
                       My purchases
                     </button>
+                    {isAdmin(currentUser) && (
+                      <button
+                        type="button"
+                        onClick={() => goTo("/admin/users")}
+                        className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
+                      >
+                        Users
+                      </button>
+                    )}
                     <div className="border-t border-gray-200 my-1" />
                     <button
                       type="button"

@@ -9,6 +9,8 @@ import { BrowsePage } from "./pages/BrowsePage";
 import { CoinDetailPage } from "./pages/CoinDetailPage";
 import { CartPage } from "./pages/CartPage";
 import { PurchasesPage } from "./pages/PurchasesPage";
+import { AdminUsersPage } from "./pages/AdminUsersPage";
+import { RequireRole } from "./components/RequireRole";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -21,11 +23,26 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route element={<Layout />}>
             <Route index element={<Navigate to="/auth" replace />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/sell" element={<SellPage />} />
+            <Route
+              path="/sell"
+              element={
+                <RequireRole roles={["seller", "admin"]}>
+                  <SellPage />
+                </RequireRole>
+              }
+            />
             <Route path="/browse" element={<BrowsePage />} />
             <Route path="/coins/:id" element={<CoinDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/purchases" element={<PurchasesPage />} />
+            <Route
+              path="/admin/users"
+              element={
+                <RequireRole roles={["admin"]}>
+                  <AdminUsersPage />
+                </RequireRole>
+              }
+            />
           </Route>
         </Routes>
       </BrowserRouter>

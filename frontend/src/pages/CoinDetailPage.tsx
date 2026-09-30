@@ -7,6 +7,7 @@ import { addToCart } from "../api/cart";
 import { addFavourite, removeFavourite } from "../api/favourites";
 import { useAuthStore } from "../store/authStore";
 import { EditCoinModal } from "../components/EditCoinModal";
+import { isAdmin } from "../utils/roles";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +49,7 @@ export function CoinDetailPage() {
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
-  const canEdit = isOwner && coin.is_for_sale;
+  const canEdit = (isOwner || isAdmin(currentUser)) && coin.is_for_sale;
 
   const activeImage = coin.images[activeImageIdx];
 
@@ -154,14 +155,7 @@ export function CoinDetailPage() {
           <div className="bg-white border border-gray-200 rounded-md p-4 mt-5">
             {coin.price !== null && <div className="text-3xl font-bold mb-3">${coin.price.toFixed(2)}</div>}
 
-            {canEdit ? (
-              <button
-                onClick={() => setEditing(true)}
-                className="w-full bg-blue-700 hover:bg-blue-600 text-white font-semibold rounded py-3"
-              >
-                Edit
-              </button>
-            ) : canBuy ? (
+            {canBuy ? (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => toggleFavouriteMutation.mutate()}
@@ -186,6 +180,17 @@ export function CoinDetailPage() {
             ) : !coin.is_for_sale ? (
               <div className="text-center text-gray-400 italic py-2">Sold</div>
             ) : null}
+
+            {canEdit && (
+              <button
+                onClick={() => setEditing(true)}
+                className={`w-full bg-blue-700 hover:bg-blue-600 text-white font-semibold rounded py-3 ${
+                  canBuy ? "mt-2" : ""
+                }`}
+              >
+                {isOwner ? "Edit" : "Edit (admin)"}
+              </button>
+            )}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-md p-4 mt-4 grid grid-cols-2 gap-x-6 gap-y-3">

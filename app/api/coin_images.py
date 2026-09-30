@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import require_seller
 from app.db.session import get_db
 from app.models.coin import Coin
 from app.models.coin_image import CoinImage
@@ -24,12 +24,12 @@ async def upload_coin_image(
     coin_id: int,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_seller),
 ) -> CoinImage:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
-    if coin.owner_id != current_user.id:
+    if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
 
     validate_content_type(file.content_type)
@@ -56,12 +56,12 @@ async def delete_coin_image(
     coin_id: int,
     image_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_seller),
 ) -> None:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
-    if coin.owner_id != current_user.id:
+    if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
 
     image = await db.get(CoinImage, image_id)

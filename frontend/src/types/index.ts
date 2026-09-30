@@ -71,10 +71,13 @@ export interface CoinCreatePayload {
 
 export type CoinUpdatePayload = Partial<Omit<CoinCreatePayload, "is_for_sale">>;
 
+export type UserRole = "user" | "seller" | "admin";
+
 export interface User {
   id: number;
   email: string;
   full_name: string | null;
+  role: UserRole;
   is_active: boolean;
   is_verified: boolean;
   created_at: string;

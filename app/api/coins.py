@@ -5,7 +5,7 @@ from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user, get_optional_current_user
+from app.api.deps import get_optional_current_user, require_seller
 from app.db.session import get_db
 from app.models.coin import Coin
 from app.models.country import Country
@@ -215,7 +215,7 @@ async def get_coin(
 async def create_coin(
     data: CoinCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_seller),
 ) -> Coin:
     await _validate_country_and_metal(db, data.country_id, data.metal_id)
 
@@ -231,12 +231,12 @@ async def update_coin(
     coin_id: int,
     data: CoinUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_seller),
 ) -> Coin:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
-    if coin.owner_id != current_user.id:
+    if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
     if not coin.is_for_sale:
         raise HTTPException(status_code=409, detail="Sold coins cannot be edited")
@@ -261,12 +261,12 @@ async def update_coin(
 async def delete_coin(
     coin_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_seller),
 ) -> None:
     coin = await db.get(Coin, coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
-    if coin.owner_id != current_user.id:
+    if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
     await db.delete(coin)
     await db.commit()

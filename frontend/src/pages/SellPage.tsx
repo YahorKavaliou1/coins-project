@@ -26,7 +26,13 @@ export function SellPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function addFiles(newFiles: FileList | File[]) {
-    setFiles((prev) => [...prev, ...Array.from(newFiles)]);
+    const asArray = Array.from(newFiles);
+    console.log("addFiles: newFiles.length =", newFiles.length, "asArray.length =", asArray.length, asArray);
+    setFiles((prev) => {
+      const combined = [...prev, ...asArray];
+      console.log("setFiles updater: prev =", prev.length, "combined =", combined.length);
+      return combined;
+    });
   }
 
   function removeFile(index: number) {
