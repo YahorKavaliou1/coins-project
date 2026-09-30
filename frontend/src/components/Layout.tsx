@@ -163,7 +163,7 @@ export function Layout() {
                 </button>
                 <span className="text-gray-300">|</span>
                 <button
-                  onClick={() => navigate("/auth")}
+                  onClick={() => navigate("/auth?mode=register")}
                   className="text-sm font-medium uppercase tracking-wide text-gray-700 underline underline-offset-2 hover:text-accent"
                 >
                   Register
