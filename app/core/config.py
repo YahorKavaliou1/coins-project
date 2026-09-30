@@ -11,6 +11,20 @@ LOCAL_SMTP_HOSTS = {"localhost", "127.0.0.1", "::1", "mailpit"}
 
 class Settings(BaseSettings):
     database_url: str
+    # Logs every SQL statement with its parameters (emails, password hashes, addresses):
+    # for local debugging only.
+    sql_echo: bool = False
+
+    # --- HTTP ---
+    # Host names the API answers to, comma-separated; requests for any other Host header get
+    # a 400 (protects against Host header injection). Add the production domain here.
+    allowed_hosts: str = "localhost,127.0.0.1"
+    # Swagger UI (/docs), ReDoc (/redoc) and /openapi.json. Turn off in production: they
+    # hand out a complete map of the API.
+    api_docs_enabled: bool = True
+    # Strict-Transport-Security: enable only when the site is served over HTTPS, since
+    # browsers then refuse plain HTTP for a year.
+    hsts_enabled: bool = False
 
     # Signs JWT tokens. Required: the app refuses to start without a real key.
     secret_key: str
@@ -87,6 +101,10 @@ class Settings(BaseSettings):
                 f"SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters long. {hint}"
             )
         return value
+
+    @property
+    def allowed_host_list(self) -> list[str]:
+        return [host.strip() for host in self.allowed_hosts.split(",") if host.strip()]
 
     @field_validator("frontend_url")
     @classmethod

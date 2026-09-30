@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: coins_pass
       POSTGRES_DB: coins_db
     ports:
-      - "5432:5432"
+      # Only reachable from this machine, not from the local network.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -20,12 +21,13 @@ services:
   # Local mail catcher for development: every email the site sends shows up at
   # http://localhost:8025 and nothing reaches real inboxes.
   mailpit:
-    image: axllent/mailpit:latest
+    # A fixed version: "latest" would silently change what runs.
+    image: axllent/mailpit:v1.31.3
     container_name: coins_mailpit
     restart: unless-stopped
     ports:
-      - "1025:1025" # SMTP
-      - "8025:8025" # web UI
+      - "127.0.0.1:1025:1025" # SMTP
+      - "127.0.0.1:8025:8025" # web UI
 
 volumes:
   pgdata:

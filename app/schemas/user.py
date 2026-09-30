@@ -1,12 +1,14 @@
+import re
+import unicodedata
 from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
 from app.models.user import BlockReason, UserRole
 
-MIN_PASSWORD_LENGTH = 6
+MIN_PASSWORD_LENGTH = 10
 # Keeps hashing cost bounded; no real password is longer.
 MAX_PASSWORD_LENGTH = 128
 
@@ -30,6 +32,27 @@ def check_password_strength(password: str) -> str:
     return password
 
 
+# Links and markup in a name would travel in emails the site sends (e.g. to whoever owns the
+# address someone registered with), making them a phishing vehicle.
+_LINK_OR_MARKUP = re.compile(
+    r"://|www\.|[<>@]|\b[\w-]+\.(?:com|net|org|ru|io|co|me|xyz|info|link|app)\b", re.I
+)
+
+
+def check_full_name(name: str) -> str | None:
+    if any(unicodedata.category(char) in ("Cc", "Cf") for char in name):
+        raise ValueError("Name contains invalid characters")
+    if _LINK_OR_MARKUP.search(name):
+        raise ValueError("Name can't contain links, email addresses or markup")
+    return name or None
+
+
+FullName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=100),
+    AfterValidator(check_full_name),
+]
+
 StrongPassword = Annotated[
     str,
     Field(min_length=MIN_PASSWORD_LENGTH, max_length=MAX_PASSWORD_LENGTH),
@@ -42,7 +65,7 @@ CurrentPassword = Annotated[str, Field(max_length=MAX_PASSWORD_LENGTH)]
 class UserCreate(BaseModel):
     email: EmailStr
     password: StrongPassword
-    full_name: str | None = None
+    full_name: FullName | None = None
 
 
 class UserRead(BaseModel):
@@ -64,7 +87,7 @@ class UserRead(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    full_name: str | None = None
+    full_name: FullName | None = None
     password: StrongPassword | None = None
     # Required when `password` is set, so a stolen access token can't take over the account.
     current_password: CurrentPassword | None = None
@@ -107,3 +130,13 @@ class VerifyEmailRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     password: StrongPassword
+
+
+class AdminActionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    admin_email: str
+    action: str
+    details: str | None
+    created_at: datetime

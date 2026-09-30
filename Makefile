@@ -11,6 +11,9 @@ MYPY := .venv/bin/mypy
 PYTEST := .venv/bin/pytest
 
 APP := app.main:app
+# Listen on localhost only; `make run HOST=0.0.0.0` to expose it (put a reverse proxy with
+# HTTPS in front in production).
+HOST ?= 127.0.0.1
 DB_CONTAINER := coins_postgres
 DB_USER := coins_user
 DB_NAME := coins_db
@@ -36,7 +39,7 @@ audit: ## Check Python and npm dependencies for known vulnerabilities
 # ---- Running the app ----
 
 run: ## Run server (no reload)
-	$(UVICORN) $(APP) --host 0.0.0.0 --port 8000
+	$(UVICORN) $(APP) --host $(HOST) --port 8000
 
 dev: ## Run server with auto-reload
 	$(UVICORN) $(APP) --reload

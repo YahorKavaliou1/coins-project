@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,7 +60,9 @@ async def checkout(
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     unavailable = [
-        _coin_display_name(item.coin) for item in cart_items if not item.coin.is_for_sale
+        _coin_display_name(item.coin)
+        for item in cart_items
+        if not item.coin.is_for_sale or item.coin.price is None
     ]
     if unavailable:
         raise HTTPException(
@@ -66,11 +70,18 @@ async def checkout(
             detail=f"No longer available: {', '.join(unavailable)}. Please review your cart.",
         )
 
-    total_price = 0.0
+    # Read under the row locks, so this is exactly what the buyer will pay.
+    total_price = sum((item.coin.price or Decimal(0) for item in cart_items), Decimal(0))
+    if total_price != data.expected_total:
+        raise HTTPException(
+            status_code=409,
+            detail="Prices in your cart have changed. Please review your cart and try again.",
+        )
+
     order = Order(
         buyer_id=current_user.id,
         shipping_address=data.shipping_address,
-        total_price=0.0,
+        total_price=total_price,
     )
     db.add(order)
     await db.flush()  # get order.id before creating order items
@@ -78,15 +89,12 @@ async def checkout(
     order_items: list[OrderItem] = []
     for cart_item in cart_items:
         coin = cart_item.coin
-        price = coin.price or 0.0
-        total_price += price
-
         order_item = OrderItem(
             order_id=order.id,
             coin_id=coin.id,
             seller_id=coin.owner_id,
             coin_name_snapshot=_coin_display_name(coin),
-            price_paid=price,
+            price_paid=coin.price,
         )
         db.add(order_item)
         order_items.append(order_item)
@@ -97,7 +105,6 @@ async def checkout(
 
         await db.delete(cart_item)
 
-    order.total_price = total_price
     # Queued in the same transaction: no email for a failed order, none lost for a placed one.
     await send_order_emails(db, order, order_items, current_user)
     await db.commit()

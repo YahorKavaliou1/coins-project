@@ -13,14 +13,8 @@ class TableParseResult(BaseModel):
 
 
 class CoinBatchItem(CoinCreate):
-    """Stricter than CoinCreate: batch rows come from user tables, so validate values."""
+    """A table row: validated like a single coin, and always listed for sale."""
 
-    year: int = Field(ge=-1000, le=2100)
-    weight: float = Field(gt=0)
-    weight_unit: Literal["oz", "g", "kg"] = "oz"
-    diameter: float | None = Field(default=None, gt=0)
-    mintage: int | None = Field(default=None, ge=0)
-    price: float = Field(gt=0)
     is_for_sale: Literal[True] = True
 
 

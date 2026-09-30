@@ -2,7 +2,7 @@
 {% block preheader %}Confirm your email address to activate your account.{% endblock %}
 {% block content %}
 <h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Confirm your email address</h1>
-<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %},</p>
+<p style="margin:0 0 16px;">Hi,</p>
 <p style="margin:0 0 16px;">Please confirm that <strong>{{ email }}</strong> is your email address to activate your {{ site_name }} account.</p>
 {% with url=link, label="Confirm email" %}{% include "_button.html" %}{% endwith %}
 <p style="margin:0;font-size:13px;color:#6b7280;">This link expires in {{ ttl_hours }} hours. If you didn't create an account, you can safely ignore this email.</p>

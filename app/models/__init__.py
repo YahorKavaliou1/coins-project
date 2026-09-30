@@ -1,3 +1,4 @@
+from app.models.admin_action import AdminAction
 from app.models.cart_item import CartItem
 from app.models.coin import Coin
 from app.models.coin_image import CoinImage
@@ -11,6 +12,7 @@ from app.models.user import User
 from app.models.user_token import UserToken
 
 __all__ = [
+    "AdminAction",
     "CartItem",
     "Coin",
     "CoinImage",

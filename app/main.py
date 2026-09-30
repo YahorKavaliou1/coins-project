@@ -4,9 +4,13 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from asyncpg.exceptions import DataError as AsyncpgDataError
+from fastapi import FastAPI, Request
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import DataError, DBAPIError, IntegrityError
 
 from app.api import (
     auth,
@@ -23,13 +27,15 @@ from app.api import (
 from app.core.body_limit import BodySizeLimitMiddleware
 from app.core.config import settings
 from app.core.rate_limit import limiter, rate_limit_exceeded_handler
+from app.core.security_headers import SecurityHeadersMiddleware
 from app.services.email.worker import run_email_worker
 
-logging.getLogger("app").setLevel(logging.INFO)
-if not logging.getLogger("app").handlers:
+logger = logging.getLogger("app")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
     _handler = logging.StreamHandler()
     _handler.setFormatter(logging.Formatter("%(levelname)s:     [%(name)s] %(message)s"))
-    logging.getLogger("app").addHandler(_handler)
+    logger.addHandler(_handler)
 
 
 @asynccontextmanager
@@ -42,11 +48,45 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             await worker
 
 
-app = FastAPI(title="Coins API", lifespan=lifespan)
+docs_enabled = settings.api_docs_enabled
+app = FastAPI(
+    title="Coins API",
+    lifespan=lifespan,
+    docs_url="/docs" if docs_enabled else None,
+    redoc_url="/redoc" if docs_enabled else None,
+    openapi_url="/openapi.json" if docs_enabled else None,
+)
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+# The last one added runs first: unknown hosts are rejected before anything else, and every
+# response (errors included) gets the security headers.
 app.add_middleware(BodySizeLimitMiddleware)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)
+app.add_middleware(SecurityHeadersMiddleware, hsts=settings.hsts_enabled)
+
+
+# Last line of defence for input the schemas don't bound (e.g. a path id beyond the INTEGER
+# range) and for races on unique constraints: a clear 4xx instead of a 500 with a traceback.
+@app.exception_handler(DBAPIError)
+async def db_error_handler(_: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, DBAPIError)
+    # DataError: rejected by the server; AsyncpgDataError: by the driver before sending
+    # (e.g. 99999999999 doesn't fit an INTEGER parameter).
+    driver_error = exc.orig.__cause__ if exc.orig is not None else None
+    if isinstance(exc, DataError) or isinstance(driver_error, AsyncpgDataError):
+        return JSONResponse({"detail": "Invalid value."}, status_code=422)
+    logger.error("Database error", exc_info=exc)
+    return JSONResponse({"detail": "Internal Server Error"}, status_code=500)
+
+
+@app.exception_handler(IntegrityError)
+async def db_integrity_error_handler(_: Request, __: Exception) -> JSONResponse:
+    return JSONResponse(
+        {"detail": "The request conflicts with the current data. Please reload and try again."},
+        status_code=409,
+    )
+
 
 app.include_router(auth.router)
 app.include_router(users.router)

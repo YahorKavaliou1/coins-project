@@ -1,5 +1,5 @@
 {% extends "base.txt" %}
-{% block content %}Hi{% if name %} {{ name }}{% endif %},
+{% block content %}Hi,
 
 Please confirm that {{ email }} is your email address to activate your {{ site_name }} account:
 

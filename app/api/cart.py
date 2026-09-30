@@ -1,5 +1,7 @@
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -11,6 +13,8 @@ from app.models.user import User
 from app.schemas.cart import CartItemAdd, CartRead
 
 router = APIRouter(prefix="/cart", tags=["cart"])
+
+MAX_CART_ITEMS = 100
 
 
 async def _load_cart(db: AsyncSession, user_id: int) -> list[CartItem]:
@@ -29,14 +33,17 @@ async def _load_cart(db: AsyncSession, user_id: int) -> list[CartItem]:
     return list(result.scalars().all())
 
 
+def _cart_read(items: list[CartItem]) -> CartRead:
+    total = sum((item.coin.price or Decimal(0) for item in items), Decimal(0))
+    return CartRead(items=items, total_price=total)
+
+
 @router.get("", response_model=CartRead)
 async def get_cart(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CartRead:
-    items = await _load_cart(db, current_user.id)
-    total = sum((item.coin.price or 0) for item in items)
-    return CartRead(items=items, total_price=total)
+    return _cart_read(await _load_cart(db, current_user.id))
 
 
 @router.post("/items", response_model=CartRead, status_code=201)
@@ -48,7 +55,7 @@ async def add_to_cart(
     coin = await db.get(Coin, data.coin_id)
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
-    if not coin.is_for_sale:
+    if not coin.is_for_sale or coin.price is None:
         raise HTTPException(status_code=400, detail="Coin is not for sale")
     if coin.owner_id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot buy your own coin")
@@ -60,14 +67,19 @@ async def add_to_cart(
     )
     if existing.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="Coin is already in your cart")
+    cart_size = await db.scalar(
+        select(func.count()).select_from(CartItem).where(CartItem.user_id == current_user.id)
+    )
+    if (cart_size or 0) >= MAX_CART_ITEMS:
+        raise HTTPException(
+            status_code=400, detail=f"A cart can hold at most {MAX_CART_ITEMS} coins"
+        )
 
     cart_item = CartItem(user_id=current_user.id, coin_id=data.coin_id)
     db.add(cart_item)
     await db.commit()
 
-    items = await _load_cart(db, current_user.id)
-    total = sum((item.coin.price or 0) for item in items)
-    return CartRead(items=items, total_price=total)
+    return _cart_read(await _load_cart(db, current_user.id))
 
 
 @router.delete("/items/{coin_id}", response_model=CartRead)
@@ -86,6 +98,4 @@ async def remove_from_cart(
     await db.delete(cart_item)
     await db.commit()
 
-    items = await _load_cart(db, current_user.id)
-    total = sum((item.coin.price or 0) for item in items)
-    return CartRead(items=items, total_price=total)
+    return _cart_read(await _load_cart(db, current_user.id))

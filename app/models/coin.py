@@ -1,7 +1,18 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -16,6 +27,7 @@ if TYPE_CHECKING:
 
 class Coin(Base):
     __tablename__ = "coins"
+    __table_args__ = (CheckConstraint("price > 0", name="ck_coins_price_positive"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     year: Mapped[int] = mapped_column(Integer)
@@ -29,7 +41,8 @@ class Coin(Base):
     extra_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     mintage: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # NUMERIC, not FLOAT: money must add up exactly.
+    price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     is_for_sale: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

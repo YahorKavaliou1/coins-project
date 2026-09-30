@@ -1,4 +1,7 @@
+import asyncio
 import contextlib
+import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import ColumnElement, func, or_, select
@@ -13,8 +16,19 @@ from app.models.favourite import Favourite
 from app.models.metal import Metal
 from app.models.user import User
 from app.schemas.coin import CoinCreate, CoinFacets, CoinRead, CoinUpdate, MetalFacet, Page
+from app.schemas.fields import MAX_DB_INT
+from app.services.image_storage import ImageStorage, get_image_storage
+
+logger = logging.getLogger("app.coins")
 
 router = APIRouter(prefix="/coins", tags=["coins"])
+
+# Query parameters are bounded so that out-of-range values get a 422 instead of reaching
+# the database (INTEGER overflow) or making it scan with huge patterns and offsets.
+IdsQuery = Annotated[list[int] | None, Query(max_length=100)]
+YearQuery = Annotated[int | None, Query(ge=-1000, le=2100)]
+SearchQuery = Annotated[str | None, Query(max_length=100)]
+GradeQuery = Annotated[str | None, Query(max_length=50)]
 
 COIN_LOAD_OPTIONS = (
     selectinload(Coin.country),
@@ -65,12 +79,14 @@ def _build_common_conditions(
     if year_to is not None:
         conditions.append(Coin.year <= year_to)
     if q:
-        pattern = f"%{q}%"
+        # % and _ are LIKE wildcards: match them literally, as the user typed them.
+        escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
         q_conditions: list[ColumnElement[bool]] = [
-            Country.name.ilike(pattern),
-            Metal.name.ilike(pattern),
-            Coin.denomination.ilike(pattern),
-            Coin.extra_info.ilike(pattern),
+            Country.name.ilike(pattern, escape="\\"),
+            Metal.name.ilike(pattern, escape="\\"),
+            Coin.denomination.ilike(pattern, escape="\\"),
+            Coin.extra_info.ilike(pattern, escape="\\"),
         ]
         with contextlib.suppress(ValueError):
             q_conditions.append(Coin.year == int(q))
@@ -86,12 +102,12 @@ def _build_common_conditions(
 @router.get("/facets", response_model=CoinFacets)
 async def get_coin_facets(
     db: AsyncSession = Depends(get_db),
-    country_id: list[int] | None = Query(default=None),
-    metal_id: list[int] | None = Query(default=None),
-    grade: str | None = None,
-    year_from: int | None = None,
-    year_to: int | None = None,
-    q: str | None = None,
+    country_id: IdsQuery = None,
+    metal_id: IdsQuery = None,
+    grade: GradeQuery = None,
+    year_from: YearQuery = None,
+    year_to: YearQuery = None,
+    q: SearchQuery = None,
     for_sale_only: bool = False,
 ) -> CoinFacets:
     common = _build_common_conditions(
@@ -149,16 +165,16 @@ SORT_OPTIONS: dict[str, ColumnElement] = {
 @router.get("", response_model=Page)
 async def list_coins(
     db: AsyncSession = Depends(get_db),
-    country_id: list[int] | None = Query(default=None),
-    metal_id: list[int] | None = Query(default=None),
-    grade: str | None = None,
-    year_from: int | None = None,
-    year_to: int | None = None,
-    q: str | None = None,
+    country_id: IdsQuery = None,
+    metal_id: IdsQuery = None,
+    grade: GradeQuery = None,
+    year_from: YearQuery = None,
+    year_to: YearQuery = None,
+    q: SearchQuery = None,
     for_sale_only: bool = False,
-    owner_id: int | None = None,
+    owner_id: int | None = Query(default=None, ge=1, le=MAX_DB_INT),
     sort: str = Query(default="recent"),
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=10_000),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: User | None = Depends(get_optional_current_user),
 ) -> Page:
@@ -262,11 +278,24 @@ async def delete_coin(
     coin_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_seller),
+    storage: ImageStorage = Depends(get_image_storage),
 ) -> None:
-    coin = await db.get(Coin, coin_id)
+    coin = await db.get(Coin, coin_id, options=[selectinload(Coin.images)])
     if coin is None:
         raise HTTPException(status_code=404, detail="Coin not found")
     if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
+    # Orders reference sold coins; their history must stay intact.
+    if not coin.is_for_sale:
+        raise HTTPException(status_code=409, detail="Sold coins cannot be deleted")
+
+    image_urls = [image.url for image in coin.images]
     await db.delete(coin)
     await db.commit()
+
+    # After the commit, so a failed delete never leaves a coin without its photos.
+    for url in image_urls:
+        try:
+            await asyncio.to_thread(storage.delete_image_file, url)
+        except Exception:
+            logger.exception("Could not delete photo %s of deleted coin %s", url, coin_id)

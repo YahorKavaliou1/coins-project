@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { Order, User, UserRole } from "../types";
+import type { AdminAction, Order, User, UserRole } from "../types";
 
 export async function listUsers() {
   const { data } = await apiClient.get<User[]>("/users");
@@ -18,6 +18,11 @@ export async function getUser(userId: number) {
 
 export async function listUserOrders(userId: number) {
   const { data } = await apiClient.get<Order[]>(`/users/${userId}/orders`);
+  return data;
+}
+
+export async function listAdminActions(userId: number) {
+  const { data } = await apiClient.get<AdminAction[]>(`/users/${userId}/admin-actions`);
   return data;
 }
 

@@ -1,7 +1,8 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -18,7 +19,7 @@ class Order(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     buyer_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     shipping_address: Mapped[str] = mapped_column(Text)
-    total_price: Mapped[float] = mapped_column(Float)
+    total_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     status: Mapped[str] = mapped_column(String(20), default="completed", server_default="completed")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,10 +9,17 @@ from app.api.deps import get_current_user, require_admin
 from app.core.rate_limit import limiter
 from app.core.security import hash_password, verify_password
 from app.db.session import get_db
+from app.models.admin_action import AdminAction, AdminActionType
 from app.models.order import Order
 from app.models.user import BlockReason, User
 from app.schemas.order import OrderRead
-from app.schemas.user import MessageResponse, UserRead, UserRoleUpdate, UserUpdate
+from app.schemas.user import (
+    AdminActionRead,
+    MessageResponse,
+    UserRead,
+    UserRoleUpdate,
+    UserUpdate,
+)
 from app.services.notifications import (
     send_account_blocked_email,
     send_account_unblocked_email,
@@ -19,6 +28,26 @@ from app.services.notifications import (
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def _log_admin_action(
+    db: AsyncSession,
+    admin: User,
+    target: User,
+    action: AdminActionType,
+    details: str | None = None,
+) -> None:
+    """Records the action in the same transaction as the change itself."""
+    db.add(
+        AdminAction(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            target_user_id=target.id,
+            target_email=target.email,
+            action=action,
+            details=details,
+        )
+    )
 
 
 @router.get("/me", response_model=UserRead)
@@ -94,6 +123,22 @@ async def list_user_orders(
     return list(result.scalars().all())
 
 
+@router.get("/{user_id}/admin-actions", response_model=list[AdminActionRead])
+async def list_admin_actions(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[AdminAction]:
+    """What admins did to this account, newest first."""
+    await _get_user_or_404(db, user_id)
+    stmt = (
+        select(AdminAction)
+        .where(AdminAction.target_user_id == user_id)
+        .order_by(AdminAction.created_at.desc(), AdminAction.id.desc())
+    )
+    return list((await db.execute(stmt)).scalars().all())
+
+
 @router.patch("/{user_id}/role", response_model=UserRead)
 async def update_user_role(
     user_id: int,
@@ -105,7 +150,11 @@ async def update_user_role(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot change your own role")
 
-    user.role = data.role
+    if user.role != data.role:
+        _log_admin_action(
+            db, current_user, user, AdminActionType.ROLE_CHANGED, f"{user.role} → {data.role}"
+        )
+        user.role = data.role
     await db.commit()
     await db.refresh(user)
     return user
@@ -123,6 +172,7 @@ async def block_user(
     if not user.is_blocked:
         user.block(BlockReason.ADMIN)
         send_account_blocked_email(db, user)
+        _log_admin_action(db, current_user, user, AdminActionType.BLOCKED)
         await db.commit()
         await db.refresh(user)
     return user
@@ -132,14 +182,18 @@ async def block_user(
 async def unblock_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ) -> User:
     user = await _get_user_or_404(db, user_id)
     was_blocked = user.is_blocked
+    was_locked = user.is_locked(datetime.now(UTC))
     # Also lifts a temporary lock after failed logins.
     user.unblock()
     if was_blocked:
         send_account_unblocked_email(db, user)
+    if was_blocked or was_locked:
+        details = None if was_blocked else "lifted a lock after failed logins"
+        _log_admin_action(db, current_user, user, AdminActionType.UNBLOCKED, details)
     await db.commit()
     await db.refresh(user)
     return user
@@ -149,10 +203,12 @@ async def unblock_user(
 async def verify_user_manually(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ) -> User:
     """Support action: mark the email as confirmed without the link."""
     user = await _get_user_or_404(db, user_id)
+    if not user.is_verified:
+        _log_admin_action(db, current_user, user, AdminActionType.EMAIL_VERIFIED)
     user.is_verified = True
     user.verification_deadline = None
     await db.commit()
@@ -164,7 +220,7 @@ async def verify_user_manually(
 async def resend_verification_for_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ) -> MessageResponse:
     user = await _get_user_or_404(db, user_id)
     if user.is_verified:
@@ -173,5 +229,6 @@ async def resend_verification_for_user(
         raise HTTPException(
             status_code=429, detail="A link was sent recently. Try again in a minute."
         )
+    _log_admin_action(db, current_user, user, AdminActionType.VERIFICATION_RESENT)
     await db.commit()
     return MessageResponse(message=f"Confirmation email sent to {user.email}")

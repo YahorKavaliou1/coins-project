@@ -1,5 +1,5 @@
 /** Password rules. Must match PASSWORD_RULES / MIN_PASSWORD_LENGTH in app/schemas/user.py. */
-export const MIN_PASSWORD_LENGTH = 6;
+export const MIN_PASSWORD_LENGTH = 10;
 
 export interface PasswordRule {
   label: string;

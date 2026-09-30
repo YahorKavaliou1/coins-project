@@ -1,50 +1,78 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.schemas.coin_image import CoinImageRead
 from app.schemas.country import CountryRead
+from app.schemas.fields import (
+    DbId,
+    DiameterMm,
+    Mintage,
+    Money,
+    MoneyOut,
+    Text50,
+    Text100,
+    Text255,
+    Text1000,
+    Weight,
+    WeightUnit,
+    Year,
+)
 from app.schemas.metal import MetalRead
 from app.schemas.user import UserPublic
 from app.services.coin_naming import build_coin_name
 
 
 class CoinBase(BaseModel):
-    year: int
-    weight: float
-    weight_unit: str = "oz"
-    diameter: float | None = None
-    denomination: str | None = None
-    composition: str | None = None
-    grade: str | None = None
-    catalog_number: str | None = None
-    extra_info: str | None = None
-    mintage: int | None = None
-    price: float | None = None
+    year: Year
+    weight: Weight
+    weight_unit: WeightUnit = "oz"
+    diameter: DiameterMm | None = None
+    denomination: Text100 | None = None
+    composition: Text255 | None = None
+    grade: Text50 | None = None
+    catalog_number: Text100 | None = None
+    extra_info: Text1000 | None = None
+    mintage: Mintage | None = None
+    price: Money
     is_for_sale: bool = True
 
 
 class CoinCreate(CoinBase):
-    country_id: int
-    metal_id: int
+    country_id: DbId
+    metal_id: DbId
 
 
 class CoinUpdate(BaseModel):
-    year: int | None = None
-    weight: float | None = None
-    weight_unit: str | None = None
-    diameter: float | None = None
-    denomination: str | None = None
-    composition: str | None = None
-    grade: str | None = None
-    catalog_number: str | None = None
-    extra_info: str | None = None
-    mintage: int | None = None
-    country_id: int | None = None
-    metal_id: int | None = None
-    price: float | None = None
+    """Partial update: only the fields sent are changed."""
+
+    year: Year | None = None
+    weight: Weight | None = None
+    weight_unit: WeightUnit | None = None
+    diameter: DiameterMm | None = None
+    denomination: Text100 | None = None
+    composition: Text255 | None = None
+    grade: Text50 | None = None
+    catalog_number: Text100 | None = None
+    extra_info: Text1000 | None = None
+    mintage: Mintage | None = None
+    country_id: DbId | None = None
+    metal_id: DbId | None = None
+    price: Money | None = None
     is_for_sale: bool | None = None
+
+    @model_validator(mode="after")
+    def required_fields_not_cleared(self) -> Self:
+        # null means "clear the value", which these fields don't allow.
+        cleared = [
+            field
+            for field in ("year", "weight", "weight_unit", "country_id", "metal_id", "price")
+            if field in self.model_fields_set and getattr(self, field) is None
+        ]
+        if cleared:
+            raise ValueError(f"These fields can't be empty: {', '.join(cleared)}")
+        return self
 
 
 class CoinRead(BaseModel):
@@ -63,7 +91,7 @@ class CoinRead(BaseModel):
     catalog_number: str | None
     extra_info: str | None
     mintage: int | None
-    price: float | None
+    price: MoneyOut | None
     is_for_sale: bool
     country: CountryRead
     metal: MetalRead

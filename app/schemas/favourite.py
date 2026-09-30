@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.fields import DbId
+
 
 class FavouriteAdd(BaseModel):
-    coin_id: int
+    coin_id: DbId

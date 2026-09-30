@@ -34,7 +34,8 @@ export function CartPage() {
   });
 
   const checkoutMutation = useMutation({
-    mutationFn: () => checkout(address),
+    // The total shown below, rounded to cents (float sums like 0.1 + 0.2 aren't exact).
+    mutationFn: () => checkout(address, Math.round(total * 100) / 100),
     onSuccess: (order) => {
       setAddress("");
       queryClient.invalidateQueries({ queryKey: ["cart"] });
@@ -181,6 +182,7 @@ export function CartPage() {
             </label>
             <textarea
               id="shipping-address"
+              maxLength={500}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Street, city, postal code, country"

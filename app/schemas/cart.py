@@ -1,10 +1,11 @@
 from pydantic import BaseModel, ConfigDict
 
 from app.schemas.coin import CoinRead
+from app.schemas.fields import DbId, MoneyOut
 
 
 class CartItemAdd(BaseModel):
-    coin_id: int
+    coin_id: DbId
 
 
 class CartItemRead(BaseModel):
@@ -16,4 +17,4 @@ class CartItemRead(BaseModel):
 
 class CartRead(BaseModel):
     items: list[CartItemRead]
-    total_price: float
+    total_price: MoneyOut

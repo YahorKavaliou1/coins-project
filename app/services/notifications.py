@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,8 +34,9 @@ async def send_verification_email(db: AsyncSession, user: User) -> bool:
         to_email=user.email,
         template="verify_email",
         user_id=user.id,
+        # No user.full_name: whoever registers chooses it, but the email goes to the owner
+        # of the address, who may be someone else.
         context={
-            "name": user.full_name,
             "email": user.email,
             "link": _link(f"/verify-email?token={token}"),
             "ttl_hours": settings.email_verification_ttl_hours,
@@ -153,7 +155,7 @@ async def send_order_emails(
     )
 
     by_seller: dict[int, list[dict[str, object]]] = defaultdict(list)
-    totals: dict[int, float] = defaultdict(float)
+    totals: dict[int, Decimal] = defaultdict(Decimal)
     for item in items:
         by_seller[item.seller_id].append(
             {"name": item.coin_name_snapshot, "price": item.price_paid}

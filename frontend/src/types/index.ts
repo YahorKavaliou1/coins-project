@@ -92,6 +92,22 @@ export interface User {
   verification_deadline: string | null;
 }
 
+export type AdminActionType =
+  | "role_changed"
+  | "blocked"
+  | "unblocked"
+  | "email_verified"
+  | "verification_resent";
+
+/** An entry of the admin audit log. */
+export interface AdminAction {
+  id: number;
+  admin_email: string;
+  action: AdminActionType;
+  details: string | null;
+  created_at: string;
+}
+
 export interface CartItemRead {
   id: number;
   coin: Coin;

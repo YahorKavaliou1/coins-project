@@ -1,6 +1,7 @@
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Float, ForeignKey, String, UniqueConstraint
+from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -23,8 +24,9 @@ class OrderItem(Base):
 
     # Snapshots at the time of purchase, so order history stays accurate
     # even if the coin is later edited, relisted, or deleted.
-    coin_name_snapshot: Mapped[str] = mapped_column(String(255))
-    price_paid: Mapped[float] = mapped_column(Float)
+    # Text: the name includes the seller's free-form extra info.
+    coin_name_snapshot: Mapped[str] = mapped_column(Text)
+    price_paid: Mapped[Decimal] = mapped_column(Numeric(12, 2))
 
     order: Mapped["Order"] = relationship(back_populates="items")
     coin: Mapped["Coin"] = relationship()

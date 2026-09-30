@@ -199,6 +199,7 @@ export function AuthPage() {
                 autoComplete="name"
                 placeholder="John Smith"
                 {...register("full_name")}
+                maxLength={100}
                 className={inputClass}
               />
             </div>
