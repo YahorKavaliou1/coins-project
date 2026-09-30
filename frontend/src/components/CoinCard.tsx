@@ -1,4 +1,4 @@
-import { Heart, Pencil, ShoppingCart } from "lucide-react";
+import { Heart, Pencil, ShoppingCart, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Coin } from "../types";
@@ -6,6 +6,7 @@ import { useAuthStore } from "../store/authStore";
 import { addFavourite, removeFavourite } from "../api/favourites";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
+import { useDeleteCoin } from "../hooks/useDeleteCoin";
 
 interface CoinCardProps {
   coin: Coin;
@@ -29,6 +30,8 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
     },
     onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
+
+  const { requestDelete, isPending: deleting } = useDeleteCoin(coin);
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
@@ -95,13 +98,25 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
 
         <div className="mt-auto pt-3" onClick={stop}>
           {canEdit && onEdit ? (
-            <button
-              onClick={() => onEdit(coin)}
-              className="w-full flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"
-            >
-              <Pencil className="w-4 h-4" />
-              Edit
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Same place and shape as the favourites heart on other sellers' coins. */}
+              <button
+                onClick={requestDelete}
+                disabled={deleting}
+                className="border rounded p-2 transition-colors text-gray-400 hover:text-red-700 hover:border-red-700 disabled:opacity-50"
+                title="Delete coin"
+                type="button"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onEdit(coin)}
+                className="flex-1 flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit
+              </button>
+            </div>
           ) : canBuy && onAddToCart ? (
             <div className="flex items-center gap-2">
               <button

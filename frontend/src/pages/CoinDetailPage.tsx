@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, ShoppingCart, ChevronLeft, Pencil } from "lucide-react";
+import { Heart, ShoppingCart, ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { getCoin } from "../api/coins";
 import { addToCart } from "../api/cart";
 import { addFavourite, removeFavourite } from "../api/favourites";
@@ -10,6 +10,8 @@ import { EditCoinModal } from "../components/EditCoinModal";
 import { isAdmin } from "../utils/roles";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
+import { useDeleteCoin } from "../hooks/useDeleteCoin";
+import type { Coin } from "../types";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -184,15 +186,16 @@ export function CoinDetailPage() {
             ) : null}
 
             {canEdit && (
-              <button
-                onClick={() => setEditing(true)}
-                className={`w-full flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white font-bold uppercase rounded py-3 transition-colors ${
-                  canBuy ? "mt-2" : ""
-                }`}
-              >
-                <Pencil className="w-5 h-5" />
-                {isOwner ? "Edit" : "Edit (admin)"}
-              </button>
+              <div className={`flex items-center gap-2 ${canBuy ? "mt-2" : ""}`}>
+                <DeleteCoinButton coin={coin} onDeleted={() => navigate("/browse", { replace: true })} />
+                <button
+                  onClick={() => setEditing(true)}
+                  className="flex-1 flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white font-bold uppercase rounded py-3 transition-colors"
+                >
+                  <Pencil className="w-5 h-5" />
+                  {isOwner ? "Edit" : "Edit (admin)"}
+                </button>
+              </div>
             )}
           </div>
 
@@ -221,5 +224,21 @@ export function CoinDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+/** Same place and shape as the favourites heart shown on other sellers' coins. */
+function DeleteCoinButton({ coin, onDeleted }: { coin: Coin; onDeleted: () => void }) {
+  const { requestDelete, isPending } = useDeleteCoin(coin, onDeleted);
+  return (
+    <button
+      onClick={requestDelete}
+      disabled={isPending}
+      className="border rounded p-3 transition-colors text-gray-400 hover:text-red-700 hover:border-red-700 disabled:opacity-50"
+      title="Delete coin"
+      type="button"
+    >
+      <Trash2 className="w-5 h-5" />
+    </button>
   );
 }
