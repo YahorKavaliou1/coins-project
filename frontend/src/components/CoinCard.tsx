@@ -31,7 +31,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
     onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
-  const { requestDelete, isPending: deleting } = useDeleteCoin(coin);
+  const { requestDelete, isPending: deleting, confirmDialog } = useDeleteCoin(coin);
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
@@ -109,6 +109,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
               >
                 <Trash2 className="w-4 h-4" />
               </button>
+              {confirmDialog}
               <button
                 onClick={() => onEdit(coin)}
                 className="flex-1 flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"

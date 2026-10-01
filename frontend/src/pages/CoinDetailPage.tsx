@@ -245,16 +245,19 @@ export function CoinDetailPage() {
 
 /** Same place and shape as the favourites heart shown on other sellers' coins. */
 function DeleteCoinButton({ coin, onDeleted }: { coin: Coin; onDeleted: () => void }) {
-  const { requestDelete, isPending } = useDeleteCoin(coin, onDeleted);
+  const { requestDelete, isPending, confirmDialog } = useDeleteCoin(coin, onDeleted);
   return (
-    <button
-      onClick={requestDelete}
-      disabled={isPending}
-      className="border rounded p-3 transition-colors text-gray-400 hover:text-red-700 hover:border-red-700 disabled:opacity-50"
-      title="Delete coin"
-      type="button"
-    >
-      <Trash2 className="w-5 h-5" />
-    </button>
+    <>
+      <button
+        onClick={requestDelete}
+        disabled={isPending}
+        className="border rounded p-3 transition-colors text-gray-400 hover:text-red-700 hover:border-red-700 disabled:opacity-50"
+        title="Delete coin"
+        type="button"
+      >
+        <Trash2 className="w-5 h-5" />
+      </button>
+      {confirmDialog}
+    </>
   );
 }
