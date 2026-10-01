@@ -34,6 +34,8 @@ export interface Coin {
   composition: string | null;
   grade: string | null;
   category: string | null;
+  sku: string | null;
+  source_url: string | null;
   catalog_number: string | null;
   extra_info: string | null;
   mintage: number | null;
@@ -64,6 +66,8 @@ export interface CoinCreatePayload {
   composition?: string | null;
   grade?: string | null;
   category?: string | null;
+  sku?: string | null;
+  source_url?: string | null;
   catalog_number?: string | null;
   extra_info?: string | null;
   mintage?: number | null;
@@ -163,6 +167,8 @@ export interface CoinBatchItem {
   diameter: number | null;
   grade: string | null;
   category: string | null;
+  sku: string | null;
+  source_url: string | null;
   catalog_number: string | null;
   mintage: number | null;
   extra_info: string | null;

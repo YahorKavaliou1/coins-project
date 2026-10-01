@@ -7,6 +7,7 @@ instead of a database error (value too long, integer out of range) or a nonsensi
 
 from decimal import Decimal
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from pydantic import AfterValidator, Field, PlainSerializer, StringConstraints
 
@@ -45,4 +46,30 @@ def _blank_to_none(value: str) -> str | None:
 # A blank category means "none", so the shop filter never offers an empty option.
 Category = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=50), AfterValidator(_blank_to_none)
+]
+
+# The seller's own stock number, for matching lots with their records.
+Sku = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=100), AfterValidator(_blank_to_none)
+]
+
+
+def _check_web_url(value: str) -> str | None:
+    if not value:
+        return None
+    parts = urlsplit(value)
+    # Shown to every visitor as a link: anything but a plain web address (javascript:,
+    # data:, relative paths...) could run script or mislead.
+    if parts.scheme.lower() not in ("http", "https") or not parts.hostname:
+        raise ValueError("Enter a full web address starting with https://")
+    if any(char.isspace() for char in value):
+        raise ValueError("A web address can't contain spaces")
+    return value
+
+
+# Where the coin is described, e.g. its Numista or uCoin page.
+SourceUrl = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=500),
+    AfterValidator(_check_web_url),
 ]

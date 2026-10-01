@@ -237,6 +237,21 @@ function SingleListingForm() {
               <label className={labelClass}>Extra info</label>
               <input {...register("extra_info")} placeholder="e.g. Walking Liberty" className={inputClass} />
             </div>
+
+            <div>
+              <label className={labelClass}>SKU</label>
+              <input {...register("sku")} maxLength={100} placeholder="Your own reference, e.g. A-0153" className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Source link</label>
+              <input
+                {...register("source_url")}
+                type="url"
+                maxLength={500}
+                placeholder="https://en.numista.com/…"
+                className={inputClass}
+              />
+            </div>
           </div>
         </section>
 

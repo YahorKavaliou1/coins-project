@@ -1,4 +1,5 @@
 import type { CoinBatchItem, Country, Metal } from "../types";
+import { isWebUrl } from "./url";
 
 /* ------------------------------------------------------------------ */
 /* Target fields                                                        */
@@ -15,6 +16,8 @@ export type FieldKey =
   | "diameter"
   | "grade"
   | "category"
+  | "sku"
+  | "source_url"
   | "catalog_number"
   | "mintage"
   | "extra_info"
@@ -41,6 +44,8 @@ export const FIELDS: FieldDef[] = [
   { key: "weight", label: "Weight", required: true, synonyms: ["weight", "вес", "масса"] },
   { key: "diameter", label: "Diameter (mm)", required: false, synonyms: ["diameter", "диаметр", "diametermm", "size"] },
   { key: "grade", label: "Grade", required: false, synonyms: ["grade", "состояние", "сохранность", "condition"] },
+  { key: "sku", label: "SKU", required: false, synonyms: ["sku", "article", "articleno", "articlenumber", "артикул", "art", "itemno", "itemnumber", "stockno", "stocknumber", "инвентарныйномер"] },
+  { key: "source_url", label: "Source link", required: false, synonyms: ["source", "sourceurl", "sourcelink", "link", "url", "ссылка", "источник", "numista", "ucoin"] },
   { key: "category", label: "Category", required: false, synonyms: ["category", "категория", "group", "группа", "series", "серия"] },
   { key: "catalog_number", label: "Catalog No.", required: false, synonyms: ["catalognumber", "catalogno", "catalog", "каталог", "номерпокаталогу", "km", "kmnumber"] },
   { key: "mintage", label: "Mintage", required: false, synonyms: ["mintage", "тираж"] },
@@ -187,6 +192,8 @@ export function buildDraftRows(
         diameter: cell(row, "diameter"),
         grade: cell(row, "grade"),
         category: cell(row, "category"),
+        sku: cell(row, "sku"),
+        source_url: cell(row, "source_url"),
         catalog_number: cell(row, "catalog_number"),
         mintage: cell(row, "mintage"),
         extra_info: cell(row, "extra_info"),
@@ -261,6 +268,11 @@ export function validateRow(row: DraftRow, photos: PhotoIndex): RowErrors {
   }
 
   if (v.category.trim().length > 50) errors.category = "At most 50 characters";
+  if (v.sku.trim().length > 100) errors.sku = "At most 100 characters";
+  const sourceUrl = v.source_url.trim();
+  if (sourceUrl && (!isWebUrl(sourceUrl) || sourceUrl.length > 500)) {
+    errors.source_url = "Use a full web address starting with https://";
+  }
 
   const photoProblems: string[] = [];
   for (const name of splitPhotoNames(row.photos)) {
@@ -290,6 +302,8 @@ export function toBatchItem(row: DraftRow): CoinBatchItem {
     diameter: optionalNumber(v.diameter),
     grade: optionalText(v.grade),
     category: optionalText(v.category),
+    sku: optionalText(v.sku),
+    source_url: optionalText(v.source_url),
     catalog_number: optionalText(v.catalog_number),
     mintage: optionalNumber(v.mintage),
     extra_info: optionalText(v.extra_info),

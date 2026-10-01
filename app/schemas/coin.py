@@ -12,6 +12,8 @@ from app.schemas.fields import (
     Mintage,
     Money,
     MoneyOut,
+    Sku,
+    SourceUrl,
     Text50,
     Text100,
     Text255,
@@ -34,6 +36,8 @@ class CoinBase(BaseModel):
     composition: Text255 | None = None
     grade: Text50 | None = None
     category: Category | None = None
+    sku: Sku | None = None
+    source_url: SourceUrl | None = None
     catalog_number: Text100 | None = None
     extra_info: Text1000 | None = None
     mintage: Mintage | None = None
@@ -57,6 +61,8 @@ class CoinUpdate(BaseModel):
     composition: Text255 | None = None
     grade: Text50 | None = None
     category: Category | None = None
+    sku: Sku | None = None
+    source_url: SourceUrl | None = None
     catalog_number: Text100 | None = None
     extra_info: Text1000 | None = None
     mintage: Mintage | None = None
@@ -92,6 +98,8 @@ class CoinRead(BaseModel):
     composition: str | None
     grade: str | None
     category: str | None
+    sku: str | None
+    source_url: str | None
     catalog_number: str | None
     extra_info: str | None
     mintage: int | None

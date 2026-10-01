@@ -39,6 +39,10 @@ class Coin(Base):
     grade: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Free-form grouping of lots (e.g. "Bullion", "Commemorative"); the shop filters by it.
     category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    # The seller's own stock number (SKU), for matching lots with their own records.
+    sku: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # A page describing the coin, e.g. on Numista or uCoin (http/https only).
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     catalog_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     extra_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     mintage: Mapped[int | None] = mapped_column(Integer, nullable=True)

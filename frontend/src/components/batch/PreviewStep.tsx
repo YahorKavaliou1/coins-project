@@ -30,6 +30,8 @@ const TEXT_COLUMNS_TAIL: TextColumn[] = [
   { key: "diameter", label: "Diam. mm", width: "w-20", numeric: true },
   { key: "grade", label: "Grade", width: "w-24" },
   { key: "category", label: "Category", width: "w-28" },
+  { key: "sku", label: "SKU", width: "w-24" },
+  { key: "source_url", label: "Source link", width: "w-48" },
   { key: "catalog_number", label: "Catalog No.", width: "w-28" },
   { key: "mintage", label: "Mintage", width: "w-24", numeric: true },
   { key: "extra_info", label: "Extra info", width: "w-40" },

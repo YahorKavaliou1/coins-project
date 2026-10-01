@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, ShoppingCart, ChevronLeft, Pencil, Trash2 } from "lucide-react";
+import { Heart, ShoppingCart, ChevronLeft, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { getCoin } from "../api/coins";
 import { addToCart } from "../api/cart";
 import { addFavourite, removeFavourite } from "../api/favourites";
 import { useAuthStore } from "../store/authStore";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { isAdmin } from "../utils/roles";
+import { displayHost, isWebUrl } from "../utils/url";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { useDeleteCoin } from "../hooks/useDeleteCoin";
@@ -74,6 +75,7 @@ export function CoinDetailPage() {
   if (coin.catalog_number) details.push(["Catalog No.", coin.catalog_number]);
   if (coin.mintage !== null) details.push(["Mintage", coin.mintage.toLocaleString()]);
   details.push(["Metal", coin.metal.name]);
+  if (coin.sku) details.push(["SKU", coin.sku]);
 
   const summaryParts = [
     coin.country.name,
@@ -207,6 +209,20 @@ export function CoinDetailPage() {
               </div>
             ))}
           </div>
+
+          {/* The server only accepts http(s) links; checked again so nothing else becomes an href. */}
+          {coin.source_url && isWebUrl(coin.source_url) && (
+            <a
+              href={coin.source_url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-accent"
+              title={coin.source_url}
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Source: {displayHost(coin.source_url)}
+            </a>
+          )}
 
           {/* Reserved space for future AI-generated insight */}
           <div className="mt-4" />
