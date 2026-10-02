@@ -89,10 +89,18 @@ class Settings(BaseSettings):
     # "memory://" works for a single process; use "redis://host:6379" with several workers.
     rate_limit_storage_uri: str = "memory://"
 
-    # --- Email (SMTP) ---
+    # --- Email ---
+    # "smtp": the SMTP_* settings below (Brevo's relay, or Mailpit locally).
+    # "brevo_api": Brevo's HTTP API with BREVO_API_KEY, for hosts that block outbound SMTP
+    # (Render's free plan blocks ports 25, 465 and 587).
+    email_transport: Literal["smtp", "brevo_api"] = "smtp"
+    # Brevo -> SMTP & API -> API keys (v3). Only for EMAIL_TRANSPORT=brevo_api.
+    brevo_api_key: str = ""
+
     # Brevo: host smtp-relay.brevo.com, port 587, security starttls, username = SMTP login,
     # password = SMTP key. Local Mailpit: host localhost, port 1025, security none, no credentials.
-    smtp_host: str
+    # Required with EMAIL_TRANSPORT=smtp.
+    smtp_host: str = ""
     smtp_port: int = 587
     smtp_security: Literal["starttls", "ssl", "none"] = "starttls"
     smtp_username: str = ""
@@ -173,7 +181,13 @@ class Settings(BaseSettings):
         return value.rstrip("/")
 
     @model_validator(mode="after")
-    def validate_smtp(self) -> "Settings":
+    def validate_email_transport(self) -> "Settings":
+        if self.email_transport == "brevo_api":
+            if not self.brevo_api_key:
+                raise ValueError("EMAIL_TRANSPORT=brevo_api requires BREVO_API_KEY")
+            return self
+        if not self.smtp_host:
+            raise ValueError("EMAIL_TRANSPORT=smtp requires SMTP_HOST")
         if {self.smtp_username, self.smtp_password} & PLACEHOLDER_SMTP_VALUES:
             raise ValueError("SMTP_USERNAME / SMTP_PASSWORD still contain placeholder values")
         if bool(self.smtp_username) != bool(self.smtp_password):

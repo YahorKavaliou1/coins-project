@@ -6,7 +6,7 @@
 | Фронтенд (React) | Render, Static Site (бесплатно, не засыпает) |
 | База данных | Neon Postgres (Free, 1 ГБ, бессрочно) |
 | Фото монет | Neon Object Storage (S3-совместимое, бета) |
-| Почта | Brevo |
+| Почта | Brevo, через HTTP API (Render Free блокирует исходящий SMTP) |
 
 Оба сервиса Render описаны в [`render.yaml`](render.yaml). После первой настройки каждый
 `git push` в `main` обновляет сайт автоматически.
@@ -51,7 +51,13 @@ DATABASE_URL='<строка подключения Neon>' make seed
 ## 3. Brevo
 
 В Brevo → **Senders** подтвердите отправителя `agaro.coins@gmail.com`.
-SMTP-логин и ключ: **SMTP & API** → **SMTP**.
+Создайте API-ключ: **SMTP & API** → **API Keys** → **Generate a new API key**.
+
+Почта уходит через HTTP API Brevo, а не SMTP: бесплатный Render блокирует исходящие
+SMTP-порты (25, 465, 587). Brevo первые 30 дней запоминает IP, с которых приходят запросы,
+потом блокирует новые; у Render адреса меняются — если письма перестанут уходить с ошибкой 401
+про IP, в Brevo: **Settings → Security → Authorized IPs** → отключите блокировку для API
+или добавьте исходящие IP Render (Frankfurt) из настроек сервиса.
 
 ## 4. Render
 
@@ -62,7 +68,7 @@ SMTP-логин и ключ: **SMTP & API** → **SMTP**.
    | Переменная | Откуда |
    |---|---|
    | `DATABASE_URL` | Neon → Connect (без pooling) |
-   | `SMTP_USERNAME`, `SMTP_PASSWORD` | Brevo → SMTP |
+   | `BREVO_API_KEY` | Brevo → SMTP & API → API Keys |
    | `S3_ACCESS_KEY_ID` | `token_id` из шага 1 |
    | `S3_SECRET_ACCESS_KEY` | `s3_secret_access_key` из шага 1 |
 

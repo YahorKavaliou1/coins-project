@@ -7,10 +7,7 @@ from email.message import EmailMessage
 from email.utils import formataddr, formatdate, make_msgid
 
 from app.core.config import settings
-
-
-class PermanentEmailError(Exception):
-    """The server rejected the message for good (e.g. unknown recipient): don't retry."""
+from app.services.email.errors import PermanentEmailError
 
 
 def build_message(to_email: str, subject: str, html: str, text: str) -> EmailMessage:

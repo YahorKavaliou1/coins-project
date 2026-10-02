@@ -33,9 +33,9 @@ services:
         generateValue: true
       - key: DATABASE_URL # Neon, direct connection (not pooled)
         sync: false
-      - key: SMTP_USERNAME # Brevo SMTP login
-        sync: false
-      - key: SMTP_PASSWORD # Brevo SMTP key
+      # Brevo -> SMTP & API -> API keys. Added after the Blueprint was created, so Render
+      # doesn't prompt for it: set it in the service's Environment tab.
+      - key: BREVO_API_KEY
         sync: false
       - key: S3_ACCESS_KEY_ID # Neon storage credential: token_id
         sync: false
@@ -53,12 +53,9 @@ services:
         value: "true"
 
       # --- Email (Brevo) ---
-      - key: SMTP_HOST
-        value: smtp-relay.brevo.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_SECURITY
-        value: starttls
+      # Brevo's HTTP API, not SMTP: Render's free plan blocks outbound SMTP ports.
+      - key: EMAIL_TRANSPORT
+        value: brevo_api
       - key: MAIL_FROM # must be a verified sender in Brevo
         value: agaro.coins@gmail.com
       - key: MAIL_FROM_NAME

@@ -19,7 +19,7 @@ from app.models.favourite import Favourite
 from app.models.order import Order
 from app.models.user import User
 from app.models.user_token import UserToken
-from app.services.email.smtp import PermanentEmailError, send_email
+from app.services.email.transport import PermanentEmailError, send_email
 
 logger = logging.getLogger("app.email")
 
