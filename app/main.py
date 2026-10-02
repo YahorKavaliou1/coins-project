@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from asyncpg.exceptions import DataError as AsyncpgDataError
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -62,6 +63,17 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 # The last one added runs first: unknown hosts are rejected before anything else, and every
 # response (errors included) gets the security headers.
 app.add_middleware(BodySizeLimitMiddleware)
+if settings.cors_origin_list:
+    # The frontend on its own domain (production). Auth is a bearer token, not cookies, so no
+    # credentials mode is needed.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origin_list,
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type"],
+        expose_headers=["Retry-After"],
+        max_age=600,
+    )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_host_list)
 app.add_middleware(SecurityHeadersMiddleware, hsts=settings.hsts_enabled)
 

@@ -4,7 +4,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import settings
 
-engine = create_async_engine(settings.database_url, echo=settings.sql_echo, future=True)
+# pool_pre_ping: serverless databases (Neon) suspend when idle and drop open connections;
+# a stale one is replaced instead of failing the request.
+engine = create_async_engine(
+    settings.database_url, echo=settings.sql_echo, future=True, pool_pre_ping=True
+)
 
 async_session_maker = async_sessionmaker(
     engine,

@@ -141,11 +141,17 @@ class AWSImageStorage(ImageStorage):
         self.bucket = settings.s3_bucket
         self.prefix = settings.s3_key_prefix.strip("/")
         self.public_base_url = (
-            settings.s3_public_base_url
-            or f"https://{settings.s3_bucket}.s3.{settings.s3_region}.amazonaws.com"
+            settings.s3_public_base_url or self._default_public_base_url()
         ).rstrip("/")
         # A client can be injected (tests use a stubbed one); otherwise build it from settings.
         self.client = client if client is not None else self._create_client()
+
+    @staticmethod
+    def _default_public_base_url() -> str:
+        if settings.s3_endpoint_url and settings.s3_addressing_style == "path":
+            # Path-style services serve public objects at <endpoint>/<bucket>/<key> (Neon).
+            return f"{settings.s3_endpoint_url.rstrip('/')}/{settings.s3_bucket}"
+        return f"https://{settings.s3_bucket}.s3.{settings.s3_region}.amazonaws.com"
 
     @staticmethod
     def _create_client() -> Any:
@@ -169,6 +175,7 @@ class AWSImageStorage(ImageStorage):
             config=Config(
                 request_checksum_calculation="when_required",
                 response_checksum_validation="when_required",
+                s3={"addressing_style": settings.s3_addressing_style},
             ),
             **credentials,
         )

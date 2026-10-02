@@ -1,0 +1,114 @@
+# Render Blueprint: the API (FastAPI) and the frontend (React static site), free plan.
+# Create both with New -> Blueprint in the Render dashboard; see DEPLOY.md.
+#
+# The database and coin photos live on Neon (Postgres + S3-compatible object storage), email
+# goes through Brevo. Values marked `sync: false` are secrets or account-specific: Render asks
+# for them when the Blueprint is created.
+#
+# Service names determine the URLs (https://<name>.onrender.com). If Render had to add a
+# suffix because a name was taken, update FRONTEND_URL / CORS_ORIGINS / VITE_API_URL below.
+
+services:
+  - name: agaro-coins-api
+    type: web
+    runtime: python
+    plan: free
+    region: frankfurt # next to the Neon database (AWS eu-central-1)
+    buildCommand: pip install -r requirements.txt
+    # Migrations run on every start (Render's pre-deploy command isn't available on Free).
+    # --proxy-headers: Render's proxy passes the visitor's IP in X-Forwarded-For; rate limits
+    # are per IP. Only Render's proxy can reach the service, so trusting it is safe.
+    startCommand: >-
+      alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT
+      --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /health
+    envVars:
+      # --- Secrets ---
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL # Neon, direct connection (not pooled)
+        sync: false
+      - key: SMTP_USERNAME # Brevo SMTP login
+        sync: false
+      - key: SMTP_PASSWORD # Brevo SMTP key
+        sync: false
+      - key: S3_ACCESS_KEY_ID # Neon storage credential: token_id
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY # Neon storage credential: s3_secret_access_key
+        sync: false
+
+      # --- Production settings ---
+      - key: FRONTEND_URL
+        value: https://agaro-coins.onrender.com
+      - key: CORS_ORIGINS
+        value: https://agaro-coins.onrender.com
+      - key: API_DOCS_ENABLED
+        value: "false"
+      - key: HSTS_ENABLED
+        value: "true"
+
+      # --- Email (Brevo) ---
+      - key: SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURITY
+        value: starttls
+      - key: MAIL_FROM # must be a verified sender in Brevo
+        value: agaro.coins@gmail.com
+      - key: MAIL_FROM_NAME
+        value: Coins Catalog
+
+      # --- Coin photos (Neon object storage) ---
+      - key: IMAGE_STORAGE
+        value: s3
+      # Neon console -> Object storage (branch "production"). Public photo URLs are
+      # <endpoint>/coin-photos/<key>.
+      - key: S3_ENDPOINT_URL
+        value: https://br-dry-meadow-b2saxjxy.storage.c-6.eu-central-1.aws.neon.tech
+      - key: S3_BUCKET
+        value: coin-photos
+      - key: S3_REGION
+        value: eu-central-1
+      - key: S3_ADDRESSING_STYLE
+        value: path
+
+      # --- CAPTCHA: Cloudflare's test secret (always passes). For a real check, create a
+      # Turnstile widget for agaro-coins.onrender.com and put its secret here (and its site
+      # key in VITE_TURNSTILE_SITE_KEY below).
+      - key: TURNSTILE_SECRET_KEY
+        value: 1x0000000000000000000000000000000AA
+
+  - name: agaro-coins
+    type: web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
+        value: https://agaro-coins-api.onrender.com
+      - key: VITE_TURNSTILE_SITE_KEY
+        value: 1x00000000000000000000AA
+    routes:
+      # A single-page app: /coins/5, /contact... are routed by React, so every path that
+      # isn't a file gets index.html instead of a 404.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains

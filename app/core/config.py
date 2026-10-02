@@ -1,4 +1,5 @@
 from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import EmailStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -9,7 +10,32 @@ PLACEHOLDER_SMTP_VALUES = {"your-smtp-login", "your-smtp-key", "your-smtp-key-he
 LOCAL_SMTP_HOSTS = {"localhost", "127.0.0.1", "::1", "mailpit"}
 
 
+def normalize_database_url(url: str) -> str:
+    """Accepts the URL as hosting providers (e.g. Neon) print it and adapts it for asyncpg.
+
+    postgres:// and postgresql:// become postgresql+asyncpg://; libpq's sslmode=... becomes
+    asyncpg's ssl=...; channel_binding (unsupported by asyncpg) is dropped.
+    """
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            url = "postgresql+asyncpg://" + url.removeprefix(prefix)
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    query = []
+    for key, value in parse_qsl(parts.query, keep_blank_values=True):
+        if key == "sslmode":
+            # asyncpg's ssl accepts the same modes (disable, require, verify-full...).
+            query.append(("ssl", value))
+        elif key != "channel_binding":
+            query.append((key, value))
+    return urlunsplit(parts._replace(query=urlencode(query)))
+
+
 class Settings(BaseSettings):
+    # Any PostgreSQL URL; see normalize_database_url. With Neon, use the direct connection,
+    # not the pooled one (host with "-pooler"): its transaction-mode PgBouncer breaks asyncpg's
+    # prepared statements.
     database_url: str
     # Logs every SQL statement with its parameters (emails, password hashes, addresses):
     # for local debugging only.
@@ -19,6 +45,12 @@ class Settings(BaseSettings):
     # Host names the API answers to, comma-separated; requests for any other Host header get
     # a 400 (protects against Host header injection). Add the production domain here.
     allowed_hosts: str = "localhost,127.0.0.1"
+    # Set by Render to the service's public host name; it is allowed automatically.
+    render_external_hostname: str = ""
+    # Origins (scheme://host) of a frontend served from another domain, comma-separated,
+    # e.g. https://agaro-coins.onrender.com. Empty: no cross-origin requests (local dev, where
+    # the Vite proxy serves frontend and API from one origin).
+    cors_origins: str = ""
     # Swagger UI (/docs), ReDoc (/redoc) and /openapi.json. Turn off in production: they
     # hand out a complete map of the API.
     api_docs_enabled: bool = True
@@ -89,7 +121,10 @@ class Settings(BaseSettings):
     s3_secret_access_key: str = ""
     # Only for S3-compatible services, e.g. https://<account>.r2.cloudflarestorage.com
     s3_endpoint_url: str = ""
-    # Public base URL for reading photos (bucket URL or CDN). Default: the AWS bucket URL.
+    # "path" (endpoint/bucket/key) is required by some S3-compatible services, e.g. Neon.
+    s3_addressing_style: Literal["auto", "path", "virtual"] = "auto"
+    # Public base URL for reading photos (bucket URL or CDN). Default: the AWS bucket URL, or
+    # <endpoint>/<bucket> with path-style addressing.
     s3_public_base_url: str = ""
     # Folder inside the bucket.
     s3_key_prefix: str = "coins"
@@ -109,9 +144,28 @@ class Settings(BaseSettings):
             )
         return value
 
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        value = normalize_database_url(value.strip())
+        if "-pooler." in (urlsplit(value).hostname or ""):
+            raise ValueError(
+                "DATABASE_URL points to a pooled Neon connection (host with '-pooler'), which "
+                "breaks asyncpg. In Neon's Connect dialog turn 'Connection pooling' off and "
+                "copy that URL instead."
+            )
+        return value
+
     @property
     def allowed_host_list(self) -> list[str]:
-        return [host.strip() for host in self.allowed_hosts.split(",") if host.strip()]
+        hosts = [host.strip() for host in self.allowed_hosts.split(",") if host.strip()]
+        if self.render_external_hostname:
+            hosts.append(self.render_external_hostname)
+        return hosts
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.cors_origins.split(",") if o.strip()]
 
     @field_validator("frontend_url")
     @classmethod

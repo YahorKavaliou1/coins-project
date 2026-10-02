@@ -38,7 +38,9 @@ EMAIL_LOG_RETENTION = timedelta(days=90)
 USED_TOKEN_RETENTION = timedelta(days=1)
 
 # A separate small engine without SQL echo: polling would otherwise flood the logs.
-_engine = create_async_engine(settings.database_url, pool_size=2, max_overflow=0)
+_engine = create_async_engine(
+    settings.database_url, pool_size=2, max_overflow=0, pool_pre_ping=True
+)
 _session_maker = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commit=False)
 
 
