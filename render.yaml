@@ -5,8 +5,12 @@
 # goes through Brevo. Values marked `sync: false` are secrets or account-specific: Render asks
 # for them when the Blueprint is created.
 #
-# Service names determine the URLs (https://<name>.onrender.com). If Render had to add a
-# suffix because a name was taken, update FRONTEND_URL / CORS_ORIGINS / VITE_API_URL below.
+# Service names determine the URLs (https://<name>.onrender.com), but these names were taken,
+# so Render added a suffix: the live URLs are
+#   API:      https://agaro-coins-api-ojxm.onrender.com
+#   frontend: https://agaro-coins-ojxm.onrender.com
+# FRONTEND_URL / CORS_ORIGINS / VITE_API_URL below must match them. Keep the `name:` values:
+# the Blueprint links the existing services by them.
 
 services:
   - name: agaro-coins-api
@@ -40,9 +44,9 @@ services:
 
       # --- Production settings ---
       - key: FRONTEND_URL
-        value: https://agaro-coins.onrender.com
+        value: https://agaro-coins-ojxm.onrender.com
       - key: CORS_ORIGINS
-        value: https://agaro-coins.onrender.com
+        value: https://agaro-coins-ojxm.onrender.com
       - key: API_DOCS_ENABLED
         value: "false"
       - key: HSTS_ENABLED
@@ -75,7 +79,7 @@ services:
         value: path
 
       # --- CAPTCHA: Cloudflare's test secret (always passes). For a real check, create a
-      # Turnstile widget for agaro-coins.onrender.com and put its secret here (and its site
+      # Turnstile widget for agaro-coins-ojxm.onrender.com and put its secret here (and its site
       # key in VITE_TURNSTILE_SITE_KEY below).
       - key: TURNSTILE_SECRET_KEY
         value: 1x0000000000000000000000000000000AA
@@ -90,7 +94,7 @@ services:
       - key: NODE_VERSION
         value: "22"
       - key: VITE_API_URL
-        value: https://agaro-coins-api.onrender.com
+        value: https://agaro-coins-api-ojxm.onrender.com
       - key: VITE_TURNSTILE_SITE_KEY
         value: 1x00000000000000000000AA
     routes:

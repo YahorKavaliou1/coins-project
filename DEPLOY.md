@@ -76,7 +76,7 @@ SMTP-логин и ключ: **SMTP & API** → **SMTP**.
 
 ## 5. Первый вход и администратор
 
-1. Откройте `https://agaro-coins.onrender.com`, зарегистрируйтесь и подтвердите email.
+1. Откройте `https://agaro-coins-ojxm.onrender.com`, зарегистрируйтесь и подтвердите email.
 2. Назначьте себя администратором:
 
    ```bash
@@ -87,9 +87,9 @@ SMTP-логин и ключ: **SMTP & API** → **SMTP**.
 
 Сейчас стоят тестовые ключи Cloudflare: виджет виден, но пропускает всех. Для настоящей
 проверки: dash.cloudflare.com → **Turnstile** → **Add widget**, hostname
-`agaro-coins.onrender.com`, режим Managed. Site key → `VITE_TURNSTILE_SITE_KEY`
+`agaro-coins-ojxm.onrender.com`, режим Managed. Site key → `VITE_TURNSTILE_SITE_KEY`
 (сервис `agaro-coins`), Secret key → `TURNSTILE_SECRET_KEY` (сервис `agaro-coins-api`),
-плюс `TURNSTILE_HOSTNAME=agaro-coins.onrender.com`.
+плюс `TURNSTILE_HOSTNAME=agaro-coins-ojxm.onrender.com`.
 
 ## Особенности бесплатного тарифа
 
