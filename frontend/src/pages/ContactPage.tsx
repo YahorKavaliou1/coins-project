@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown, Clock, Mail, MapPin, Phone, Send } from "lucide-react";
+import { ChevronDown, Mail, Phone, Send } from "lucide-react";
 import { company, contact } from "../content/site";
 import { inputClass, labelClass } from "../components/formStyles";
 
@@ -13,13 +13,6 @@ export function ContactPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
         <div className="lg:col-span-2 flex flex-col gap-4">
-          <InfoCard icon={<MapPin className="w-5 h-5" />} title="Showroom">
-            {company.address.line1}
-            <br />
-            {company.address.line2}
-            <br />
-            {company.address.country}
-          </InfoCard>
           <InfoCard icon={<Phone className="w-5 h-5" />} title="Phone">
             <a href={`tel:${company.phone.replace(/[^\d+]/g, "")}`} className="hover:text-accent">
               {company.phone}
@@ -30,18 +23,6 @@ export function ContactPage() {
               {company.email}
             </a>
             <div className="text-xs text-gray-500 mt-1">{company.responseTime}</div>
-          </InfoCard>
-          <InfoCard icon={<Clock className="w-5 h-5" />} title="Opening hours">
-            <table className="w-full">
-              <tbody>
-                {company.hours.map((row) => (
-                  <tr key={row.days}>
-                    <td className="pr-4 py-0.5">{row.days}</td>
-                    <td className="py-0.5 text-right whitespace-nowrap">{row.time}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </InfoCard>
         </div>
 

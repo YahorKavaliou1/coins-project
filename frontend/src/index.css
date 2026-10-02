@@ -5,6 +5,10 @@
   --color-brand-light: #374151;
   --color-accent: #7a1f2b;
   --color-accent-dark: #5c1620;
+  /* The background of the logo (public/logo.png): blocks in this colour blend with it. */
+  --color-logo: #3a0000;
+  /* Muted gold of the home page emblem and the footer. */
+  --color-gold: #d4a72c;
 }
 
 body {

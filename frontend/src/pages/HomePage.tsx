@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Award, RotateCcw, ShieldCheck, Truck, type LucideIcon } from "lucide-react";
 import { listCoins } from "../api/coins";
 import { CoinCard } from "../components/CoinCard";
+import { HeroEmblem } from "../components/HeroEmblem";
 import { company, home } from "../content/site";
 
 const FEATURE_ICONS: Record<string, LucideIcon> = {
@@ -96,7 +97,7 @@ export function HomePage() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-md bg-brand text-white">
+    <section className="relative overflow-hidden rounded-md bg-logo text-white">
       <div className="relative z-10 max-w-xl px-8 py-14 sm:px-12 sm:py-16">
         <div className="text-xs font-semibold uppercase tracking-widest text-amber-300 mb-3">{home.hero.eyebrow}</div>
         <h1 className="text-3xl sm:text-4xl font-bold leading-tight mb-4">{home.hero.title}</h1>
@@ -110,29 +111,17 @@ function Hero() {
           </Link>
           <Link
             to="/contact"
-            className="border border-gray-400 hover:border-white text-white font-bold uppercase tracking-wide text-sm rounded-sm px-6 py-3"
+            className="border border-white/50 hover:border-white text-white font-bold uppercase tracking-wide text-sm rounded-sm px-6 py-3"
           >
             {home.hero.secondaryCta}
           </Link>
         </div>
       </div>
-      {/* Decorative coins, in the site colours. */}
-      <div aria-hidden className="hidden md:block absolute inset-y-0 right-0 w-2/5">
-        <Coin className="absolute w-64 h-64 right-16 top-10 opacity-90" />
-        <Coin className="absolute w-40 h-40 right-72 bottom-8 opacity-60" />
-        <Coin className="absolute w-28 h-28 right-6 bottom-6 opacity-40" />
-      </div>
+      <HeroEmblem
+        legend={home.hero.emblemLegend}
+        className="hidden md:block absolute right-6 top-1/2 -translate-y-1/2 w-80 h-80"
+      />
       <span className="sr-only">{company.tagline}</span>
     </section>
-  );
-}
-
-function Coin({ className }: { className: string }) {
-  return (
-    <svg viewBox="0 0 64 64" className={className}>
-      <circle cx="32" cy="32" r="30" fill="#d4a72c" stroke="#7a1f2b" strokeWidth="3" />
-      <circle cx="32" cy="32" r="22" fill="none" stroke="#9c7a17" strokeWidth="1.5" strokeDasharray="2.5 2.5" />
-      <path fill="#7a1f2b" d="M32 18.5l3.9 8.6 9.4 1-7 6.3 2 9.2L32 38.8l-8.3 4.8 2-9.2-7-6.3 9.4-1z" />
-    </svg>
   );
 }

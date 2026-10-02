@@ -6,15 +6,10 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useQuery } from "@tanstack/react-query";
 import { getCart } from "../api/cart";
 import { Toaster } from "./Toaster";
+import { Footer } from "./Footer";
+import { mainNav } from "./navigation";
 import { canSell, isAdmin } from "../utils/roles";
 import { formatUtcDate } from "../utils/dates";
-
-const tabs = [
-  // `end`: "/" would otherwise also be active on every other page.
-  { to: "/", label: "Home", end: true },
-  { to: "/browse", label: "Shop", end: false },
-  { to: "/contact", label: "Contact", end: false },
-];
 
 export function Layout() {
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -48,15 +43,16 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-6">
-          <Link to="/" className="text-lg font-bold text-gray-900 whitespace-nowrap hover:text-accent">
+          <Link to="/" className="flex items-center gap-2.5 text-lg font-bold text-gray-900 whitespace-nowrap hover:text-accent">
+            <img src="/logo.png" alt="" width={36} height={36} className="w-9 h-9 rounded-sm" />
             Coins Catalog
           </Link>
 
           <nav className="flex gap-6 flex-1 justify-center">
-            {tabs.map((tab) => (
+            {mainNav.map((tab) => (
               <NavLink
                 key={tab.to}
                 to={tab.to}
@@ -182,11 +178,13 @@ export function Layout() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-5 pt-24">
+      <div className="flex-1 w-full max-w-6xl mx-auto p-5 pt-24">
         <main>
           <Outlet />
         </main>
       </div>
+
+      <Footer />
 
       <Toaster />
     </div>

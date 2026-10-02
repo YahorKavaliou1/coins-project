@@ -1,28 +1,17 @@
 /**
  * Texts and contact details of the Home and Contact pages.
  *
- * PLACEHOLDER CONTENT: everything below is invented so the pages look finished. Replace it
- * with the real business details before going live. The phone number (555-01xx) and the
- * ".example" email domain are reserved for fiction and reach no one.
+ * The phone number and email are real. The texts (founding year, features, FAQ...) are
+ * placeholders written so the pages look finished: replace them before going live.
  */
 
 export const company = {
   name: "Coins Catalog",
   tagline: "Collector coins and bullion, authenticated and graded",
   foundedYear: 2012,
-  email: "info@coins-catalog.example",
-  phone: "+1 (555) 014-2398",
-  address: {
-    line1: "48 Mint Street, Suite 3",
-    line2: "Springfield, IL 62701",
-    country: "United States",
-  },
-  /** Opening hours of the showroom, in local time. */
-  hours: [
-    { days: "Monday – Friday", time: "10:00 – 18:00" },
-    { days: "Saturday", time: "11:00 – 16:00" },
-    { days: "Sunday", time: "Closed" },
-  ],
+  email: "agaro.coins@gmail.com",
+  /** As displayed; the tel: link uses the digits only. */
+  phone: "+34 640 325 691",
   responseTime: "We reply to every message within one business day.",
 };
 
@@ -35,6 +24,8 @@ export const home = {
       "catalogue is inspected by hand, photographed as it is and described honestly.",
     primaryCta: "Browse the shop",
     secondaryCta: "Contact us",
+    /** Set around the logo on the home page banner, like the legend of a coin. */
+    emblemLegend: `${company.name} • Est. ${company.foundedYear} • Authenticity guaranteed •`,
   },
   features: [
     {
@@ -83,14 +74,10 @@ export const home = {
 
 export const contact = {
   intro:
-    "Questions about a coin, an order or selling your collection? Write to us, call, or visit " +
-    "the showroom — we're happy to help.",
+    "Questions about a coin, an order or selling your collection? Write to us or call — " +
+    "we're happy to help.",
   subjects: ["Question about a coin", "My order", "Selling coins", "Other"],
   faq: [
-    {
-      q: "Can I see a coin in person before buying?",
-      a: "Yes. Let us know which lots you're interested in and book a visit to the showroom during opening hours.",
-    },
     {
       q: "How long does delivery take?",
       a: "We ship within two business days. Domestic orders usually arrive in 2–4 days, international ones in 5–10.",
