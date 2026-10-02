@@ -45,13 +45,14 @@ export function Layout() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-6">
-          <Link to="/" className="flex items-center gap-2.5 text-lg font-bold text-gray-900 whitespace-nowrap hover:text-accent">
-            <img src="/logo.png" alt="" width={36} height={36} className="w-9 h-9 rounded-sm" />
+        <div className="max-w-6xl mx-auto px-5 py-4 flex items-center justify-between gap-6 max-md:flex-wrap max-md:px-4 max-md:py-3 max-md:gap-x-3 max-md:gap-y-2">
+          <Link to="/" className="flex items-center gap-2.5 text-lg font-bold text-gray-900 whitespace-nowrap hover:text-accent max-md:text-base max-md:gap-2">
+            <img src="/logo.png" alt="" width={36} height={36} className="w-9 h-9 rounded-sm max-md:w-8 max-md:h-8" />
             Coins Catalog
           </Link>
 
-          <nav className="flex gap-6 flex-1 justify-center">
+          {/* Below md the sections drop to their own row under the logo and the account controls. */}
+          <nav className="flex gap-6 flex-1 justify-center max-md:order-last max-md:basis-full max-md:justify-start max-md:gap-5">
             {mainNav.map((tab) => (
               <NavLink
                 key={tab.to}
@@ -70,7 +71,7 @@ export function Layout() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-4 text-sm whitespace-nowrap">
+          <div className="flex items-center gap-4 text-sm whitespace-nowrap max-md:gap-3">
             {accessToken && (
               <NavLink
                 to="/cart"
@@ -158,7 +159,7 @@ export function Layout() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 max-md:gap-2">
                 <button
                   onClick={() => navigate("/auth")}
                   className="text-sm font-medium uppercase tracking-wide text-gray-700 underline underline-offset-2 hover:text-accent"
@@ -178,7 +179,7 @@ export function Layout() {
         </div>
       </header>
 
-      <div className="flex-1 w-full max-w-6xl mx-auto p-5 pt-24">
+      <div className="flex-1 w-full max-w-6xl mx-auto p-5 pt-24 max-md:px-4 max-md:pt-28">
         <main>
           <Outlet />
         </main>

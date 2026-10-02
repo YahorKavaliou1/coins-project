@@ -170,7 +170,7 @@ export function BatchImport() {
   if (step === "publishing") {
     const percent = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
     return (
-      <div className="bg-white border border-gray-200 rounded-md p-10 max-w-xl mx-auto text-center">
+      <div className="bg-white border border-gray-200 rounded-md p-10 max-sm:p-5 max-w-xl mx-auto text-center">
         <div className="text-lg font-bold mb-1">Publishing lots</div>
         <div className="text-sm text-gray-500 mb-5">
           {progress.label} {progress.total > 0 && `${progress.done} / ${progress.total}`}
@@ -185,7 +185,7 @@ export function BatchImport() {
 
   if (step === "done" && result) {
     return (
-      <div className="bg-white border border-gray-200 rounded-md p-10 max-w-xl mx-auto text-center">
+      <div className="bg-white border border-gray-200 rounded-md p-10 max-sm:p-5 max-w-xl mx-auto text-center">
         <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-3" />
         <div className="text-xl font-bold mb-1">
           {result.lotCount} {result.lotCount === 1 ? "lot" : "lots"} published
@@ -211,7 +211,7 @@ export function BatchImport() {
           </div>
         )}
 
-        <div className="flex justify-center gap-3 mt-6">
+        <div className="flex justify-center gap-3 mt-6 max-sm:flex-wrap">
           <button
             type="button"
             onClick={reset}

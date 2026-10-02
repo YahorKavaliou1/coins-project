@@ -90,12 +90,12 @@ export function CoinDetailPage() {
   return (
     <div>
       <div className="text-xs text-gray-500 mb-3 flex items-center gap-1">
-        <button onClick={() => navigate("/browse")} className="flex items-center gap-1 hover:text-accent">
+        <button onClick={() => navigate("/browse")} className="flex items-center gap-1 hover:text-accent max-md:shrink-0">
           <ChevronLeft className="w-3 h-3" />
           Shop
         </button>
         <span>/</span>
-        <span className="text-gray-700">{coin.name}</span>
+        <span className="text-gray-700 max-md:truncate max-md:min-w-0">{coin.name}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

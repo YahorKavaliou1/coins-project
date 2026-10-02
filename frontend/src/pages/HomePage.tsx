@@ -22,7 +22,7 @@ export function HomePage() {
   });
 
   return (
-    <div className="flex flex-col gap-14 pb-10">
+    <div className="flex flex-col gap-14 pb-10 max-md:gap-10">
       <Hero />
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -46,7 +46,7 @@ export function HomePage() {
               View all <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-md:gap-3">
             {latest.items.map((coin) => (
               <CoinCard key={coin.id} coin={coin} />
             ))}
@@ -98,7 +98,7 @@ export function HomePage() {
 function Hero() {
   return (
     <section className="relative overflow-hidden rounded-md bg-logo text-white">
-      <div className="relative z-10 max-w-xl px-8 py-14 sm:px-12 sm:py-16">
+      <div className="relative z-10 max-w-xl px-8 py-14 sm:px-12 sm:py-16 max-sm:px-5 max-sm:py-10">
         <div className="text-xs font-semibold uppercase tracking-widest text-amber-300 mb-3">{home.hero.eyebrow}</div>
         <h1 className="text-3xl sm:text-4xl font-bold leading-tight mb-4">{home.hero.title}</h1>
         <p className="text-gray-300 leading-relaxed mb-8">{home.hero.text}</p>

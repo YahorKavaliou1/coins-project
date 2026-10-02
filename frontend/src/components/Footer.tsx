@@ -10,7 +10,7 @@ const linkClass = "text-sm text-gray-300 hover:text-white transition-colors";
 export function Footer() {
   return (
     <footer className="bg-logo text-white mt-12">
-      <div className="max-w-6xl mx-auto px-5 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <div className="max-w-6xl mx-auto px-5 py-10 max-md:px-4 max-md:py-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
         <div>
           <Link to="/" className="inline-flex items-center gap-3 text-lg font-bold hover:text-gray-200">
             <img src="/logo.png" alt="" width={40} height={40} className="w-10 h-10" />
@@ -52,7 +52,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-gold/25">
-        <div className="max-w-6xl mx-auto px-5 py-4 flex flex-wrap justify-between gap-2 text-xs text-gray-400">
+        <div className="max-w-6xl mx-auto px-5 py-4 max-md:px-4 flex flex-wrap justify-between gap-2 text-xs text-gray-400">
           <span>
             © {new Date().getFullYear()} {company.name}. All rights reserved.
           </span>

@@ -106,10 +106,10 @@ function SingleListingForm() {
 
       <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="flex flex-col gap-6">
         {/* Identification */}
-        <section className="bg-white border border-gray-200 rounded-md p-5">
+        <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Identification</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+            <div className="col-span-2 max-sm:col-span-1">
               <label className={labelClass}>
                 Country <Required />
               </label>
@@ -147,9 +147,9 @@ function SingleListingForm() {
         </section>
 
         {/* Physical characteristics */}
-        <section className="bg-white border border-gray-200 rounded-md p-5">
+        <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Physical characteristics</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
             <div>
               <label className={labelClass}>
                 Metal <Required />
@@ -202,9 +202,9 @@ function SingleListingForm() {
         </section>
 
         {/* Grading & details */}
-        <section className="bg-white border border-gray-200 rounded-md p-5">
+        <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Grading &amp; details</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
             <div>
               <label className={labelClass}>Grade</label>
               <input {...register("grade")} placeholder="e.g. MS-65, XF-40" className={inputClass} />
@@ -233,7 +233,7 @@ function SingleListingForm() {
               <input {...register("mintage")} type="number" placeholder="e.g. 500000" className={inputClass} />
             </div>
 
-            <div className="col-span-2">
+            <div className="col-span-2 max-sm:col-span-1">
               <label className={labelClass}>Extra info</label>
               <input {...register("extra_info")} placeholder="e.g. Walking Liberty" className={inputClass} />
             </div>
@@ -256,7 +256,7 @@ function SingleListingForm() {
         </section>
 
         {/* Photos */}
-        <section className="bg-white border border-gray-200 rounded-md p-5">
+        <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Photos</h2>
 
           <input
@@ -317,7 +317,7 @@ function SingleListingForm() {
         </section>
 
         {/* Price & submit */}
-        <section className="bg-white border border-gray-200 rounded-md p-5">
+        <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Price</h2>
           <div className="max-w-xs">
             <label className={labelClass}>
@@ -358,13 +358,13 @@ export function SellPage() {
 
   return (
     <div>
-      <div className="flex gap-6 border-b border-gray-200 mb-6">
+      <div className="flex gap-6 border-b border-gray-200 mb-6 max-sm:gap-4">
         {SELL_TABS.map(({ key, label }) => (
           <button
             key={key}
             type="button"
             onClick={() => setSearchParams(key === "batch" ? { tab: "batch" } : {})}
-            className={`-mb-px pb-3 text-lg font-bold border-b-2 transition-colors ${
+            className={`-mb-px pb-3 text-lg font-bold border-b-2 max-sm:text-base max-sm:text-left transition-colors ${
               tab === key ? "text-gray-900 border-accent" : "text-gray-400 border-transparent hover:text-gray-700"
             }`}
           >

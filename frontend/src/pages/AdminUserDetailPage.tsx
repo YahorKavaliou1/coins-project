@@ -71,11 +71,11 @@ export function AdminUserDetailPage() {
           Users
         </button>
         <span>/</span>
-        <span className="text-gray-700">{user.email}</span>
+        <span className="text-gray-700 max-md:truncate max-md:min-w-0">{user.email}</span>
       </div>
 
-      <div className="flex items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-4 mb-4 max-md:flex-wrap max-md:gap-3">
+        <div className="flex items-center gap-3 max-md:flex-wrap max-md:gap-2">
           <h1 className="text-xl font-bold">User #{user.id}</h1>
           <UserStatusBadge user={user} />
           <EmailStatusBadge user={user} />
@@ -83,7 +83,7 @@ export function AdminUserDetailPage() {
         {user.id !== currentUser?.id && <BlockToggleButton user={user} size="md" />}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-md p-4 mb-6 grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+      <div className="bg-white border border-gray-200 rounded-md p-4 mb-6 grid grid-cols-2 max-sm:grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-3">
         {details.map(([label, value]) => (
           <div key={label}>
             <div className="text-accent text-xs font-semibold uppercase">{label}</div>

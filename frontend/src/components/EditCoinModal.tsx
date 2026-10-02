@@ -134,7 +134,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 max-sm:p-2"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) handleCancel();
       }}
@@ -148,13 +148,13 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
           }
           saveMutation.mutate({ ...data, country_id: countryId, metal_id: metalId });
         })}
-        className="bg-gray-50 rounded-md shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+        className="bg-gray-50 rounded-md shadow-xl max-w-2xl w-full max-h-[90vh] max-sm:max-h-[95dvh] flex flex-col overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-coin-title"
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 px-6 py-4 bg-white border-b border-gray-200">
+        <div className="flex items-start justify-between gap-4 px-6 py-4 max-sm:px-4 bg-white border-b border-gray-200">
           <div className="min-w-0">
             <h2 id="edit-coin-title" className="text-xl font-bold">
               Edit coin
@@ -172,11 +172,11 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-5">
-          <section className="bg-white border border-gray-200 rounded-md p-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5 max-sm:px-3 max-sm:py-3 max-sm:gap-3 flex flex-col gap-5">
+          <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
             <h3 className={sectionTitleClass}>Identification</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+              <div className="col-span-2 max-sm:col-span-1">
                 <label className={labelClass}>Country</label>
                 <MultiSelectDropdown
                   options={toCountryOptions(countries)}
@@ -198,9 +198,9 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
             </div>
           </section>
 
-          <section className="bg-white border border-gray-200 rounded-md p-5">
+          <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
             <h3 className={sectionTitleClass}>Physical characteristics</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
               <div>
                 <label className={labelClass}>Metal</label>
                 <MultiSelectDropdown
@@ -240,9 +240,9 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
             </div>
           </section>
 
-          <section className="bg-white border border-gray-200 rounded-md p-5">
+          <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
             <h3 className={sectionTitleClass}>Grading &amp; details</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
               <div>
                 <label className={labelClass}>Grade</label>
                 <input {...register("grade")} placeholder="e.g. MS-65, XF-40" className={inputClass} />
@@ -267,7 +267,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
                 <label className={labelClass}>Mintage</label>
                 <input {...register("mintage", { valueAsNumber: true })} type="number" placeholder="e.g. 500000" className={inputClass} />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-2 max-sm:col-span-1">
                 <label className={labelClass}>Extra info</label>
                 <input {...register("extra_info")} placeholder="e.g. Walking Liberty" className={inputClass} />
               </div>
@@ -288,7 +288,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
             </div>
           </section>
 
-          <section className="bg-white border border-gray-200 rounded-md p-5">
+          <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
             <h3 className={sectionTitleClass}>Photos</h3>
 
             {(coin.images.length > 0 || newImages.length > 0) && (
@@ -379,7 +379,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
             </button>
           </section>
 
-          <section className="bg-white border border-gray-200 rounded-md p-5">
+          <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
             <h3 className={sectionTitleClass}>Price</h3>
             <div className="max-w-xs">
               <label className={labelClass}>Price (USD)</label>
@@ -389,7 +389,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 bg-white border-t border-gray-200">
+        <div className="flex justify-end gap-3 px-6 py-4 max-sm:px-4 bg-white border-t border-gray-200">
           <button
             type="button"
             onClick={handleCancel}

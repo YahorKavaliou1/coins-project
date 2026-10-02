@@ -136,7 +136,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
                 onClick={() => onAddToCart(coin.id)}
                 className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white text-xs font-bold uppercase rounded py-2"
               >
-                <ShoppingCart className="w-4 h-4" />
+                <ShoppingCart className="w-4 h-4 max-sm:hidden" />
                 Add to cart
               </button>
             </div>

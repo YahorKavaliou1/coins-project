@@ -73,7 +73,7 @@ export function ConfirmDialog({
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-message"
       >
-        <div className="flex items-start justify-between gap-4 px-6 py-4 bg-white border-b border-gray-200">
+        <div className="flex items-start justify-between gap-4 px-6 py-4 max-sm:px-4 bg-white border-b border-gray-200">
           <h2 id="confirm-dialog-title" className="text-xl font-bold flex items-center gap-2">
             {destructive && <AlertTriangle className="w-5 h-5 text-red-700 shrink-0" />}
             {title}
@@ -87,7 +87,7 @@ export function ConfirmDialog({
           {message}
         </div>
 
-        <div className="flex justify-end gap-3 px-6 py-4 bg-white border-t border-gray-200">
+        <div className="flex justify-end gap-3 px-6 py-4 max-sm:px-4 bg-white border-t border-gray-200">
           <button
             ref={cancelRef}
             type="button"

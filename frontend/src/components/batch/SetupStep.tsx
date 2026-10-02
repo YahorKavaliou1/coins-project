@@ -101,7 +101,7 @@ export function SetupStep({
   return (
     <div className="flex flex-col gap-6">
       {/* Files */}
-      <section className="bg-white border border-gray-200 rounded-md p-5">
+      <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
         <h2 className={sectionTitleClass}>1. Files</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FilePickerCard
@@ -164,13 +164,13 @@ export function SetupStep({
 
       {/* Mapping */}
       {table && (
-        <section className="bg-white border border-gray-200 rounded-md p-5">
+        <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
           <h2 className={sectionTitleClass}>2. Match columns</h2>
           <p className="text-sm text-gray-500 -mt-2 mb-4">
             Columns were matched automatically by name. Check them and fix where needed.
           </p>
 
-          <div className="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-2 items-center text-sm">
+          <div className="grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,1fr)] gap-x-4 max-sm:grid-cols-[minmax(0,6rem)_minmax(0,1fr)_minmax(0,1fr)] max-sm:gap-x-2 gap-y-2 items-center text-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Site field</div>
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Column in your table</div>
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Example value</div>

@@ -2,6 +2,8 @@ import type { Country, MetalFacet } from "../types";
 import { MultiSelectDropdown } from "./MultiSelectDropdown";
 
 interface BrowseSidebarProps {
+  className?: string;
+
   countries: Country[];
   selectedCountryIds: number[];
   onCountryChange: (ids: number[]) => void;
@@ -23,6 +25,7 @@ const selectClass =
   "w-full border border-gray-300 rounded-sm px-2 py-2 text-sm focus:outline-none focus:border-accent";
 
 export function BrowseSidebar({
+  className = "",
   countries,
   selectedCountryIds,
   onCountryChange,
@@ -45,7 +48,7 @@ export function BrowseSidebar({
     .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
-    <aside className="w-56 shrink-0 flex flex-col gap-6">
+    <aside className={`w-56 shrink-0 flex flex-col gap-6 max-md:w-full max-md:bg-white max-md:border max-md:border-gray-200 max-md:rounded-md max-md:p-4 max-md:gap-4 ${className}`}>
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Country / Issuer</h3>
         <MultiSelectDropdown

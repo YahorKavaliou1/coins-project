@@ -5,7 +5,7 @@ import { inputClass, labelClass } from "../components/formStyles";
 
 export function ContactPage() {
   return (
-    <div className="flex flex-col gap-10 pb-10">
+    <div className="flex flex-col gap-10 pb-10 max-md:gap-8">
       <header className="max-w-2xl">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Contact us</h1>
         <p className="text-gray-600 leading-relaxed">{contact.intro}</p>

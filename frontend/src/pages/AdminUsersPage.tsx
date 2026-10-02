@@ -40,8 +40,8 @@ export function AdminUsersPage() {
       <h1 className="text-xl font-bold mb-1">Users</h1>
       <p className="text-sm text-gray-500 mb-6">Manage roles and access. Click a user to see their purchases.</p>
 
-      <div className="bg-white border border-gray-200 rounded-md overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-gray-200 rounded-md overflow-hidden max-md:overflow-x-auto">
+        <table className="w-full text-sm max-md:min-w-max">
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <th className="text-left px-4 py-3">ID</th>

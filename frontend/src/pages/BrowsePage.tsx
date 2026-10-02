@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listCoins, getCoinFacets } from "../api/coins";
 import { listFavourites } from "../api/favourites";
@@ -27,6 +27,8 @@ export function BrowsePage() {
   const [sort, setSort] = useState<CoinSort>("recent");
   const [favouritesOnly, setFavouritesOnly] = useState(false);
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
+  // Below md the sidebar is folded behind a button, so the coins come first.
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const accessToken = useAuthStore((s) => s.accessToken);
 
@@ -74,8 +76,8 @@ export function BrowsePage() {
 
   return (
     <div>
-      <div className="bg-white border border-gray-200 rounded-md p-4 mb-4 flex flex-wrap gap-3 items-center justify-end">
-        <div className="relative w-full max-w-xs">
+      <div className="bg-white border border-gray-200 rounded-md p-4 mb-4 flex flex-wrap gap-3 items-center justify-end max-md:p-3 max-md:justify-between">
+        <div className="relative w-full max-w-xs max-md:max-w-none">
           <input
             type="text"
             value={qInput}
@@ -118,10 +120,23 @@ export function BrowsePage() {
           />
           For sale only
         </label>
+
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          className={`md:hidden flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors ${
+            filtersOpen ? "bg-brand text-white border-brand" : "bg-white text-gray-700 border-gray-300"
+          }`}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          Filters
+        </button>
       </div>
 
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-6 items-start max-md:flex-col max-md:items-stretch max-md:gap-4">
         <BrowseSidebar
+          className={filtersOpen ? "" : "max-md:hidden"}
           countries={countries ?? []}
           selectedCountryIds={selectedCountryIds}
           onCountryChange={setSelectedCountryIds}
@@ -143,7 +158,7 @@ export function BrowsePage() {
             showFavouritesOnly={favouritesOnly}
             onToggleFavouritesOnly={() => setFavouritesOnly((v) => !v)}
           />
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-md:gap-3">
           {page?.items.length === 0 && <p>No coins found</p>}
           {page?.items.map((coin) => (
             <CoinCard

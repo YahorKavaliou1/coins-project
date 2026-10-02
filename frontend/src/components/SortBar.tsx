@@ -24,14 +24,15 @@ interface SortBarProps {
 }
 
 export function SortBar({ value, onChange, showFavouritesOnly, onToggleFavouritesOnly }: SortBarProps) {
+  // Below md the options scroll sideways in one row instead of taking three rows above the coins.
   return (
-    <div className="flex flex-wrap items-center gap-2 mb-4">
-      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1">Sort</span>
+    <div className="flex flex-wrap items-center gap-2 mb-4 max-md:flex-nowrap max-md:overflow-x-auto max-md:-mx-4 max-md:px-4 max-md:pb-1 max-md:mb-3">
+      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 mr-1 max-md:shrink-0">Sort</span>
       {options.map((opt) => (
         <button
           key={opt.value}
           onClick={() => onChange(opt.value)}
-          className={`text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors ${
+          className={`text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors max-md:shrink-0 max-md:whitespace-nowrap ${
             value === opt.value
               ? "bg-brand text-white border-brand"
               : "bg-white text-gray-700 border-gray-300 hover:border-accent hover:text-accent"
@@ -43,7 +44,7 @@ export function SortBar({ value, onChange, showFavouritesOnly, onToggleFavourite
 
       <button
         onClick={onToggleFavouritesOnly}
-        className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors ml-auto ${
+        className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-sm border transition-colors ml-auto max-md:shrink-0 ${
           showFavouritesOnly
             ? "bg-accent text-white border-accent"
             : "bg-white text-gray-700 border-gray-300 hover:border-accent hover:text-accent"

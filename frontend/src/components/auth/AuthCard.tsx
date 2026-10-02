@@ -10,8 +10,8 @@ interface AuthCardProps {
 /** Centered card used by the login/registration and email-link pages. */
 export function AuthCard({ icon, title, subtitle, children }: AuthCardProps) {
   return (
-    <div className="flex justify-center pt-6">
-      <div className="w-full max-w-md bg-white border border-gray-200 rounded-md p-8">
+    <div className="flex justify-center pt-6 max-sm:pt-2">
+      <div className="w-full max-w-md bg-white border border-gray-200 rounded-md p-8 max-sm:p-5">
         {icon && <div className="mb-4">{icon}</div>}
         <h1 className="text-xl font-bold mb-1">{title}</h1>
         {subtitle && <div className="text-sm text-gray-500 mb-6">{subtitle}</div>}

@@ -131,8 +131,8 @@ export function AuthPage() {
     }`;
 
   return (
-    <div className="flex justify-center pt-6">
-      <div className="w-full max-w-md bg-white border border-gray-200 rounded-md p-8">
+    <div className="flex justify-center pt-6 max-sm:pt-2">
+      <div className="w-full max-w-md bg-white border border-gray-200 rounded-md p-8 max-sm:p-5">
         <div className="flex mb-6 border-b border-gray-200">
           <button type="button" onClick={() => switchMode("login")} className={tabClass(!isRegister)}>
             Log in
