@@ -28,6 +28,7 @@ from app.schemas.user import (
     UserCreate,
     VerifyEmailRequest,
 )
+from app.services.captcha import require_captcha
 from app.services.notifications import (
     send_account_exists_email,
     send_account_locked_email,
@@ -98,6 +99,7 @@ def _issue_tokens(user: User) -> Token:
 async def register(
     request: Request, data: UserCreate, db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
+    await require_captcha(data.captcha_token, request)
     # Hashed on every path, so the response time doesn't reveal whether the email is taken.
     hashed_password = await hash_password(data.password)
     existing = await _find_user(db, data.email, for_update=True)
@@ -215,6 +217,7 @@ async def verify_email(
 async def resend_verification(
     request: Request, data: EmailRequest, db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
+    await require_captcha(data.captcha_token, request)
     user = await _find_user(db, data.email, for_update=True)
     if user is not None and not user.is_verified:
         await send_verification_email(db, user)
@@ -229,6 +232,7 @@ async def resend_verification(
 async def forgot_password(
     request: Request, data: EmailRequest, db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
+    await require_captcha(data.captcha_token, request)
     user = await _find_user(db, data.email, for_update=True)
     if user is not None:
         await send_password_reset_email(db, user)

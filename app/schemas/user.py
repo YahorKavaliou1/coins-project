@@ -62,10 +62,15 @@ StrongPassword = Annotated[
 CurrentPassword = Annotated[str, Field(max_length=MAX_PASSWORD_LENGTH)]
 
 
+# Cloudflare Turnstile tokens are at most 2048 characters.
+CaptchaToken = Annotated[str, Field(max_length=2048)]
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     password: StrongPassword
     full_name: FullName | None = None
+    captcha_token: CaptchaToken | None = None
 
 
 class UserRead(BaseModel):
@@ -120,6 +125,7 @@ class MessageResponse(BaseModel):
 
 class EmailRequest(BaseModel):
     email: EmailStr
+    captcha_token: CaptchaToken | None = None
 
 
 class VerifyEmailRequest(BaseModel):

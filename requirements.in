@@ -36,10 +36,12 @@ defusedxml
 # --- Email templates ---
 jinja2
 
+# --- HTTP client (CAPTCHA verification with Cloudflare Turnstile) ---
+httpx
+
 # --- Dev / testing ---
 pytest
 pytest-asyncio
-httpx
 ruff
 mypy
 pre-commit

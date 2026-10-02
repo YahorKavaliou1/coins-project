@@ -7,16 +7,24 @@ import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { AuthCard } from "../components/auth/AuthCard";
 import { inputClass, labelClass } from "../components/formStyles";
+import { Captcha, captchaEnabled } from "../components/Captcha";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [touched, setTouched] = useState(false);
+  // Single-use Turnstile token; bumping captchaKey remounts the widget for a fresh one.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const mutation = useMutation({
-    mutationFn: () => forgotPassword(email.trim()),
-    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
+    mutationFn: () => forgotPassword(email.trim(), captchaToken),
+    onError: (err: ApiError) => {
+      toast.error(getErrorMessage(err));
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
+    },
   });
 
   if (mutation.isSuccess) {
@@ -72,9 +80,10 @@ export function ForgotPasswordPage() {
           />
           {touched && invalid && <p className="text-xs text-red-700 mt-1">Enter a valid email</p>}
         </div>
+        <Captcha key={captchaKey} action="forgot_password" onToken={setCaptchaToken} />
         <button
           type="submit"
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || (captchaEnabled && !captchaToken)}
           className="w-full bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm py-3 disabled:opacity-50"
         >
           {mutation.isPending ? "Sending…" : "Send reset link"}

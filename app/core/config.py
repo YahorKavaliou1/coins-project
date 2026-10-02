@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     max_failed_login_attempts: int = 8
     login_lockout_minutes: int = 15
 
+    # --- CAPTCHA (Cloudflare Turnstile) on registration and email-sending forms ---
+    # Empty: the check is off (tests, offline development). For local development use
+    # Cloudflare's test secret 1x0000000000000000000000000000000AA (always passes).
+    turnstile_secret_key: str = ""
+    # When set, a token must have been issued on this host name (the production domain).
+    turnstile_hostname: str = ""
+
     # --- Rate limiting (per client IP) ---
     # Behind a reverse proxy run uvicorn with --proxy-headers --forwarded-allow-ips=<proxy IP>,
     # otherwise every request appears to come from the proxy.

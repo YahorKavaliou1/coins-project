@@ -12,6 +12,7 @@ import { AuthCard } from "../components/auth/AuthCard";
 import { ResendVerificationButton } from "../components/auth/ResendVerificationButton";
 import { PasswordRequirements } from "../components/auth/PasswordRequirements";
 import { passwordError } from "../utils/password";
+import { Captcha, captchaEnabled } from "../components/Captcha";
 
 type Mode = "login" | "register";
 
@@ -37,6 +38,10 @@ export function AuthPage() {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   // Registration finished: show "check your inbox" instead of the form.
   const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
+  // Turnstile token for registration. Single-use: bumping captchaKey remounts the widget
+  // for a fresh one after a failed attempt.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const accessToken = useAuthStore((s) => s.accessToken);
   const setToken = useAuthStore((s) => s.setToken);
@@ -69,9 +74,13 @@ export function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: (data: AuthForm) => registerUser(data.email, data.password, data.full_name),
+    mutationFn: (data: AuthForm) => registerUser(data.email, data.password, data.full_name, captchaToken),
     onSuccess: (_, data) => setRegisteredEmail(data.email.trim()),
-    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
+    onError: (err: ApiError) => {
+      toast.error(getErrorMessage(err));
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
+    },
   });
 
   if (accessToken) return <Navigate to="/browse" replace />;
@@ -245,9 +254,11 @@ export function AuthPage() {
             )}
           </div>
 
+          {isRegister && <Captcha key={captchaKey} action="register" onToken={setCaptchaToken} />}
+
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isPending || (isRegister && captchaEnabled && !captchaToken)}
             className="mt-2 w-full bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm py-3 disabled:opacity-50"
           >
             {isPending
