@@ -1,4 +1,5 @@
 import type { CoinBatchItem, Country, Metal } from "../types";
+import { MAX_LABEL_LENGTH, MAX_LABELS, splitLabels } from "./labels";
 import { isWebUrl } from "./url";
 
 /* ------------------------------------------------------------------ */
@@ -16,6 +17,7 @@ export type FieldKey =
   | "diameter"
   | "grade"
   | "category"
+  | "labels"
   | "sku"
   | "source_url"
   | "catalog_number"
@@ -47,6 +49,7 @@ export const FIELDS: FieldDef[] = [
   { key: "sku", label: "SKU", required: false, synonyms: ["sku", "article", "articleno", "articlenumber", "артикул", "art", "itemno", "itemnumber", "stockno", "stocknumber", "инвентарныйномер"] },
   { key: "source_url", label: "Source link", required: false, synonyms: ["source", "sourceurl", "sourcelink", "link", "url", "ссылка", "источник", "numista", "ucoin"] },
   { key: "category", label: "Category", required: false, synonyms: ["category", "категория", "group", "группа", "series", "серия"] },
+  { key: "labels", label: "Labels", required: false, synonyms: ["labels", "label", "tags", "tag", "метки", "метка", "теги", "тег", "ярлыки"] },
   { key: "catalog_number", label: "Catalog No.", required: false, synonyms: ["catalognumber", "catalogno", "catalog", "каталог", "номерпокаталогу", "km", "kmnumber"] },
   { key: "mintage", label: "Mintage", required: false, synonyms: ["mintage", "тираж"] },
   { key: "extra_info", label: "Extra info", required: false, synonyms: ["extrainfo", "extra", "description", "описание", "notes", "note", "comment", "comments", "комментарий", "примечание", "info", "name", "название"] },
@@ -192,6 +195,7 @@ export function buildDraftRows(
         diameter: cell(row, "diameter"),
         grade: cell(row, "grade"),
         category: cell(row, "category"),
+        labels: cell(row, "labels"),
         sku: cell(row, "sku"),
         source_url: cell(row, "source_url"),
         catalog_number: cell(row, "catalog_number"),
@@ -268,6 +272,11 @@ export function validateRow(row: DraftRow, photos: PhotoIndex): RowErrors {
   }
 
   if (v.category.trim().length > 50) errors.category = "At most 50 characters";
+  const labels = splitLabels(v.labels);
+  if (labels.length > MAX_LABELS) errors.labels = `At most ${MAX_LABELS} labels`;
+  else if (labels.some((l) => l.length > MAX_LABEL_LENGTH)) {
+    errors.labels = `Each label at most ${MAX_LABEL_LENGTH} characters`;
+  }
   if (v.sku.trim().length > 100) errors.sku = "At most 100 characters";
   const sourceUrl = v.source_url.trim();
   if (sourceUrl && (!isWebUrl(sourceUrl) || sourceUrl.length > 500)) {
@@ -302,6 +311,7 @@ export function toBatchItem(row: DraftRow): CoinBatchItem {
     diameter: optionalNumber(v.diameter),
     grade: optionalText(v.grade),
     category: optionalText(v.category),
+    labels: splitLabels(v.labels),
     sku: optionalText(v.sku),
     source_url: optionalText(v.source_url),
     catalog_number: optionalText(v.catalog_number),

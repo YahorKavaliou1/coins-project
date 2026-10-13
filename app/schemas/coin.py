@@ -9,6 +9,7 @@ from app.schemas.fields import (
     Category,
     DbId,
     DiameterMm,
+    Labels,
     Mintage,
     Money,
     MoneyOut,
@@ -36,6 +37,7 @@ class CoinBase(BaseModel):
     composition: Text255 | None = None
     grade: Text50 | None = None
     category: Category | None = None
+    labels: Labels = []
     sku: Sku | None = None
     source_url: SourceUrl | None = None
     catalog_number: Text100 | None = None
@@ -61,6 +63,7 @@ class CoinUpdate(BaseModel):
     composition: Text255 | None = None
     grade: Text50 | None = None
     category: Category | None = None
+    labels: Labels | None = None
     sku: Sku | None = None
     source_url: SourceUrl | None = None
     catalog_number: Text100 | None = None
@@ -73,10 +76,19 @@ class CoinUpdate(BaseModel):
 
     @model_validator(mode="after")
     def required_fields_not_cleared(self) -> Self:
-        # null means "clear the value", which these fields don't allow.
+        # null means "clear the value", which these fields don't allow (labels are cleared
+        # with an empty list).
         cleared = [
             field
-            for field in ("year", "weight", "weight_unit", "country_id", "metal_id", "price")
+            for field in (
+                "year",
+                "weight",
+                "weight_unit",
+                "country_id",
+                "metal_id",
+                "price",
+                "labels",
+            )
             if field in self.model_fields_set and getattr(self, field) is None
         ]
         if cleared:
@@ -98,6 +110,7 @@ class CoinRead(BaseModel):
     composition: str | None
     grade: str | None
     category: str | None
+    labels: list[str] = []
     sku: str | None
     source_url: str | None
     catalog_number: str | None
@@ -168,7 +181,13 @@ class MetalFacet(BaseModel):
     name: str
 
 
+class LabelFacet(BaseModel):
+    name: str
+    count: int  # matching coins, so the shop can show the most used labels first
+
+
 class CoinFacets(BaseModel):
     metals: list[MetalFacet]
     grades: list[str]
     categories: list[str]
+    labels: list[LabelFacet]

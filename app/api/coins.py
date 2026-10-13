@@ -4,7 +4,9 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import ColumnElement, func, or_, select
+from pydantic import StringConstraints
+from sqlalchemy import ColumnElement, String, cast, func, or_, select
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
@@ -15,8 +17,16 @@ from app.models.country import Country
 from app.models.favourite import Favourite
 from app.models.metal import Metal
 from app.models.user import User
-from app.schemas.coin import CoinCreate, CoinFacets, CoinRead, CoinUpdate, MetalFacet, Page
-from app.schemas.fields import MAX_DB_INT
+from app.schemas.coin import (
+    CoinCreate,
+    CoinFacets,
+    CoinRead,
+    CoinUpdate,
+    LabelFacet,
+    MetalFacet,
+    Page,
+)
+from app.schemas.fields import MAX_DB_INT, MAX_LABEL_LENGTH
 from app.services.image_storage import ImageStorage, get_image_storage
 
 logger = logging.getLogger("app.coins")
@@ -30,6 +40,10 @@ YearQuery = Annotated[int | None, Query(ge=-1000, le=2100)]
 SearchQuery = Annotated[str | None, Query(max_length=100)]
 GradeQuery = Annotated[str | None, Query(max_length=50)]
 CategoryQuery = Annotated[str | None, Query(max_length=50)]
+LabelsQuery = Annotated[
+    list[Annotated[str, StringConstraints(max_length=MAX_LABEL_LENGTH)]] | None,
+    Query(max_length=50),
+]
 
 COIN_LOAD_OPTIONS = (
     selectinload(Coin.country),
@@ -100,7 +114,11 @@ def _build_common_conditions(
 
 
 def _facet_conditions(
-    *, metal_id: list[int] | None, grade: str | None, category: str | None
+    *,
+    metal_id: list[int] | None,
+    grade: str | None,
+    category: str | None,
+    label: list[str] | None,
 ) -> dict[str, ColumnElement[bool]]:
     """The active facet filters by facet name.
 
@@ -115,6 +133,9 @@ def _facet_conditions(
         conditions["grade"] = Coin.grade == grade
     if category:
         conditions["category"] = Coin.category == category
+    if label:
+        # A coin matches if it has at least one of the selected labels.
+        conditions["label"] = Coin.labels.overlap(cast(label, ARRAY(String)))
     return conditions
 
 
@@ -125,6 +146,7 @@ async def get_coin_facets(
     metal_id: IdsQuery = None,
     grade: GradeQuery = None,
     category: CategoryQuery = None,
+    label: LabelsQuery = None,
     year_from: YearQuery = None,
     year_to: YearQuery = None,
     q: SearchQuery = None,
@@ -138,7 +160,7 @@ async def get_coin_facets(
         for_sale_only=for_sale_only,
         owner_id=None,
     )
-    facets = _facet_conditions(metal_id=metal_id, grade=grade, category=category)
+    facets = _facet_conditions(metal_id=metal_id, grade=grade, category=category, label=label)
 
     def filtered_except(facet: str) -> list[ColumnElement[bool]]:
         return [*common, *(cond for name, cond in facets.items() if name != facet)]
@@ -166,10 +188,28 @@ async def get_coin_facets(
         )
         return [row[0] for row in await db.execute(stmt)]
 
+    # Most used first: the shop shows only the top labels until the visitor expands the list.
+    label_rows = (
+        select(func.unnest(Coin.labels).label("name"))
+        .select_from(Coin)
+        .join(Coin.metal)
+        .join(Coin.country)
+        .where(*filtered_except("label"))
+        .subquery()
+    )
+    count = func.count().label("count")
+    labels_stmt = (
+        select(label_rows.c.name, count)
+        .group_by(label_rows.c.name)
+        .order_by(count.desc(), label_rows.c.name)
+    )
+    labels = [LabelFacet(name=row.name, count=row.count) for row in await db.execute(labels_stmt)]
+
     return CoinFacets(
         metals=metals,
         grades=await distinct_values(Coin.grade, "grade"),
         categories=await distinct_values(Coin.category, "category"),
+        labels=labels,
     )
 
 
@@ -191,6 +231,7 @@ async def list_coins(
     metal_id: IdsQuery = None,
     grade: GradeQuery = None,
     category: CategoryQuery = None,
+    label: LabelsQuery = None,
     year_from: YearQuery = None,
     year_to: YearQuery = None,
     q: SearchQuery = None,
@@ -211,7 +252,9 @@ async def list_coins(
         for_sale_only=for_sale_only,
         owner_id=owner_id,
     )
-    conditions.extend(_facet_conditions(metal_id=metal_id, grade=grade, category=category).values())
+    conditions.extend(
+        _facet_conditions(metal_id=metal_id, grade=grade, category=category, label=label).values()
+    )
 
     for condition in conditions:
         stmt = stmt.where(condition)

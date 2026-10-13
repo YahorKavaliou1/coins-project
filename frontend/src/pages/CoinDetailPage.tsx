@@ -156,6 +156,11 @@ export function CoinDetailPage() {
                 {coin.metal.name} ({coin.composition})
               </span>
             )}
+            {coin.labels.map((label) => (
+              <span key={label} className="bg-accent/10 text-accent-dark rounded-full px-3 py-1 text-xs font-medium">
+                {label}
+              </span>
+            ))}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-md p-4 mt-5">

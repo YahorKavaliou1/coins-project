@@ -1,4 +1,5 @@
-import type { Country, MetalFacet } from "../types";
+import type { Country, LabelFacet, MetalFacet } from "../types";
+import { LabelFilter } from "./LabelFilter";
 import { MultiSelectDropdown } from "./MultiSelectDropdown";
 
 interface BrowseSidebarProps {
@@ -19,6 +20,10 @@ interface BrowseSidebarProps {
   availableCategories: string[];
   category: string;
   onCategoryChange: (value: string) => void;
+
+  availableLabels: LabelFacet[];
+  selectedLabels: string[];
+  onLabelsChange: (labels: string[]) => void;
 }
 
 const selectClass =
@@ -38,6 +43,9 @@ export function BrowseSidebar({
   availableCategories,
   category,
   onCategoryChange,
+  availableLabels,
+  selectedLabels,
+  onLabelsChange,
 }: BrowseSidebarProps) {
   const countryOptions = countries
     .map((c) => ({
@@ -100,6 +108,8 @@ export function BrowseSidebar({
           ))}
         </select>
       </div>
+
+      <LabelFilter available={availableLabels} selected={selectedLabels} onChange={onLabelsChange} />
     </aside>
   );
 }

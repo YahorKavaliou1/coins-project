@@ -11,7 +11,7 @@ export const CATEGORY_DATALIST_ID = "coin-categories";
 export function CategoryDatalist() {
   // Under "coin-facets", so it refreshes whenever coins are created, edited or deleted.
   const { data } = useQuery({
-    queryKey: ["coin-facets", "all-categories"],
+    queryKey: ["coin-facets", "unfiltered"],
     queryFn: () => getCoinFacets(),
   });
   return (

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { listCountries, listMetals } from "../api/reference";
 import { createCoin, uploadCoinImage } from "../api/coins";
@@ -13,6 +13,7 @@ import { toast } from "../store/toastStore";
 import { useSearchParams } from "react-router-dom";
 import { BatchImport } from "../components/batch/BatchImport";
 import { CATEGORY_DATALIST_ID, CategoryDatalist } from "../components/CategoryDatalist";
+import { LabelsInput } from "../components/LabelsInput";
 
 interface FormValues extends Omit<CoinCreatePayload, "country_id" | "metal_id"> {
   country_id: string;
@@ -50,12 +51,13 @@ function SingleListingForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
-    defaultValues: { weight_unit: "oz", country_id: "", metal_id: "" },
+    defaultValues: { weight_unit: "oz", country_id: "", metal_id: "", labels: [] },
   });
 
   function handleCountryChange(ids: number[]) {
@@ -221,6 +223,15 @@ function SingleListingForm() {
                 className={inputClass}
               />
               <CategoryDatalist />
+            </div>
+
+            <div className="col-span-2 max-sm:col-span-1">
+              <label className={labelClass}>Labels</label>
+              <Controller
+                name="labels"
+                control={control}
+                render={({ field }) => <LabelsInput value={field.value ?? []} onChange={field.onChange} />}
+              />
             </div>
 
             <div>

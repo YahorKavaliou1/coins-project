@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, RotateCcw, X } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Coin, CoinUpdatePayload } from "../types";
 import { updateCoin, uploadCoinImage, deleteCoinImage } from "../api/coins";
@@ -11,6 +11,7 @@ import { toCountryOptions, toMetalOptions } from "../utils/referenceOptions";
 import { MultiSelectDropdown } from "./MultiSelectDropdown";
 import { inputClass, labelClass, sectionTitleClass } from "./formStyles";
 import { CATEGORY_DATALIST_ID, CategoryDatalist } from "./CategoryDatalist";
+import { LabelsInput } from "./LabelsInput";
 
 interface EditCoinModalProps {
   coin: Coin;
@@ -36,7 +37,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
   const queryClient = useQueryClient();
   const { data: countries } = useQuery({ queryKey: ["countries"], queryFn: listCountries });
   const { data: metals } = useQuery({ queryKey: ["metals"], queryFn: listMetals });
-  const { register, handleSubmit } = useForm<CoinUpdatePayload>({
+  const { register, control, handleSubmit } = useForm<CoinUpdatePayload>({
     defaultValues: {
       denomination: coin.denomination ?? "",
       year: coin.year,
@@ -47,6 +48,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
       mintage: coin.mintage ?? undefined,
       grade: coin.grade ?? "",
       category: coin.category ?? "",
+      labels: coin.labels,
       sku: coin.sku ?? "",
       source_url: coin.source_url ?? "",
       catalog_number: coin.catalog_number ?? "",
@@ -258,6 +260,15 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
                   className={inputClass}
                 />
                 <CategoryDatalist />
+              </div>
+
+                <div className="col-span-2 max-sm:col-span-1">
+                <label className={labelClass}>Labels</label>
+                <Controller
+                  name="labels"
+                  control={control}
+                  render={({ field }) => <LabelsInput value={field.value ?? []} onChange={field.onChange} />}
+                />
               </div>
               <div>
                 <label className={labelClass}>Catalog No.</label>

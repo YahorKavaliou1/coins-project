@@ -15,6 +15,8 @@ export interface CoinFilters {
   metal_id?: number[];
   grade?: string;
   category?: string;
+  /** Coins with at least one of these labels. */
+  label?: string[];
   year_from?: number;
   year_to?: number;
   q?: string;

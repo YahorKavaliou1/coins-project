@@ -85,6 +85,16 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
           {coin.extra_info ? ` - ${coin.extra_info}` : ""}
         </div>
 
+        {coin.labels.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {coin.labels.map((label) => (
+              <span key={label} className="bg-accent/10 text-accent-dark text-[10px] font-medium rounded-full px-2 py-0.5">
+                {label}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mt-1">
           {coin.catalog_number ? (
             <span className="text-gray-400 text-xs">{coin.catalog_number}</span>

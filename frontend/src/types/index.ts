@@ -34,6 +34,7 @@ export interface Coin {
   composition: string | null;
   grade: string | null;
   category: string | null;
+  labels: string[];
   sku: string | null;
   source_url: string | null;
   catalog_number: string | null;
@@ -66,6 +67,7 @@ export interface CoinCreatePayload {
   composition?: string | null;
   grade?: string | null;
   category?: string | null;
+  labels?: string[];
   sku?: string | null;
   source_url?: string | null;
   catalog_number?: string | null;
@@ -143,10 +145,17 @@ export interface Order {
 
 export type MetalFacet = Pick<Metal, "id" | "name">;
 
+export interface LabelFacet {
+  name: string;
+  /** Matching coins; the facet comes sorted by it, most used first. */
+  count: number;
+}
+
 export interface CoinFacets {
   metals: MetalFacet[];
   grades: string[];
   categories: string[];
+  labels: LabelFacet[];
 }
 
 export interface ImportTable {
@@ -167,6 +176,7 @@ export interface CoinBatchItem {
   diameter: number | null;
   grade: string | null;
   category: string | null;
+  labels: string[];
   sku: string | null;
   source_url: string | null;
   catalog_number: string | null;

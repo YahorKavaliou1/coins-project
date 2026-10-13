@@ -50,7 +50,7 @@ export const home = {
     },
   ],
   steps: [
-    { title: "Find your coin", text: "Filter the shop by country, metal, grade or category, or search by name and year." },
+    { title: "Find your coin", text: "Filter the shop by country, metal, grade, category or labels, or search by name and year." },
     { title: "Check the details", text: "Study the photos, weight, diameter, mintage and catalogue number of every lot." },
     { title: "Order securely", text: "Add coins to your cart and check out — we confirm every order by email." },
     { title: "Receive it insured", text: "Your coins travel tracked and insured, packed to arrive exactly as pictured." },

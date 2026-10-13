@@ -8,11 +8,13 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -27,7 +29,11 @@ if TYPE_CHECKING:
 
 class Coin(Base):
     __tablename__ = "coins"
-    __table_args__ = (CheckConstraint("price > 0", name="ck_coins_price_positive"),)
+    __table_args__ = (
+        CheckConstraint("price > 0", name="ck_coins_price_positive"),
+        # GIN, so the shop's "has any of these labels" filter (&&) can use an index.
+        Index("ix_coins_labels", "labels", postgresql_using="gin"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     year: Mapped[int] = mapped_column(Integer)
@@ -39,6 +45,8 @@ class Coin(Base):
     grade: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Free-form grouping of lots (e.g. "Bullion", "Commemorative"); the shop filters by it.
     category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    # Up to 5 short free-form tags (e.g. "Proof", "Low mintage"); the shop filters by any of them.
+    labels: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list, server_default="{}")
     # The seller's own stock number (SKU), for matching lots with their own records.
     sku: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # A page describing the coin, e.g. on Numista or uCoin (http/https only).

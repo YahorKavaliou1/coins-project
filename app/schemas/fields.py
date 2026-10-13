@@ -48,6 +48,30 @@ Category = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=50), AfterValidator(_blank_to_none)
 ]
 
+# Labels are short free-form tags ("Proof", "Low mintage"...); the shop filters by any of them.
+MAX_LABELS_PER_COIN = 5
+MAX_LABEL_LENGTH = 30
+
+
+def _clean_labels(labels: list[str]) -> list[str]:
+    """Collapses inner whitespace and drops blanks and case-insensitive duplicates."""
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for label in labels:
+        label = " ".join(label.split())
+        if label and label.casefold() not in seen:
+            seen.add(label.casefold())
+            cleaned.append(label)
+    if len(cleaned) > MAX_LABELS_PER_COIN:
+        raise ValueError(f"A coin can have at most {MAX_LABELS_PER_COIN} labels")
+    return cleaned
+
+
+Label = Annotated[str, StringConstraints(strip_whitespace=True, max_length=MAX_LABEL_LENGTH)]
+# The length bound here only stops huge payloads; _clean_labels enforces the real limit
+# after blanks and duplicates are dropped.
+Labels = Annotated[list[Label], Field(max_length=50), AfterValidator(_clean_labels)]
+
 # The seller's own stock number, for matching lots with their records.
 Sku = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=100), AfterValidator(_blank_to_none)
