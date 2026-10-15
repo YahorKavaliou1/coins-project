@@ -1,5 +1,3 @@
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
 from app.schemas.coin import CoinCreate
@@ -13,9 +11,7 @@ class TableParseResult(BaseModel):
 
 
 class CoinBatchItem(CoinCreate):
-    """A table row: validated like a single coin, and always listed for sale."""
-
-    is_for_sale: Literal[True] = True
+    """A table row: validated like a single coin (new coins are always listed for sale)."""
 
 
 class CoinBatchCreate(BaseModel):

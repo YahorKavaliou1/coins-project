@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.models.coin import CoinStatus
 from app.schemas.coin_image import CoinImageRead
 from app.schemas.country import CountryRead
 from app.schemas.fields import (
@@ -44,7 +45,6 @@ class CoinBase(BaseModel):
     extra_info: Text1000 | None = None
     mintage: Mintage | None = None
     price: Money
-    is_for_sale: bool = True
 
 
 class CoinCreate(CoinBase):
@@ -72,7 +72,6 @@ class CoinUpdate(BaseModel):
     country_id: DbId | None = None
     metal_id: DbId | None = None
     price: Money | None = None
-    is_for_sale: bool | None = None
 
     @model_validator(mode="after")
     def required_fields_not_cleared(self) -> Self:
@@ -117,6 +116,7 @@ class CoinRead(BaseModel):
     extra_info: str | None
     mintage: int | None
     price: MoneyOut | None
+    status: CoinStatus
     is_for_sale: bool
     country: CountryRead
     metal: MetalRead
@@ -174,6 +174,44 @@ class Page(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class SaleInfo(BaseModel):
+    """How a sold lot was bought: what its seller needs to ship it."""
+
+    order_id: int
+    sold_at: datetime
+    price_paid: MoneyOut
+    buyer_name: str | None
+    shipping_address: str
+
+
+class MyLotRead(CoinRead):
+    sale: SaleInfo | None = None
+
+
+class MyLotCounts(BaseModel):
+    for_sale: int = 0
+    withdrawn: int = 0
+    sold: int = 0
+
+
+class MyLotsPage(BaseModel):
+    items: list[MyLotRead]
+    total: int
+    page: int
+    page_size: int
+    counts: MyLotCounts
+
+
+class CoinIdsRequest(BaseModel):
+    coin_ids: list[DbId] = Field(min_length=1, max_length=100)
+
+
+class CoinIdsResult(BaseModel):
+    """The coins that were changed; others were skipped (not yours, or not in that state)."""
+
+    coin_ids: list[int]
 
 
 class MetalFacet(BaseModel):

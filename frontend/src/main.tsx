@@ -8,6 +8,7 @@ import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SellPage } from "./pages/SellPage";
+import { MyLotsPage } from "./pages/MyLotsPage";
 import { BrowsePage } from "./pages/BrowsePage";
 import { CoinDetailPage } from "./pages/CoinDetailPage";
 import { CartPage } from "./pages/CartPage";
@@ -38,6 +39,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               element={
                 <RequireRole roles={["seller", "admin"]}>
                   <SellPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/my-lots"
+              element={
+                <RequireRole roles={["seller", "admin"]}>
+                  <MyLotsPage />
                 </RequireRole>
               }
             />

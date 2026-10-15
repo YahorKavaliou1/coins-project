@@ -35,7 +35,7 @@ async def list_favourites(
         .order_by(Favourite.created_at.desc())
     )
     if for_sale_only:
-        stmt = stmt.where(Coin.is_for_sale.is_(True))
+        stmt = stmt.where(Coin.is_for_sale)
 
     total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
 

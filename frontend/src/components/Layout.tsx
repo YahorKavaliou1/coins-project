@@ -128,6 +128,15 @@ export function Layout() {
                         Sell
                       </button>
                     )}
+                    {canSell(currentUser) && (
+                      <button
+                        type="button"
+                        onClick={() => goTo("/my-lots")}
+                        className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
+                      >
+                        My lots
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => goTo("/purchases")}

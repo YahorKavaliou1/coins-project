@@ -7,6 +7,7 @@ import { addFavourite, removeFavourite } from "../api/favourites";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { useDeleteCoin } from "../hooks/useDeleteCoin";
+import { unavailableLabel } from "../utils/coinStatus";
 import { formatPrice } from "../utils/money";
 
 interface CoinCardProps {
@@ -36,7 +37,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
-  const canEdit = isOwner && coin.is_for_sale;
+  const canEdit = isOwner && coin.status !== "sold";
 
   const images = coin.images.slice(0, 2);
 
@@ -68,8 +69,8 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
         )}
 
         {!coin.is_for_sale && (
-          <span className="absolute top-1.5 right-1.5 bg-gray-700 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-            SOLD
+          <span className="absolute top-1.5 right-1.5 bg-gray-700 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+            {unavailableLabel(coin.status)}
           </span>
         )}
       </div>
@@ -152,7 +153,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
               </button>
             </div>
           ) : !coin.is_for_sale ? (
-            <div className="text-center text-gray-400 text-sm italic py-2">Sold</div>
+            <div className="text-center text-gray-400 text-sm italic py-2">{unavailableLabel(coin.status)}</div>
           ) : null}
         </div>
       </div>

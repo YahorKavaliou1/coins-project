@@ -101,7 +101,7 @@ async def checkout(
 
         # The coin's owner (the seller who listed it) never changes.
         # Purchase history and buyer information live on Order/OrderItem instead.
-        coin.is_for_sale = False
+        coin.status = "sold"
 
         await db.delete(cart_item)
 

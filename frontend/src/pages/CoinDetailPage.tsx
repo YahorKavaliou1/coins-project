@@ -14,6 +14,7 @@ import { toast } from "../store/toastStore";
 import { useDeleteCoin } from "../hooks/useDeleteCoin";
 import type { Coin } from "../types";
 import { formatPrice } from "../utils/money";
+import { unavailableLabel } from "../utils/coinStatus";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -55,7 +56,7 @@ export function CoinDetailPage() {
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
-  const canEdit = (isOwner || isAdmin(currentUser)) && coin.is_for_sale;
+  const canEdit = (isOwner || isAdmin(currentUser)) && coin.status !== "sold";
 
   const activeImage = coin.images[activeImageIdx];
 
@@ -109,8 +110,8 @@ export function CoinDetailPage() {
               </span>
             )}
             {!coin.is_for_sale && (
-              <span className="absolute top-2 right-2 bg-gray-700 text-white text-xs font-bold px-2 py-1 rounded z-10">
-                SOLD
+              <span className="absolute top-2 right-2 bg-gray-700 text-white text-xs font-bold px-2 py-1 rounded z-10 uppercase">
+                {unavailableLabel(coin.status)}
               </span>
             )}
             {activeImage ? (
@@ -190,7 +191,7 @@ export function CoinDetailPage() {
                 </button>
               </div>
             ) : !coin.is_for_sale ? (
-              <div className="text-center text-gray-400 italic py-2">Sold</div>
+              <div className="text-center text-gray-400 italic py-2">{unavailableLabel(coin.status)}</div>
             ) : null}
 
             {canEdit && (

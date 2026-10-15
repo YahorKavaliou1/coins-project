@@ -1,9 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, get_args
 
 from sqlalchemy import (
-    Boolean,
     CheckConstraint,
     DateTime,
     Float,
@@ -15,8 +14,9 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import ColumnElement, func
 
 from app.db.base import Base
 
@@ -26,11 +26,19 @@ if TYPE_CHECKING:
     from app.models.metal import Metal
     from app.models.user import User
 
+# for_sale: listed in the shop. withdrawn: taken off sale by its seller, who can relist it.
+# sold: bought (see OrderItem); final.
+CoinStatus = Literal["for_sale", "withdrawn", "sold"]
+COIN_STATUSES: tuple[str, ...] = get_args(CoinStatus)
+
 
 class Coin(Base):
     __tablename__ = "coins"
     __table_args__ = (
         CheckConstraint("price > 0", name="ck_coins_price_positive"),
+        CheckConstraint(
+            "status IN ('for_sale', 'withdrawn', 'sold')", name="ck_coins_status_valid"
+        ),
         # GIN, so the shop's "has any of these labels" filter (&&) can use an index.
         Index("ix_coins_labels", "labels", postgresql_using="gin"),
     )
@@ -57,7 +65,9 @@ class Coin(Base):
 
     # NUMERIC, not FLOAT: money must add up exactly.
     price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
-    is_for_sale: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    status: Mapped[str] = mapped_column(
+        String(20), default="for_sale", server_default="for_sale", index=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -71,6 +81,16 @@ class Coin(Base):
     # The user who listed this coin for sale. This never changes after a
     # purchase — buyer information and purchase history live on Order/OrderItem.
     owner: Mapped["User"] = relationship(foreign_keys=[owner_id])
+
+    @hybrid_property
+    def is_for_sale(self) -> bool:
+        """Can be bought right now. Read-only: change `status` instead."""
+        return self.status == "for_sale"
+
+    @is_for_sale.inplace.expression
+    @classmethod
+    def _is_for_sale_expression(cls) -> ColumnElement[bool]:
+        return cls.status == "for_sale"
 
     images: Mapped[list["CoinImage"]] = relationship(
         back_populates="coin",

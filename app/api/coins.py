@@ -1,11 +1,11 @@
 import asyncio
 import contextlib
 import logging
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import StringConstraints
-from sqlalchemy import ColumnElement, String, cast, func, or_, select
+from sqlalchemy import ColumnElement, String, cast, func, or_, select, update
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
@@ -16,15 +16,23 @@ from app.models.coin import Coin
 from app.models.country import Country
 from app.models.favourite import Favourite
 from app.models.metal import Metal
+from app.models.order import Order
+from app.models.order_item import OrderItem
 from app.models.user import User
 from app.schemas.coin import (
     CoinCreate,
     CoinFacets,
+    CoinIdsRequest,
+    CoinIdsResult,
     CoinRead,
     CoinUpdate,
     LabelFacet,
     MetalFacet,
+    MyLotCounts,
+    MyLotRead,
+    MyLotsPage,
     Page,
+    SaleInfo,
 )
 from app.schemas.fields import MAX_DB_INT, MAX_LABEL_LENGTH
 from app.services.image_storage import ImageStorage, get_image_storage
@@ -105,8 +113,10 @@ def _build_common_conditions(
         with contextlib.suppress(ValueError):
             q_conditions.append(Coin.year == int(q))
         conditions.append(or_(*q_conditions))
+    # Withdrawn lots are their seller's business only: see /coins/mine.
+    conditions.append(Coin.status != "withdrawn")
     if for_sale_only:
-        conditions.append(Coin.is_for_sale.is_(True))
+        conditions.append(Coin.status == "for_sale")
     if owner_id is not None:
         conditions.append(Coin.owner_id == owner_id)
 
@@ -273,6 +283,104 @@ async def list_coins(
     return Page(items=items, total=total, page=page, page_size=page_size)
 
 
+@router.get("/mine", response_model=MyLotsPage)
+async def list_my_lots(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+    status: Literal["for_sale", "withdrawn", "sold"] = "for_sale",
+    page: int = Query(default=1, ge=1, le=10_000),
+    page_size: int = Query(default=20, ge=1, le=100),
+) -> MyLotsPage:
+    """The seller's own lots in one state, with how each sold one was bought."""
+    mine = Coin.owner_id == current_user.id
+
+    count_rows = await db.execute(
+        select(Coin.status, func.count()).where(mine).group_by(Coin.status)
+    )
+    counts = MyLotCounts(**{row[0]: row[1] for row in count_rows.all()})
+
+    stmt = select(Coin).options(*COIN_LOAD_OPTIONS).where(mine, Coin.status == status)
+    if status == "sold":
+        # Most recent sale first.
+        stmt = stmt.join(OrderItem, OrderItem.coin_id == Coin.id).join(OrderItem.order)
+        stmt = stmt.order_by(Order.created_at.desc(), Coin.id.desc())
+    else:
+        stmt = stmt.order_by(Coin.created_at.desc(), Coin.id.desc())
+    stmt = stmt.offset((page - 1) * page_size).limit(page_size)
+    coins = list((await db.execute(stmt)).scalars().unique().all())
+
+    sales: dict[int, SaleInfo] = {}
+    if status == "sold" and coins:
+        sale_rows = await db.execute(
+            select(OrderItem, Order, User.full_name)
+            .join(OrderItem.order)
+            .join(User, User.id == Order.buyer_id)
+            .where(OrderItem.coin_id.in_([coin.id for coin in coins]))
+        )
+        for item, order, buyer_name in sale_rows.all():
+            sales[item.coin_id] = SaleInfo(
+                order_id=order.id,
+                sold_at=order.created_at,
+                price_paid=item.price_paid,
+                buyer_name=buyer_name,
+                shipping_address=order.shipping_address,
+            )
+
+    favourite_ids = await _get_favourite_ids(db, current_user)
+    items = []
+    for coin in coins:
+        lot = MyLotRead.model_validate(coin, context={"favourite_coin_ids": favourite_ids})
+        lot.sale = sales.get(coin.id)
+        items.append(lot)
+
+    return MyLotsPage(
+        items=items,
+        total=getattr(counts, status),
+        page=page,
+        page_size=page_size,
+        counts=counts,
+    )
+
+
+async def _change_status(
+    db: AsyncSession, user: User, coin_ids: list[int], *, from_status: str, to_status: str
+) -> CoinIdsResult:
+    # Only the user's own coins that are in from_status: a coin sold meanwhile stays sold.
+    result = await db.execute(
+        update(Coin)
+        .where(Coin.id.in_(coin_ids), Coin.owner_id == user.id, Coin.status == from_status)
+        .values(status=to_status)
+        .returning(Coin.id)
+    )
+    changed = sorted(row[0] for row in result.all())
+    await db.commit()
+    return CoinIdsResult(coin_ids=changed)
+
+
+@router.post("/withdraw", response_model=CoinIdsResult)
+async def withdraw_coins(
+    data: CoinIdsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+) -> CoinIdsResult:
+    """Takes the seller's lots off sale: hidden from the shop and can't be bought."""
+    return await _change_status(
+        db, current_user, data.coin_ids, from_status="for_sale", to_status="withdrawn"
+    )
+
+
+@router.post("/relist", response_model=CoinIdsResult)
+async def relist_coins(
+    data: CoinIdsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+) -> CoinIdsResult:
+    """Puts withdrawn lots back on sale."""
+    return await _change_status(
+        db, current_user, data.coin_ids, from_status="withdrawn", to_status="for_sale"
+    )
+
+
 @router.get("/{coin_id}", response_model=CoinRead)
 async def get_coin(
     coin_id: int,
@@ -315,11 +423,10 @@ async def update_coin(
         raise HTTPException(status_code=404, detail="Coin not found")
     if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
-    if not coin.is_for_sale:
+    if coin.status == "sold":
         raise HTTPException(status_code=409, detail="Sold coins cannot be edited")
 
     update_data = data.model_dump(exclude_unset=True)
-    update_data.pop("is_for_sale", None)
 
     new_country_id = update_data.get("country_id", coin.country_id)
     new_metal_id = update_data.get("metal_id", coin.metal_id)
@@ -347,7 +454,7 @@ async def delete_coin(
     if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
     # Orders reference sold coins; their history must stay intact.
-    if not coin.is_for_sale:
+    if coin.status == "sold":
         raise HTTPException(status_code=409, detail="Sold coins cannot be deleted")
 
     image_urls = [image.url for image in coin.images]

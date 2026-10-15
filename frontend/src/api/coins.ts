@@ -1,5 +1,13 @@
 import { apiClient } from "./client";
-import type { Coin, CoinCreatePayload, CoinFacets, CoinPage, CoinUpdatePayload } from "../types";
+import type {
+  Coin,
+  CoinCreatePayload,
+  CoinFacets,
+  CoinPage,
+  CoinStatus,
+  CoinUpdatePayload,
+  MyLotsPage,
+} from "../types";
 
 export type CoinSort =
   | "recent"
@@ -46,6 +54,25 @@ export async function listCoins(filters: CoinFilters = {}) {
 export async function getCoinFacets(filters: CoinFilters = {}) {
   const { data } = await apiClient.get<CoinFacets>(`/coins/facets?${buildParams(filters).toString()}`);
   return data;
+}
+
+/** The current seller's own lots in one state, with sale details for sold ones. */
+export async function listMyLots(status: CoinStatus, page = 1, pageSize = 20) {
+  const params = new URLSearchParams({ status, page: String(page), page_size: String(pageSize) });
+  const { data } = await apiClient.get<MyLotsPage>(`/coins/mine?${params.toString()}`);
+  return data;
+}
+
+/** Takes lots off sale; returns the ids actually changed (others were sold meanwhile, etc.). */
+export async function withdrawCoins(coinIds: number[]) {
+  const { data } = await apiClient.post<{ coin_ids: number[] }>("/coins/withdraw", { coin_ids: coinIds });
+  return data.coin_ids;
+}
+
+/** Puts withdrawn lots back on sale; returns the ids actually changed. */
+export async function relistCoins(coinIds: number[]) {
+  const { data } = await apiClient.post<{ coin_ids: number[] }>("/coins/relist", { coin_ids: coinIds });
+  return data.coin_ids;
 }
 
 export async function getCoin(id: number) {

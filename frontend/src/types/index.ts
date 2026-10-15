@@ -23,9 +23,13 @@ export interface CoinImage {
   created_at: string;
 }
 
+/** for_sale: in the shop. withdrawn: taken off sale by its seller. sold: bought. */
+export type CoinStatus = "for_sale" | "withdrawn" | "sold";
+
 export interface Coin {
   id: number;
   name: string;
+  created_at: string;
   year: number;
   weight: number;
   weight_unit: string;
@@ -41,12 +45,35 @@ export interface Coin {
   extra_info: string | null;
   mintage: number | null;
   price: number | null;
+  status: CoinStatus;
+  /** status === "for_sale" */
   is_for_sale: boolean;
   country: Country;
   metal: Metal;
   owner: UserPublic;
   images: CoinImage[];
   is_favourite: boolean;
+}
+
+/** How a sold lot was bought: what its seller needs to ship it. */
+export interface SaleInfo {
+  order_id: number;
+  sold_at: string;
+  price_paid: number;
+  buyer_name: string | null;
+  shipping_address: string;
+}
+
+export interface MyLot extends Coin {
+  sale: SaleInfo | null;
+}
+
+export interface MyLotsPage {
+  items: MyLot[];
+  total: number;
+  page: number;
+  page_size: number;
+  counts: Record<CoinStatus, number>;
 }
 
 export interface CoinPage {
@@ -74,10 +101,9 @@ export interface CoinCreatePayload {
   extra_info?: string | null;
   mintage?: number | null;
   price: number;
-  is_for_sale?: boolean;
 }
 
-export type CoinUpdatePayload = Partial<Omit<CoinCreatePayload, "is_for_sale">>;
+export type CoinUpdatePayload = Partial<CoinCreatePayload>;
 
 export type UserRole = "user" | "seller" | "admin";
 
