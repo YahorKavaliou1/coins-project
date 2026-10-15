@@ -45,14 +45,25 @@ MAX_IMAGES_PER_COIN = 12
 PILLOW_FORMATS = ["JPEG", "PNG", "WEBP"]
 
 # Re-encoding is unavoidable (it strips metadata such as GPS location and makes every file
-# safe to serve), so it must not cost visible quality. JPEG: quality 95 and no chroma
-# subsampling (4:4:4); Pillow's defaults (75, 4:2:0) blur fine detail and colour edges.
-# PNG is lossless anyway.
+# safe to serve), so it must not cost visible quality, yet the coin page should load fast.
+# JPEG: quality 90 and no chroma subsampling (4:4:4): visually identical to the upload and
+# about a third smaller than quality 95; Pillow's defaults (75, 4:2:0) blur fine detail and
+# colour edges. Lossy WebP always halves colour resolution, so photos are kept as JPEG.
 _SAVE_OPTIONS: dict[str, dict[str, Any]] = {
-    "JPEG": {"quality": 95, "subsampling": 0, "optimize": True},
-    "WEBP": {"quality": 95, "method": 4},
+    "JPEG": {"quality": 90, "subsampling": 0, "optimize": True},
+    "WEBP": {"quality": 90, "method": 4},
     "PNG": {"optimize": True},
 }
+
+
+def _has_transparency(image: Image.Image) -> bool:
+    if image.mode in ("RGBA", "LA", "PA"):
+        # An all-opaque alpha channel is no transparency. One band: extrema is (min, max).
+        lowest, _ = image.getchannel("A").getextrema()
+        return isinstance(lowest, int | float) and lowest < 255
+    return "transparency" in image.info
+
+
 # WebP is a third smaller than JPEG at the same look; quality 82 is indistinguishable from
 # the photo at thumbnail size. method 6: slowest, smallest file (thumbnails are tiny).
 _THUMBNAIL_OPTIONS: dict[str, Any] = {"format": "WEBP", "quality": 82, "method": 6}
@@ -114,7 +125,6 @@ class ImageStorage(ABC):
             raise HTTPException(status_code=400, detail="Image resolution is too large.")
 
         fmt = (image.format or "JPEG").upper()
-        ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}[fmt]
 
         if fmt == "JPEG":
             # Let the decoder downscale by up to 8x while decoding: less memory and CPU.
@@ -133,8 +143,13 @@ class ImageStorage(ABC):
         # apply the rotation to the pixels instead (lossless: pixels are only moved).
         image = ImageOps.exif_transpose(image)
 
-        if fmt == "JPEG" and image.mode in ("RGBA", "P"):
+        # A photo saved as PNG is lossless and several MB: stored as JPEG like other photos,
+        # unless it has transparency (e.g. a coin cut out from its background).
+        if fmt == "PNG" and not _has_transparency(image):
+            fmt = "JPEG"
+        if fmt == "JPEG" and image.mode != "RGB":
             image = image.convert("RGB")
+        ext = {"JPEG": "jpg", "PNG": "png", "WEBP": "webp"}[fmt]
 
         buffer = io.BytesIO()
         image.save(buffer, format=fmt, **_SAVE_OPTIONS[fmt])
