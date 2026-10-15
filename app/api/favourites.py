@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.coins import COIN_LOAD_OPTIONS
@@ -20,6 +20,7 @@ async def list_favourites(
     current_user: User = Depends(get_current_user),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    for_sale_only: bool = False,
 ) -> Page:
     fav_ids_result = await db.execute(
         select(Favourite.coin_id).where(Favourite.user_id == current_user.id)
@@ -33,8 +34,10 @@ async def list_favourites(
         .options(*COIN_LOAD_OPTIONS)
         .order_by(Favourite.created_at.desc())
     )
+    if for_sale_only:
+        stmt = stmt.where(Coin.is_for_sale.is_(True))
 
-    total = len(favourite_ids)
+    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
 
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(stmt)

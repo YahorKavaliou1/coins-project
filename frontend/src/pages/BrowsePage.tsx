@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listCoins, getCoinFacets } from "../api/coins";
 import { listFavourites } from "../api/favourites";
 import { listCountries } from "../api/reference";
@@ -9,11 +9,15 @@ import { CoinCard } from "../components/CoinCard";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { BrowseSidebar } from "../components/BrowseSidebar";
 import { SortBar } from "../components/SortBar";
+import { Pagination } from "../components/Pagination";
 import type { CoinSort } from "../api/coins";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
+
+// Divisible by 2 and 3, so the last row of the grid is full on both phone and desktop.
+const PAGE_SIZE = 24;
 
 export function BrowsePage() {
   const queryClient = useQueryClient();
@@ -49,16 +53,30 @@ export function BrowsePage() {
     queryFn: () => getCoinFacets({ ...commonFilters, metal_id: selectedMetalIds }),
   });
 
+  // Any change of filters, sort or view starts again from the first page.
+  const listKey = JSON.stringify([selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds, sort, favouritesOnly]);
+  const [pageState, setPageState] = useState({ key: listKey, number: 1 });
+  const pageNumber = pageState.key === listKey ? pageState.number : 1;
+  const listTopRef = useRef<HTMLDivElement>(null);
+
+  function goToPage(number: number) {
+    setPageState({ key: listKey, number });
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds, sort, favouritesOnly],
+    queryKey: ["coins", listKey, pageNumber],
     queryFn: () =>
       favouritesOnly
-        ? listFavourites()
-        : listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort }),
+        // Favourites may include coins sold since they were saved: the shop doesn't show those.
+        ? listFavourites({ page: pageNumber, pageSize: PAGE_SIZE, forSaleOnly: true })
+        : listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort, page: pageNumber, page_size: PAGE_SIZE }),
+    // Keep the current page on screen while the next one loads, instead of an empty grid.
+    placeholderData: keepPreviousData,
   });
 
-  // Favourites may include coins sold since they were saved: the shop doesn't show those.
-  const coins = (page?.items ?? []).filter((coin) => coin.is_for_sale);
+  const coins = page?.items ?? [];
+  const pageCount = page ? Math.ceil(page.total / page.page_size) : 0;
 
   function runSearch() {
     setAppliedQ(qInput);
@@ -149,7 +167,7 @@ export function BrowsePage() {
           onLabelsChange={setSelectedLabels}
         />
 
-        <div className="flex-1">
+        <div className="flex-1 scroll-mt-4" ref={listTopRef}>
           <SortBar
             value={sort}
             onChange={setSort}
@@ -167,6 +185,7 @@ export function BrowsePage() {
             />
           ))}
           </div>
+          <Pagination page={pageNumber} pageCount={pageCount} onChange={goToPage} />
         </div>
       </div>
 
