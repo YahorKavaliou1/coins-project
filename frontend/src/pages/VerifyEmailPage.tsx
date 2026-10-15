@@ -13,7 +13,7 @@ import { inputClass, labelClass } from "../components/formStyles";
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";
-  const setToken = useAuthStore((s) => s.setToken);
+  const setTokens = useAuthStore((s) => s.setTokens);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -25,7 +25,7 @@ export function VerifyEmailPage() {
   const mutation = useMutation({
     mutationFn: () => verifyEmail(token, password),
     onSuccess: (tokens) => {
-      setToken(tokens.access_token);
+      setTokens(tokens.access_token, tokens.refresh_token);
       queryClient.invalidateQueries();
       toast.success("Email confirmed. Welcome to Coins Catalog!");
       navigate("/browse", { replace: true });

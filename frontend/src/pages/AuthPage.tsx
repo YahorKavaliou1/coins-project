@@ -44,7 +44,7 @@ export function AuthPage() {
   const [captchaKey, setCaptchaKey] = useState(0);
 
   const accessToken = useAuthStore((s) => s.accessToken);
-  const setToken = useAuthStore((s) => s.setToken);
+  const setTokens = useAuthStore((s) => s.setTokens);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -59,7 +59,7 @@ export function AuthPage() {
 
   async function signIn(email: string, password: string) {
     const token = await login(email, password);
-    setToken(token.access_token);
+    setTokens(token.access_token, token.refresh_token);
     queryClient.invalidateQueries();
     navigate("/browse");
   }

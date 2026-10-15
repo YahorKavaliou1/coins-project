@@ -1,4 +1,4 @@
-import axios, { type AxiosError } from "axios";
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "../store/authStore";
 import { toast } from "../store/toastStore";
 
@@ -49,11 +49,48 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Shared by all requests that fail at once, so the refresh token is used only once.
+let refreshing: Promise<string | null> | null = null;
+
+/** Exchanges the refresh token for new tokens; null if the session can't be renewed. */
+function refreshAccessToken(): Promise<string | null> {
+  refreshing ??= (async () => {
+    const { refreshToken, setTokens } = useAuthStore.getState();
+    if (!refreshToken) return null;
+    try {
+      // Plain axios: this request must not go through the interceptors below.
+      const { data } = await axios.post<{ access_token: string; refresh_token: string }>(
+        `${apiClient.defaults.baseURL}/auth/refresh`,
+        { refresh_token: refreshToken }
+      );
+      setTokens(data.access_token, data.refresh_token);
+      return data.access_token;
+    } catch (err) {
+      // Only a rejected token ends the session; a network error leaves it for the next try.
+      const status = (err as AxiosError).response?.status;
+      return status === 401 || status === 403 ? null : useAuthStore.getState().accessToken;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const { accessToken, logout } = useAuthStore.getState();
-    if (error.response?.status === 401) {
+    const request = error.config as (InternalAxiosRequestConfig & { _retried?: boolean }) | undefined;
+    if (error.response?.status === 401 && accessToken && request && !request._retried) {
+      // The access token expired (it lives 30 minutes): renew it and repeat the request once.
+      const newToken = await refreshAccessToken();
+      if (newToken && newToken !== accessToken) {
+        request._retried = true;
+        request.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(request);
+      }
+      if (newToken === null) logout();
+    } else if (error.response?.status === 401 && accessToken) {
       logout();
     } else if (isBlockedError(error) && accessToken) {
       // The account was blocked while logged in: end the session once.

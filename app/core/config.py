@@ -63,7 +63,9 @@ class Settings(BaseSettings):
     # Only HMAC algorithms: SECRET_KEY is a shared secret, and "none" must never be accepted.
     algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     access_token_expire_minutes: int = 30
-    refresh_token_expire_days: int = 30
+    # The site renews the access token with the refresh token, and each renewal issues a new
+    # refresh token: users stay logged in unless they don't visit for this long.
+    refresh_token_expire_days: int = 365
 
     # Role assigned to newly registered users: "user", "seller" or "admin".
     # Admins are appointed explicitly with `make admin email=...` (app/scripts/set_role.py).

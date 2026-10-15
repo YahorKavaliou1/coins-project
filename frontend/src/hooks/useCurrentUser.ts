@@ -6,7 +6,6 @@ import { useAuthStore } from "../store/authStore";
 export function useCurrentUser() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const setUser = useAuthStore((s) => s.setUser);
-  const logout = useAuthStore((s) => s.logout);
 
   const query = useQuery({
     queryKey: ["currentUser", accessToken],
@@ -15,10 +14,11 @@ export function useCurrentUser() {
     retry: false,
   });
 
+  // No logout on error here: an invalid session is ended by the API client (api/client.ts),
+  // while a network error or a server waking up must not log the user out.
   useEffect(() => {
     if (query.data) setUser(query.data);
-    if (query.isError) logout();
-  }, [query.data, query.isError, setUser, logout]);
+  }, [query.data, setUser]);
 
   return query;
 }
