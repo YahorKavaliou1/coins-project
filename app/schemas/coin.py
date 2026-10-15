@@ -205,7 +205,25 @@ class MyLotsPage(BaseModel):
 
 
 class CoinIdsRequest(BaseModel):
-    coin_ids: list[DbId] = Field(min_length=1, max_length=100)
+    # Selections in "My lots" span pages and tabs.
+    coin_ids: list[DbId] = Field(min_length=1, max_length=1000)
+
+
+class ExportRequest(BaseModel):
+    coin_ids: list[DbId] = Field(min_length=1, max_length=5000)
+
+
+class ExportedPhotoRead(BaseModel):
+    url: str
+    filename: str
+
+
+class ExportResult(BaseModel):
+    """The workbook (base64, it is small) and the photos the browser downloads next to it."""
+
+    filename: str
+    workbook_base64: str
+    photos: list[ExportedPhotoRead]
 
 
 class CoinIdsResult(BaseModel):

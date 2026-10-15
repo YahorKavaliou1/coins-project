@@ -79,6 +79,13 @@ export interface MyLotsPage {
   counts: Record<CoinStatus, number>;
 }
 
+/** POST /coins/export: an Excel table of chosen lots plus the photos it names. */
+export interface ExportResult {
+  filename: string;
+  workbook_base64: string;
+  photos: { url: string; filename: string }[];
+}
+
 export interface CoinPage {
   items: Coin[];
   total: number;

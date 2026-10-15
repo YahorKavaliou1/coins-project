@@ -6,6 +6,7 @@ import type {
   CoinPage,
   CoinStatus,
   CoinUpdatePayload,
+  ExportResult,
   MyLotsPage,
 } from "../types";
 import { fitImage } from "../utils/fitImage";
@@ -68,6 +69,18 @@ export async function listMyLots(status: CoinStatus, page = 1, pageSize = 20) {
 export async function withdrawCoins(coinIds: number[]) {
   const { data } = await apiClient.post<{ coin_ids: number[] }>("/coins/withdraw", { coin_ids: coinIds });
   return data.coin_ids;
+}
+
+/** Ids of all the current seller's lots in one state ("select all" across pages). */
+export async function listMyLotIds(status: CoinStatus) {
+  const { data } = await apiClient.get<number[]>(`/coins/mine/ids?status=${status}`);
+  return data;
+}
+
+/** The chosen lots (any state) as an Excel table, plus the photos to save next to it. */
+export async function exportLots(coinIds: number[]) {
+  const { data } = await apiClient.post<ExportResult>("/coins/export", { coin_ids: coinIds });
+  return data;
 }
 
 /** Permanently deletes withdrawn lots with their photos; returns the ids deleted. */

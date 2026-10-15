@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EyeOff, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
-import { deleteCoins, listMyLots, relistCoins, withdrawCoins } from "../api/coins";
+import { Download, EyeOff, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { deleteCoins, exportLots, listMyLotIds, listMyLots, relistCoins, withdrawCoins } from "../api/coins";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EditCoinModal } from "../components/EditCoinModal";
@@ -12,6 +12,7 @@ import type { CoinStatus, MyLot } from "../types";
 import { formatUtcDate, formatUtcDateTime } from "../utils/dates";
 import { formatPrice } from "../utils/money";
 import { thumbnailSrc } from "../utils/images";
+import { downloadExport } from "../utils/exportLots";
 
 const PAGE_SIZE = 20;
 
@@ -40,10 +41,10 @@ export function MyLotsPage() {
 
   const [page, setPage] = useState({ status, number: 1 });
   const pageNumber = page.status === status ? page.number : 1;
-  // Selection is per tab and page: switching either clears it.
-  const [selection, setSelection] = useState({ key: "", ids: [] as number[] });
-  const selectionKey = `${status}:${pageNumber}`;
-  const selectedIds = selection.key === selectionKey ? selection.ids : [];
+  // Kept across pages and tabs, so lots of every state can be exported together. The state is
+  // remembered per lot: tab actions (withdraw, delete...) apply to the selected lots of that tab.
+  const [selection, setSelection] = useState<Map<number, CoinStatus>>(() => new Map());
+  const [exportProgress, setExportProgress] = useState<string | null>(null);
   const [editingLot, setEditingLot] = useState<MyLot | null>(null);
   // Lots waiting for the user to confirm their deletion.
   const [deleteIds, setDeleteIds] = useState<number[] | null>(null);
@@ -56,12 +57,61 @@ export function MyLotsPage() {
   const lots = data?.items ?? [];
   const pageCount = data ? Math.ceil(data.total / data.page_size) : 0;
 
-  function setSelected(ids: number[]) {
-    setSelection({ key: selectionKey, ids });
+  /** Selected lots of the current tab: what the tab's actions apply to. */
+  const selectedIds = [...selection].filter(([, s]) => s === status).map(([id]) => id);
+  const pageSelected = lots.length > 0 && lots.every((l) => selection.has(l.id));
+
+  function updateSelection(change: (next: Map<number, CoinStatus>) => void) {
+    setSelection((prev) => {
+      const next = new Map(prev);
+      change(next);
+      return next;
+    });
   }
 
-  function toggle(id: number) {
-    setSelected(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
+  function toggle(lot: MyLot) {
+    updateSelection((next) => (next.has(lot.id) ? next.delete(lot.id) : next.set(lot.id, lot.status)));
+  }
+
+  function togglePage() {
+    updateSelection((next) =>
+      lots.forEach((l) => (pageSelected ? next.delete(l.id) : next.set(l.id, l.status)))
+    );
+  }
+
+  const selectTabMutation = useMutation({
+    mutationFn: () => listMyLotIds(status),
+    onSuccess: (ids) => updateSelection((next) => ids.forEach((id) => next.set(id, status))),
+    onError: (err: ApiError) => toast.error(getErrorMessage(err)),
+  });
+
+  /** Forgets lots whose state changed or that are gone. */
+  function unselect(ids: number[]) {
+    updateSelection((next) => ids.forEach((id) => next.delete(id)));
+  }
+
+  async function runExport() {
+    const ids = [...selection.keys()];
+    try {
+      setExportProgress("Preparing the table…");
+      const result = await exportLots(ids);
+      const outcome = await downloadExport(result, (done, total) =>
+        setExportProgress(`Packing photos ${done} / ${total}…`)
+      );
+      const lotsText = `${ids.length} ${ids.length === 1 ? "lot" : "lots"}`;
+      const saved = outcome.files.join(" and ");
+      if (outcome.failedPhotos.length === 0) {
+        toast.success(`${lotsText} exported: ${saved}`);
+      } else {
+        toast.error(
+          `${lotsText} exported (${saved}), but ${outcome.failedPhotos.length} photos could not be downloaded: ${outcome.failedPhotos.slice(0, 5).join(", ")}${outcome.failedPhotos.length > 5 ? "…" : ""}`
+        );
+      }
+    } catch (err) {
+      toast.error((err as ApiError).isAxiosError ? getErrorMessage(err as ApiError) : `Export failed: ${String(err)}`);
+    } finally {
+      setExportProgress(null);
+    }
   }
 
   const statusMutation = useMutation({
@@ -73,7 +123,7 @@ export function MyLotsPage() {
       if (changed.length === ids.length) toast.success(`${count} ${verb}.`);
       // E.g. a coin bought between loading the page and clicking.
       else toast.error(`${count} ${verb}; ${ids.length - changed.length} could not be changed (sold meanwhile?).`);
-      setSelected([]);
+      unselect(ids);
       queryClient.invalidateQueries({ queryKey: ["my-lots"] });
       queryClient.invalidateQueries({ queryKey: ["coins"] });
       queryClient.invalidateQueries({ queryKey: ["coin-facets"] });
@@ -86,7 +136,7 @@ export function MyLotsPage() {
     mutationFn: deleteCoins,
     onSuccess: (deleted, ids) => {
       setDeleteIds(null);
-      setSelected([]);
+      unselect(ids);
       const count = `${deleted.length} ${deleted.length === 1 ? "lot" : "lots"} deleted`;
       if (deleted.length === ids.length) toast.success(`${count}.`);
       else toast.error(`${count}; ${ids.length - deleted.length} could not be deleted (no longer withdrawn?).`);
@@ -101,12 +151,12 @@ export function MyLotsPage() {
     },
   });
 
-  // Sold lots have no actions: they stay for the order history.
-  const selectable = status !== "sold";
+  // Sold lots can only be exported: they stay for the order history.
+  const canChangeStatus = status !== "sold";
   // Only withdrawn lots can be deleted: lots on sale are withdrawn first.
   const canDelete = status === "withdrawn";
   const action = status === "for_sale" ? "withdraw" : "relist";
-  const allSelected = lots.length > 0 && selectedIds.length === lots.length;
+  const tabCount = data?.counts[status] ?? 0;
 
   function goToPage(number: number) {
     setPage({ status, number });
@@ -143,27 +193,55 @@ export function MyLotsPage() {
         ))}
       </div>
 
-      {selectable && lots.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3 bg-white border border-gray-200 rounded-md px-4 py-2.5 mb-3">
-          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={() => setSelected(allSelected ? [] : lots.map((l) => l.id))}
-              className="accent-accent w-4 h-4"
-            />
-            {selectedIds.length > 0 ? `${selectedIds.length} selected` : "Select all on page"}
-          </label>
+      {(lots.length > 0 || selection.size > 0) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-white border border-gray-200 rounded-md px-4 py-2.5 mb-3">
+          {lots.length > 0 && (
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={pageSelected} onChange={togglePage} className="accent-accent w-4 h-4" />
+              Page
+            </label>
+          )}
+          {tabCount > lots.length && (
+            <button
+              type="button"
+              disabled={selectTabMutation.isPending}
+              onClick={() => selectTabMutation.mutate()}
+              className="text-sm text-accent hover:text-accent-dark disabled:opacity-50"
+            >
+              Select all {tabCount} in this tab
+            </button>
+          )}
+          {selection.size > 0 && (
+            <span className="text-sm text-gray-700">
+              <strong>{selection.size}</strong> selected
+              {selection.size !== selectedIds.length && ` (${selectedIds.length} in this tab)`}
+              <button type="button" onClick={() => setSelection(new Map())} className="ml-2 text-gray-400 hover:text-accent">
+                Clear
+              </button>
+            </span>
+          )}
           <div className="ml-auto flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={selectedIds.length === 0 || statusMutation.isPending}
-              onClick={() => statusMutation.mutate({ ids: selectedIds, action })}
-              className="flex items-center gap-1.5 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              disabled={selection.size === 0 || exportProgress !== null}
+              onClick={runExport}
+              title="Excel table, and the photos as a ZIP archive next to it"
+              className="flex items-center gap-1.5 border border-gray-400 text-gray-700 hover:border-accent hover:text-accent text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
-              {action === "withdraw" ? <EyeOff className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
-              {action === "withdraw" ? "Withdraw from sale" : "Return to sale"}
+              <Download className="w-4 h-4" />
+              {exportProgress ?? `Export${selection.size > 0 ? ` ${selection.size}` : ""}`}
             </button>
+            {canChangeStatus && (
+              <button
+                type="button"
+                disabled={selectedIds.length === 0 || statusMutation.isPending}
+                onClick={() => statusMutation.mutate({ ids: selectedIds, action })}
+                className="flex items-center gap-1.5 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {action === "withdraw" ? <EyeOff className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+                {action === "withdraw" ? "Withdraw from sale" : "Return to sale"}
+              </button>
+            )}
             {canDelete && (
               <button
                 type="button"
@@ -191,9 +269,8 @@ export function MyLotsPage() {
           <LotRow
             key={lot.id}
             lot={lot}
-            selectable={selectable}
-            selected={selectedIds.includes(lot.id)}
-            onToggle={() => toggle(lot.id)}
+            selected={selection.has(lot.id)}
+            onToggle={() => toggle(lot)}
             onEdit={() => setEditingLot(lot)}
             onChangeStatus={() => statusMutation.mutate({ ids: [lot.id], action })}
             onDelete={() => setDeleteIds([lot.id])}
@@ -236,7 +313,6 @@ export function MyLotsPage() {
 
 interface LotRowProps {
   lot: MyLot;
-  selectable: boolean;
   selected: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -245,7 +321,7 @@ interface LotRowProps {
   busy: boolean;
 }
 
-function LotRow({ lot, selectable, selected, onToggle, onEdit, onChangeStatus, onDelete, busy }: LotRowProps) {
+function LotRow({ lot, selected, onToggle, onEdit, onChangeStatus, onDelete, busy }: LotRowProps) {
   const image = lot.images[0];
   const details = [lot.sku && `SKU ${lot.sku}`, lot.grade, lot.catalog_number].filter(Boolean).join(" · ");
 
@@ -255,15 +331,13 @@ function LotRow({ lot, selectable, selected, onToggle, onEdit, onChangeStatus, o
         selected ? "border-accent bg-accent/5" : "border-gray-200"
       }`}
     >
-      {selectable && (
-        <input
-          type="checkbox"
-          checked={selected}
-          onChange={onToggle}
-          aria-label={`Select ${lot.name}`}
-          className="accent-accent w-4 h-4 mt-1 shrink-0"
-        />
-      )}
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggle}
+        aria-label={`Select ${lot.name}`}
+        className="accent-accent w-4 h-4 mt-1 shrink-0"
+      />
 
       <Link to={`/coins/${lot.id}`} className="w-16 h-16 shrink-0 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
         {image ? (

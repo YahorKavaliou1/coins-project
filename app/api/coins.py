@@ -1,6 +1,8 @@
 import asyncio
+import base64
 import contextlib
 import logging
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,6 +28,9 @@ from app.schemas.coin import (
     CoinIdsResult,
     CoinRead,
     CoinUpdate,
+    ExportedPhotoRead,
+    ExportRequest,
+    ExportResult,
     LabelFacet,
     MetalFacet,
     MyLotCounts,
@@ -36,6 +41,7 @@ from app.schemas.coin import (
 )
 from app.schemas.fields import MAX_DB_INT, MAX_LABEL_LENGTH
 from app.services.image_storage import ImageStorage, get_image_storage
+from app.services.lot_export import build_lots_workbook
 
 logger = logging.getLogger("app.coins")
 
@@ -283,6 +289,53 @@ async def list_coins(
     return Page(items=items, total=total, page=page, page_size=page_size)
 
 
+@router.get("/mine/ids", response_model=list[int])
+async def list_my_lot_ids(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+    status: Literal["for_sale", "withdrawn", "sold"] = "for_sale",
+) -> list[int]:
+    """Ids of all the seller's lots in one state, for "select all" across pages."""
+    result = await db.execute(
+        select(Coin.id).where(Coin.owner_id == current_user.id, Coin.status == status)
+    )
+    return [row[0] for row in result.all()]
+
+
+@router.post("/export", response_model=ExportResult)
+async def export_my_lots(
+    data: ExportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+) -> ExportResult:
+    """The seller's chosen lots (any state) as an Excel table, plus the photos to download.
+
+    Other sellers' ids are ignored. Rows follow the listing date, newest first.
+    """
+    result = await db.execute(
+        select(Coin)
+        .options(*COIN_LOAD_OPTIONS)
+        .where(Coin.id.in_(data.coin_ids), Coin.owner_id == current_user.id)
+        .order_by(Coin.created_at.desc(), Coin.id.desc())
+    )
+    coins = list(result.scalars().all())
+
+    sale_rows = await db.execute(
+        select(OrderItem, Order, User.full_name)
+        .join(OrderItem.order)
+        .join(User, User.id == Order.buyer_id)
+        .where(OrderItem.coin_id.in_([coin.id for coin in coins]))
+    )
+    sales = {item.coin_id: (item, order, buyer) for item, order, buyer in sale_rows.all()}
+
+    workbook, photos = await asyncio.to_thread(build_lots_workbook, coins, sales)
+    return ExportResult(
+        filename=f"lots-{datetime.now(UTC):%Y-%m-%d}.xlsx",
+        workbook_base64=base64.b64encode(workbook).decode(),
+        photos=[ExportedPhotoRead(url=p.url, filename=p.filename) for p in photos],
+    )
+
+
 @router.get("/mine", response_model=MyLotsPage)
 async def list_my_lots(
     db: AsyncSession = Depends(get_db),
@@ -302,8 +355,9 @@ async def list_my_lots(
     stmt = select(Coin).options(*COIN_LOAD_OPTIONS).where(mine, Coin.status == status)
     if status == "sold":
         # Most recent sale first.
-        stmt = stmt.join(OrderItem, OrderItem.coin_id == Coin.id).join(OrderItem.order)
-        stmt = stmt.order_by(Order.created_at.desc(), Coin.id.desc())
+        # Outer joins: a sold lot is listed (as counted above) even if its order is missing.
+        stmt = stmt.outerjoin(OrderItem, OrderItem.coin_id == Coin.id).outerjoin(OrderItem.order)
+        stmt = stmt.order_by(Order.created_at.desc().nulls_last(), Coin.id.desc())
     else:
         stmt = stmt.order_by(Coin.created_at.desc(), Coin.id.desc())
     stmt = stmt.offset((page - 1) * page_size).limit(page_size)
