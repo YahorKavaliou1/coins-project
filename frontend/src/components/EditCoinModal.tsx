@@ -12,6 +12,7 @@ import { MultiSelectDropdown } from "./MultiSelectDropdown";
 import { inputClass, labelClass, sectionTitleClass } from "./formStyles";
 import { CATEGORY_DATALIST_ID, CategoryDatalist } from "./CategoryDatalist";
 import { LabelsInput } from "./LabelsInput";
+import { thumbnailSrc } from "../utils/images";
 
 interface EditCoinModalProps {
   coin: Coin;
@@ -309,7 +310,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
                   return (
                     <div key={img.id} className="relative">
                       <img
-                        src={img.url}
+                        src={thumbnailSrc(img)}
                         alt=""
                         className={`w-20 h-20 object-cover rounded border border-gray-200 ${
                           isRemoved ? "opacity-30 grayscale" : ""

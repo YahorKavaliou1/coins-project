@@ -1,5 +1,5 @@
 .PHONY: help venv install run dev migrate makemigrations upgrade downgrade seed admin \
-        up down down-v logs psql lint format typecheck check test \
+        up down down-v logs psql thumbnails lint format typecheck check test \
         precommit clean lock audit
 
 # ---- Variables ----
@@ -109,6 +109,9 @@ clean: ## Remove caches and temporary files
 
 seed: ## Populate reference tables with curated data (metals, etc.)
 	$(PYTHON) -m app.db.seed.run
+
+thumbnails: ## Create card thumbnails for photos uploaded before thumbnails existed
+	$(PYTHON) -m app.scripts.make_thumbnails
 
 admin: ## Make a registered account admin (make admin email=you@example.com)
 	@test -n "$(email)" || (echo 'Usage: make admin email=you@example.com' && exit 1)

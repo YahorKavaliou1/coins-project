@@ -10,6 +10,7 @@ import { getErrorMessage, type ApiError } from "../api/client";
 import { inputClass, labelClass, sectionTitleClass } from "../components/formStyles";
 import type { Coin } from "../types";
 import { formatPrice } from "../utils/money";
+import { thumbnailSrc } from "../utils/images";
 
 function coinTitle(coin: Coin): string {
   const prefix = `${coin.country.name} ${coin.year} `;
@@ -109,7 +110,7 @@ export function CartPage() {
                 >
                   {image ? (
                     <img
-                      src={image.url}
+                      src={thumbnailSrc(image)}
                       alt=""
                       className={`w-full h-full object-contain ${coin.is_for_sale ? "" : "opacity-50 grayscale"}`}
                     />

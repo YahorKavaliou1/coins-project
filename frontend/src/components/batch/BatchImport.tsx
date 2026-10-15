@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle, RotateCcw } from "lucide-react";
 import { listCountries, listMetals } from "../../api/reference";
 import { createCoinsBatch, parseImportTable } from "../../api/coinImport";
 import { uploadCoinImage } from "../../api/coins";
@@ -27,18 +27,48 @@ import { PreviewStep } from "./PreviewStep";
 
 type Step = "setup" | "preview" | "publishing" | "done";
 
-const UPLOAD_CONCURRENCY = 4;
-
-interface PublishResult {
-  lotCount: number;
-  photoCount: number;
-  failedPhotos: { row: number; name: string; reason: string }[];
-}
+// The API processes one photo at a time (app/api/coin_images.py): a second request uploads
+// while the first is processed; more would only queue there.
+const UPLOAD_CONCURRENCY = 2;
+// Waits before the 2nd, 3rd and 4th attempt of a failed upload.
+const RETRY_DELAYS_MS = [2_000, 5_000, 15_000];
 
 interface PhotoTask {
   coinId: number;
   row: number;
   file: File;
+}
+
+interface FailedPhoto {
+  task: PhotoTask;
+  reason: string;
+}
+
+interface PublishResult {
+  lotCount: number;
+  photoCount: number;
+  failedPhotos: FailedPhoto[];
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Worth trying again: no answer (server restarting, network), a server error or rate limit. */
+function isTransient(err: ApiError): boolean {
+  const status = err.response?.status;
+  return status === undefined || status >= 500 || status === 429;
+}
+
+async function uploadWithRetry(task: PhotoTask) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await uploadCoinImage(task.coinId, task.file);
+    } catch (err) {
+      const apiError = err as ApiError;
+      if (attempt >= RETRY_DELAYS_MS.length || !isTransient(apiError)) throw err;
+      const retryAfter = Number(apiError.response?.headers?.["retry-after"]);
+      await sleep(retryAfter > 0 ? Math.min(retryAfter, 60) * 1000 : RETRY_DELAYS_MS[attempt]);
+    }
+  }
 }
 
 async function runPool<T>(tasks: T[], limit: number, worker: (task: T) => Promise<void>) {
@@ -148,22 +178,42 @@ export function BatchImport() {
       }))
     );
 
-    const failedPhotos: PublishResult["failedPhotos"] = [];
+    const failedPhotos = await uploadPhotos(tasks);
+    setResult({ lotCount: ids.length, photoCount: tasks.length - failedPhotos.length, failedPhotos });
+    setStep("done");
+  }
+
+  /** Uploads the photos and returns those that still failed after retrying. */
+  async function uploadPhotos(tasks: PhotoTask[]): Promise<FailedPhoto[]> {
+    const failed: FailedPhoto[] = [];
     let done = 0;
     setProgress({ label: "Uploading photos…", done, total: tasks.length });
     await runPool(tasks, UPLOAD_CONCURRENCY, async (task) => {
       try {
-        await uploadCoinImage(task.coinId, task.file);
+        await uploadWithRetry(task);
       } catch (err) {
-        failedPhotos.push({ row: task.row, name: task.file.name, reason: getErrorMessage(err as ApiError) });
+        failed.push({ task, reason: getErrorMessage(err as ApiError) });
       }
       done += 1;
       setProgress({ label: "Uploading photos…", done, total: tasks.length });
     });
-
     queryClient.invalidateQueries({ queryKey: ["coins"] });
     queryClient.invalidateQueries({ queryKey: ["coin-facets"] });
-    setResult({ lotCount: ids.length, photoCount: tasks.length - failedPhotos.length, failedPhotos });
+    queryClient.invalidateQueries({ queryKey: ["my-lots"] });
+    // Sorted by table row, so the list reads like the table.
+    return failed.sort((a, b) => a.task.row - b.task.row);
+  }
+
+  async function retryFailedPhotos() {
+    if (!result) return;
+    const tasks = result.failedPhotos.map((f) => f.task);
+    setStep("publishing");
+    const stillFailed = await uploadPhotos(tasks);
+    setResult({
+      ...result,
+      photoCount: result.photoCount + tasks.length - stillFailed.length,
+      failedPhotos: stillFailed,
+    });
     setStep("done");
   }
 
@@ -200,14 +250,24 @@ export function BatchImport() {
               <AlertTriangle className="w-4 h-4" />
               {result.failedPhotos.length} photos failed to upload
             </div>
-            <p className="text-xs text-amber-800 mb-2">The lots were created; add these photos via Edit on each coin.</p>
+            <p className="text-xs text-amber-800 mb-2">
+              The lots were created. Try uploading these photos again, or add them later via Edit on each coin.
+            </p>
             <ul className="text-xs text-amber-900 max-h-40 overflow-y-auto">
               {result.failedPhotos.map((f, i) => (
                 <li key={i}>
-                  Row {f.row}: {f.name} — {f.reason}
+                  Row {f.task.row}: {f.task.file.name} — {f.reason}
                 </li>
               ))}
             </ul>
+            <button
+              type="button"
+              onClick={retryFailedPhotos}
+              className="mt-3 flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-2"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Retry {result.failedPhotos.length} {result.failedPhotos.length === 1 ? "photo" : "photos"}
+            </button>
           </div>
         )}
 

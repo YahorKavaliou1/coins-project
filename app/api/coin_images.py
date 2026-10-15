@@ -14,15 +14,22 @@ from app.schemas.coin_image import CoinImageRead
 from app.services.image_storage import (
     MAX_FILE_SIZE_BYTES,
     MAX_IMAGES_PER_COIN,
+    THUMBNAIL_EXT,
     ImageStorage,
     get_image_storage,
 )
 
 router = APIRouter(prefix="/coins", tags=["coin-images"])
 
+# Processing a 12 Mpx photo takes ~100 MB: with many uploads at once (batch import) the
+# process outgrew Render Free's 512 MB and was restarted. One photo at a time (~0.2 s each);
+# further uploads wait here (their bytes are already received, so the network stays busy).
+_processing_slots = asyncio.Semaphore(1)
+
 
 @router.post("/{coin_id}/images", response_model=CoinImageRead, status_code=201)
-@limiter.limit("30/minute")
+# Batch import uploads hundreds of photos in a row; the semaphore above bounds the load.
+@limiter.limit("240/minute")
 async def upload_coin_image(
     request: Request,
     coin_id: int,
@@ -52,10 +59,15 @@ async def upload_coin_image(
     storage.validate_size(data)
 
     # Decoding (CPU) and disk or network I/O: run in threads so they don't block the event loop.
-    processed, ext = await asyncio.to_thread(storage.process_image, data)
-    url = await asyncio.to_thread(storage.save_image_file, coin_id, processed, ext)
+    async with _processing_slots:
+        processed = await asyncio.to_thread(storage.process_image, data)
+    del data
+    url = await asyncio.to_thread(storage.save_image_file, coin_id, processed.data, processed.ext)
+    thumbnail_url = await asyncio.to_thread(
+        storage.save_image_file, coin_id, processed.thumbnail, THUMBNAIL_EXT
+    )
 
-    image = CoinImage(coin_id=coin_id, url=url, position=position)
+    image = CoinImage(coin_id=coin_id, url=url, thumbnail_url=thumbnail_url, position=position)
     db.add(image)
     await db.commit()
     await db.refresh(image)
@@ -80,6 +92,8 @@ async def delete_coin_image(
     if image is None or image.coin_id != coin_id:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    await asyncio.to_thread(storage.delete_image_file, image.url)
+    for url in (image.url, image.thumbnail_url):
+        if url:
+            await asyncio.to_thread(storage.delete_image_file, url)
     await db.delete(image)
     await db.commit()

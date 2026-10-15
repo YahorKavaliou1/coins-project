@@ -8,5 +8,6 @@ class CoinImageRead(BaseModel):
 
     id: int
     url: str
+    thumbnail_url: str | None
     position: int
     created_at: datetime

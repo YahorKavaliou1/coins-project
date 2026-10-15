@@ -28,6 +28,10 @@ services:
       --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /health
     envVars:
+      # glibc gives every thread its own malloc arena; with Pillow decoding in worker threads
+      # that fragments memory until Render Free's 512 MB limit restarts the service.
+      - key: MALLOC_ARENA_MAX
+        value: "2"
       # --- Secrets ---
       - key: SECRET_KEY
         generateValue: true

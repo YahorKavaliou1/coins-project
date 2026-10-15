@@ -18,7 +18,10 @@ export interface UserPublic {
 
 export interface CoinImage {
   id: number;
+  /** The photo in high quality, for the coin's page. */
   url: string;
+  /** Small WebP for cards and lists; see utils/images.ts. */
+  thumbnail_url: string | null;
   position: number;
   created_at: string;
 }

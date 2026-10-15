@@ -1,7 +1,8 @@
 """Storage for coin images.
 
-Images are validated and re-encoded with Pillow (shared by every backend), then saved by
-the configured backend:
+Images are validated and re-encoded with Pillow (shared by every backend) into two files:
+the photo itself, in high quality, for the coin's page, and a small thumbnail for coin cards
+and lists, so that a page of coins loads fast. Both are saved by the configured backend:
 
 - LocalImageStorage: app/static/uploads/coins/{coin_id}/, served by the existing /static
   StaticFiles mount without any extra routing (default).
@@ -14,27 +15,69 @@ The URL returned by save_image_file() is stored in coin_images.url and used as-i
 import io
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.core.config import settings
 
 logger = logging.getLogger("app.images")
 
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp"}
+# The browser recompresses larger photos to fit (frontend/src/utils/fitImage.ts).
 MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
-MAX_DIMENSION = 1600  # px, longest side
+# px, longest side of the photo on the coin's page. Larger photos are scaled down, with no
+# visible loss: big enough to zoom into a coin's details, and encoded at high quality.
+MAX_DIMENSION = 2560
+# px, longest side of the thumbnail. A card shows a photo at up to ~150 CSS px; 480 stays
+# sharp on 3x phone screens.
+THUMBNAIL_DIMENSION = 480
 # Checked before decoding: a small, highly compressed file can declare a huge canvas
-# (a "decompression bomb") and take gigabytes of memory once decoded. 40 Mpx covers
-# photos from any current camera.
-MAX_PIXELS = 40_000_000
+# (a "decompression bomb") and take gigabytes of memory once decoded. 50 Mpx covers
+# photos from any current phone (48 Mpx main cameras).
+MAX_PIXELS = 50_000_000
 MAX_IMAGES_PER_COIN = 12
 PILLOW_FORMATS = ["JPEG", "PNG", "WEBP"]
+
+# Re-encoding is unavoidable (it strips metadata such as GPS location and makes every file
+# safe to serve), so it must not cost visible quality. JPEG: quality 95 and no chroma
+# subsampling (4:4:4); Pillow's defaults (75, 4:2:0) blur fine detail and colour edges.
+# PNG is lossless anyway.
+_SAVE_OPTIONS: dict[str, dict[str, Any]] = {
+    "JPEG": {"quality": 95, "subsampling": 0, "optimize": True},
+    "WEBP": {"quality": 95, "method": 4},
+    "PNG": {"optimize": True},
+}
+# WebP is a third smaller than JPEG at the same look; quality 82 is indistinguishable from
+# the photo at thumbnail size. method 6: slowest, smallest file (thumbnails are tiny).
+_THUMBNAIL_OPTIONS: dict[str, Any] = {"format": "WEBP", "quality": 82, "method": 6}
+THUMBNAIL_EXT = "webp"
+
+
+@dataclass
+class ProcessedImage:
+    data: bytes
+    ext: str
+    thumbnail: bytes  # always THUMBNAIL_EXT
+
+
+def make_thumbnail(image: Image.Image) -> bytes:
+    """A small WebP of an upright, decoded image (the image itself is left unchanged)."""
+    thumb = image.copy()
+    thumb.thumbnail((THUMBNAIL_DIMENSION, THUMBNAIL_DIMENSION), Image.Resampling.LANCZOS)
+    if thumb.mode not in ("RGB", "RGBA"):
+        # Keeps transparency of PNG/WebP coins cut out from their background.
+        has_alpha = thumb.mode in ("LA", "PA") or "transparency" in thumb.info
+        thumb = thumb.convert("RGBA" if has_alpha else "RGB")
+    buffer = io.BytesIO()
+    thumb.save(buffer, **_THUMBNAIL_OPTIONS)
+    return buffer.getvalue()
+
 
 EXTENSION_CONTENT_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
 
@@ -54,10 +97,10 @@ class ImageStorage(ABC):
         if len(data) > MAX_FILE_SIZE_BYTES:
             raise HTTPException(status_code=400, detail="Image must be 5 MB or smaller.")
 
-    def process_image(self, data: bytes) -> tuple[bytes, str]:
-        """Validate, downscale if needed, and re-encode the image.
+    def process_image(self, data: bytes) -> ProcessedImage:
+        """Validate, downscale if needed, and re-encode the image; also make its thumbnail.
 
-        CPU-heavy: call it in a thread. Returns (processed_bytes, file_extension).
+        CPU-heavy: call it in a thread.
         """
         invalid = HTTPException(status_code=400, detail="Invalid or corrupted image file.")
         try:
@@ -81,15 +124,21 @@ class ImageStorage(ABC):
         except (OSError, Image.DecompressionBombError) as e:
             raise invalid from e
 
+        # Downscaled first (LANCZOS, the sharpest filter): the rotation below then copies
+        # fewer pixels. The bounding box is square, so the order doesn't change the result.
         if image.width > MAX_DIMENSION or image.height > MAX_DIMENSION:
-            image.thumbnail((MAX_DIMENSION, MAX_DIMENSION))
+            image.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.Resampling.LANCZOS)
+
+        # Phones store photos sideways plus an EXIF "rotate me" tag, which re-encoding drops:
+        # apply the rotation to the pixels instead (lossless: pixels are only moved).
+        image = ImageOps.exif_transpose(image)
 
         if fmt == "JPEG" and image.mode in ("RGBA", "P"):
             image = image.convert("RGB")
 
         buffer = io.BytesIO()
-        image.save(buffer, format=fmt)
-        return buffer.getvalue(), ext
+        image.save(buffer, format=fmt, **_SAVE_OPTIONS[fmt])
+        return ProcessedImage(data=buffer.getvalue(), ext=ext, thumbnail=make_thumbnail(image))
 
     @abstractmethod
     def save_image_file(self, coin_id: int, data: bytes, ext: str) -> str:
@@ -98,6 +147,10 @@ class ImageStorage(ABC):
     @abstractmethod
     def delete_image_file(self, url: str) -> None:
         """Deletes an image previously returned by save_image_file(). Missing files are ignored."""
+
+    @abstractmethod
+    def read_image_file(self, url: str) -> bytes:
+        """Reads back an image saved by save_image_file() (used to backfill thumbnails)."""
 
 
 class LocalImageStorage(ImageStorage):
@@ -118,6 +171,9 @@ class LocalImageStorage(ImageStorage):
         relative_path = url.removeprefix("/static/")
         file_path = Path("app/static") / relative_path
         file_path.unlink(missing_ok=True)
+
+    def read_image_file(self, url: str) -> bytes:
+        return (Path("app/static") / url.removeprefix("/static/")).read_bytes()
 
 
 class AWSImageStorage(ImageStorage):
@@ -203,6 +259,12 @@ class AWSImageStorage(ImageStorage):
             return
         # S3 delete is idempotent: deleting a missing key is not an error.
         self.client.delete_object(Bucket=self.bucket, Key=url.removeprefix(base))
+
+    def read_image_file(self, url: str) -> bytes:
+        key = url.removeprefix(f"{self.public_base_url}/")
+        response = self.client.get_object(Bucket=self.bucket, Key=key)
+        data: bytes = response["Body"].read()
+        return data
 
 
 @lru_cache

@@ -11,6 +11,9 @@ export function getErrorMessage(err: ApiError): string {
   if (typeof detail === "string") return detail;
   // Pydantic prefixes custom validator messages with "Value error, ".
   if (Array.isArray(detail)) return detail.map((d) => d.msg.replace(/^Value error, /, "")).join("; ");
+  // No API answer at all: e.g. offline, or the server restarting (its proxy answers instead).
+  if (!err.response) return "Network error: the server could not be reached";
+  if (err.response.status >= 500) return `Server error (${err.response.status}), please try again`;
   return "Unknown error";
 }
 

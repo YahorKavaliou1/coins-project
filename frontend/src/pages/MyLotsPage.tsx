@@ -10,6 +10,7 @@ import { toast } from "../store/toastStore";
 import type { CoinStatus, MyLot } from "../types";
 import { formatUtcDate, formatUtcDateTime } from "../utils/dates";
 import { formatPrice } from "../utils/money";
+import { thumbnailSrc } from "../utils/images";
 
 const PAGE_SIZE = 20;
 
@@ -211,7 +212,7 @@ function LotRow({ lot, selectable, selected, onToggle, onEdit, onChangeStatus, b
 
       <Link to={`/coins/${lot.id}`} className="w-16 h-16 shrink-0 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
         {image ? (
-          <img src={image.url} alt="" className="w-full h-full object-contain" />
+          <img src={thumbnailSrc(image)} alt="" loading="lazy" className="w-full h-full object-contain" />
         ) : (
           <span className="text-[10px] text-gray-400">No image</span>
         )}

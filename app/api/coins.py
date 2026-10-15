@@ -457,7 +457,7 @@ async def delete_coin(
     if coin.status == "sold":
         raise HTTPException(status_code=409, detail="Sold coins cannot be deleted")
 
-    image_urls = [image.url for image in coin.images]
+    image_urls = [url for image in coin.images for url in (image.url, image.thumbnail_url) if url]
     await db.delete(coin)
     await db.commit()
 

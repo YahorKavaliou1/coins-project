@@ -9,6 +9,7 @@ import { toast } from "../store/toastStore";
 import { useDeleteCoin } from "../hooks/useDeleteCoin";
 import { unavailableLabel } from "../utils/coinStatus";
 import { formatPrice } from "../utils/money";
+import { thumbnailSrc } from "../utils/images";
 
 interface CoinCardProps {
   coin: Coin;
@@ -54,7 +55,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
       <div className="relative flex bg-gray-100 aspect-[2/1]">
         {images.length > 0 ? (
           images.map((img) => (
-            <img key={img.id} src={img.url} alt="" className="w-1/2 h-full object-contain" />
+            <img key={img.id} src={thumbnailSrc(img)} alt="" loading="lazy" decoding="async" className="w-1/2 h-full object-contain" />
           ))
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-sm">

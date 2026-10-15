@@ -8,6 +8,7 @@ import type {
   CoinUpdatePayload,
   MyLotsPage,
 } from "../types";
+import { fitImage } from "../utils/fitImage";
 
 export type CoinSort =
   | "recent"
@@ -96,7 +97,7 @@ export async function deleteCoin(id: number) {
 
 export async function uploadCoinImage(coinId: number, file: File) {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", await fitImage(file));
   const { data } = await apiClient.post(`/coins/${coinId}/images`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });

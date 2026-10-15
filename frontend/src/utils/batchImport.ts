@@ -217,7 +217,9 @@ export function buildDraftRows(
 /* ------------------------------------------------------------------ */
 
 export const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-export const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+// Photos over the 5 MB upload limit are recompressed in the browser to fit (utils/fitImage.ts);
+// this only rules out files nobody meant as a coin photo.
+export const MAX_IMAGE_SIZE_BYTES = 40 * 1024 * 1024;
 
 /** Photo files indexed by lower-cased file name. */
 export type PhotoIndex = Map<string, File>;
@@ -288,7 +290,7 @@ export function validateRow(row: DraftRow, photos: PhotoIndex): RowErrors {
     const file = photos.get(name.toLowerCase());
     if (!file) photoProblems.push(`not found: ${name}`);
     else if (!ALLOWED_IMAGE_TYPES.has(file.type)) photoProblems.push(`unsupported format: ${name}`);
-    else if (file.size > MAX_IMAGE_SIZE_BYTES) photoProblems.push(`larger than 5 MB: ${name}`);
+    else if (file.size > MAX_IMAGE_SIZE_BYTES) photoProblems.push(`larger than 40 MB: ${name}`);
   }
   if (photoProblems.length) errors.photos = `Photo ${photoProblems.join(", ")}`;
 

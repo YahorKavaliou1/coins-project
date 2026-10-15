@@ -15,6 +15,7 @@ import { useDeleteCoin } from "../hooks/useDeleteCoin";
 import type { Coin } from "../types";
 import { formatPrice } from "../utils/money";
 import { unavailableLabel } from "../utils/coinStatus";
+import { thumbnailSrc } from "../utils/images";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -131,7 +132,7 @@ export function CoinDetailPage() {
                     idx === activeImageIdx ? "border-accent" : "border-gray-200"
                   }`}
                 >
-                  <img src={img.url} alt="" className="w-full h-full object-contain" />
+                  <img src={thumbnailSrc(img)} alt="" className="w-full h-full object-contain" />
                 </button>
               ))}
             </div>
