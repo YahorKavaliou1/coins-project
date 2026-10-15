@@ -217,8 +217,6 @@ SORT_OPTIONS: dict[str, ColumnElement] = {
     "recent": Coin.created_at.desc(),
     "price_asc": Coin.price.asc().nulls_last(),
     "price_desc": Coin.price.desc().nulls_last(),
-    "weight_asc": Coin.weight.asc(),
-    "weight_desc": Coin.weight.desc(),
     "date_asc": Coin.year.asc(),
     "date_desc": Coin.year.desc(),
 }

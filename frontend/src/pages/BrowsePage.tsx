@@ -19,7 +19,6 @@ export function BrowsePage() {
   const queryClient = useQueryClient();
   const [qInput, setQInput] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
-  const [forSaleOnly, setForSaleOnly] = useState(false);
   const [selectedCountryIds, setSelectedCountryIds] = useState<number[]>([]);
   const [selectedMetalIds, setSelectedMetalIds] = useState<number[]>([]);
   const [grade, setGrade] = useState("");
@@ -41,21 +40,25 @@ export function BrowsePage() {
     category: category || undefined,
     label: selectedLabels.length > 0 ? selectedLabels : undefined,
     q: appliedQ || undefined,
-    for_sale_only: forSaleOnly || undefined,
+    // The shop lists only coins that can still be bought; sold ones are never shown here.
+    for_sale_only: true,
   };
 
   const { data: facets } = useQuery({
-    queryKey: ["coin-facets", selectedCountryIds, grade, category, selectedLabels, appliedQ, forSaleOnly, selectedMetalIds],
+    queryKey: ["coin-facets", selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds],
     queryFn: () => getCoinFacets({ ...commonFilters, metal_id: selectedMetalIds }),
   });
 
   const { data: page, refetch } = useQuery({
-    queryKey: ["coins", selectedCountryIds, grade, category, selectedLabels, appliedQ, forSaleOnly, selectedMetalIds, sort, favouritesOnly],
+    queryKey: ["coins", selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds, sort, favouritesOnly],
     queryFn: () =>
       favouritesOnly
         ? listFavourites()
         : listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort }),
   });
+
+  // Favourites may include coins sold since they were saved: the shop doesn't show those.
+  const coins = (page?.items ?? []).filter((coin) => coin.is_for_sale);
 
   function runSearch() {
     setAppliedQ(qInput);
@@ -113,16 +116,6 @@ export function BrowsePage() {
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
-          <input
-            type="checkbox"
-            checked={forSaleOnly}
-            onChange={(e) => setForSaleOnly(e.target.checked)}
-            className="accent-accent"
-          />
-          For sale only
-        </label>
-
         <button
           type="button"
           onClick={() => setFiltersOpen((v) => !v)}
@@ -164,8 +157,8 @@ export function BrowsePage() {
             onToggleFavouritesOnly={() => setFavouritesOnly((v) => !v)}
           />
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-md:gap-3">
-          {page?.items.length === 0 && <p>No coins found</p>}
-          {page?.items.map((coin) => (
+          {coins.length === 0 && page && <p>No coins found</p>}
+          {coins.map((coin) => (
             <CoinCard
               key={coin.id}
               coin={coin}

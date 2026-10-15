@@ -13,6 +13,7 @@ import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { useDeleteCoin } from "../hooks/useDeleteCoin";
 import type { Coin } from "../types";
+import { formatPrice } from "../utils/money";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -164,7 +165,7 @@ export function CoinDetailPage() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-md p-4 mt-5">
-            {coin.price !== null && <div className="text-3xl font-bold mb-3">${coin.price.toFixed(2)}</div>}
+            {coin.price !== null && <div className="text-3xl font-bold mb-3">{formatPrice(coin.price)}</div>}
 
             {canBuy ? (
               <div className="flex items-center gap-2">

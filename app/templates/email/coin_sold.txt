@@ -1,9 +1,9 @@
 {% extends "base.txt" %}
 {% block content %}Hi{% if name %} {{ name }}{% endif %}, the following coin{{ "s were" if items|length != 1 else " was" }} bought in order #{{ order_id }}:
 
-{% for item in items %}- {{ item.name }}: ${{ "%.2f"|format(item.price) }}
+{% for item in items %}- {{ item.name }}: €{{ "%.2f"|format(item.price) }}
 {% endfor %}
-Your total: ${{ "%.2f"|format(total) }}
+Your total: €{{ "%.2f"|format(total) }}
 
 Please ship to:
 {% if buyer_name %}{{ buyer_name }}

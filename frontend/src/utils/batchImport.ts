@@ -53,7 +53,7 @@ export const FIELDS: FieldDef[] = [
   { key: "catalog_number", label: "Catalog No.", required: false, synonyms: ["catalognumber", "catalogno", "catalog", "каталог", "номерпокаталогу", "km", "kmnumber"] },
   { key: "mintage", label: "Mintage", required: false, synonyms: ["mintage", "тираж"] },
   { key: "extra_info", label: "Extra info", required: false, synonyms: ["extrainfo", "extra", "description", "описание", "notes", "note", "comment", "comments", "комментарий", "примечание", "info", "name", "название"] },
-  { key: "price", label: "Price (USD)", required: true, synonyms: ["price", "цена", "стоимость", "cost", "priceusd", "usd"] },
+  { key: "price", label: "Price (EUR)", required: true, synonyms: ["price", "цена", "стоимость", "cost", "priceeur", "eur", "euro", "евро"] },
 ];
 
 const PHOTO_SYNONYMS = ["photo", "photos", "фото", "фотография", "image", "images", "изображение", "picture", "pic", "file", "файл"];

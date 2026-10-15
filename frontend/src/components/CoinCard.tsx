@@ -7,6 +7,7 @@ import { addFavourite, removeFavourite } from "../api/favourites";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { useDeleteCoin } from "../hooks/useDeleteCoin";
+import { formatPrice } from "../utils/money";
 
 interface CoinCardProps {
   coin: Coin;
@@ -102,7 +103,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
             <span />
           )}
           {coin.price !== null && (
-            <span className="font-bold text-sm whitespace-nowrap">${coin.price.toFixed(2)}</span>
+            <span className="font-bold text-sm whitespace-nowrap">{formatPrice(coin.price)}</span>
           )}
         </div>
 

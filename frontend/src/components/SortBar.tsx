@@ -10,8 +10,6 @@ const options: SortOption[] = [
   { value: "recent", label: "RECENT" },
   { value: "price_asc", label: "PRICE ↑" },
   { value: "price_desc", label: "PRICE ↓" },
-  { value: "weight_asc", label: "WEIGHT ↑" },
-  { value: "weight_desc", label: "WEIGHT ↓" },
   { value: "date_asc", label: "DATE ↑" },
   { value: "date_desc", label: "DATE ↓" },
 ];

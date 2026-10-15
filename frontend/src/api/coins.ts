@@ -5,8 +5,6 @@ export type CoinSort =
   | "recent"
   | "price_asc"
   | "price_desc"
-  | "weight_asc"
-  | "weight_desc"
   | "date_asc"
   | "date_desc";
 

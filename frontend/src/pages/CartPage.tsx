@@ -9,6 +9,7 @@ import { toast } from "../store/toastStore";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { inputClass, labelClass, sectionTitleClass } from "../components/formStyles";
 import type { Coin } from "../types";
+import { formatPrice } from "../utils/money";
 
 function coinTitle(coin: Coin): string {
   const prefix = `${coin.country.name} ${coin.year} `;
@@ -140,7 +141,7 @@ export function CartPage() {
 
                 <div className="flex flex-col items-end justify-between shrink-0">
                   <span className={`font-bold ${coin.is_for_sale ? "" : "text-gray-400 line-through"}`}>
-                    {coin.price !== null ? `$${coin.price.toFixed(2)}` : "—"}
+                    {coin.price !== null ? formatPrice(coin.price) : "—"}
                   </span>
                   <button
                     type="button"
@@ -164,11 +165,11 @@ export function CartPage() {
 
           <div className="flex justify-between text-sm text-gray-600 mb-2">
             <span>Items ({available.length})</span>
-            <span>${total.toFixed(2)}</span>
+            <span>{formatPrice(total)}</span>
           </div>
           <div className="flex justify-between items-baseline border-t border-gray-200 pt-3 mb-5">
             <span className="font-bold">Total</span>
-            <span className="text-2xl font-bold">${total.toFixed(2)}</span>
+            <span className="text-2xl font-bold">{formatPrice(total)}</span>
           </div>
 
           <form

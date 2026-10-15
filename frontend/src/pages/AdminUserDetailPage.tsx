@@ -9,6 +9,7 @@ import { BlockToggleButton, UserStatusBadge } from "../components/UserBlockContr
 import { blockReasonLabel, isLocked } from "../utils/roles";
 import { EmailStatusBadge, EmailVerificationActions } from "../components/UserEmailControls";
 import type { AdminActionType } from "../types";
+import { formatPrice } from "../utils/money";
 
 const ADMIN_ACTION_LABELS: Record<AdminActionType, string> = {
   role_changed: "Changed role",
@@ -54,7 +55,7 @@ export function AdminUserDetailPage() {
     ["Role", user.role],
     ["Registered (UTC)", formatUtcDateTime(user.created_at)],
     ["Orders", orders ? String(orders.length) : "…"],
-    ["Total spent", orders ? `$${totalSpent.toFixed(2)}` : "…"],
+    ["Total spent", orders ? formatPrice(totalSpent) : "…"],
     ["Failed login attempts", String(user.failed_login_attempts)],
   ];
   if (isLocked(user)) details.push(["Locked until (UTC)", formatUtcDateTime(user.locked_until!)]);

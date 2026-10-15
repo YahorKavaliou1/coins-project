@@ -36,7 +36,7 @@ const TEXT_COLUMNS_TAIL: TextColumn[] = [
   { key: "catalog_number", label: "Catalog No.", width: "w-28" },
   { key: "mintage", label: "Mintage", width: "w-24", numeric: true },
   { key: "extra_info", label: "Extra info", width: "w-40" },
-  { key: "price", label: "Price $", width: "w-24", numeric: true },
+  { key: "price", label: "Price €", width: "w-24", numeric: true },
 ];
 
 interface PreviewStepProps {

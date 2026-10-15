@@ -332,7 +332,7 @@ function SingleListingForm() {
           <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700 mb-4">Price</h2>
           <div className="max-w-xs">
             <label className={labelClass}>
-              Price (USD) <Required />
+              Price (EUR) <Required />
             </label>
             <input
               {...register("price", { required: true })}

@@ -393,7 +393,7 @@ export function EditCoinModal({ coin, onClose, onSaved }: EditCoinModalProps) {
           <section className="bg-white border border-gray-200 rounded-md p-5 max-sm:p-4">
             <h3 className={sectionTitleClass}>Price</h3>
             <div className="max-w-xs">
-              <label className={labelClass}>Price (USD)</label>
+              <label className={labelClass}>Price (EUR)</label>
               <input {...register("price", { valueAsNumber: true })} type="number" step="0.01" placeholder="0.00" className={inputClass} />
             </div>
           </section>
