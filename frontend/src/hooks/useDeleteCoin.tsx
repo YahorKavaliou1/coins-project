@@ -22,7 +22,7 @@ export function useDeleteCoin(coin: Coin, onDeleted?: () => void) {
       setConfirming(false);
       queryClient.removeQueries({ queryKey: ["coin", coin.id] });
       // The listing also disappears from carts and favourites on the server.
-      for (const key of ["coins", "coin-facets", "favourites", "cart"]) {
+      for (const key of ["coins", "coin-facets", "favourites", "cart", "my-lots"]) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }
       toast.success("Coin deleted.");
@@ -39,7 +39,7 @@ export function useDeleteCoin(coin: Coin, onDeleted?: () => void) {
       title="Delete this coin?"
       message={
         <>
-          <strong className="text-gray-900">{coin.name}</strong> will be removed from the shop together with its
+          <strong className="text-gray-900">{coin.name}</strong> will be deleted permanently together with its
           photos. This can't be undone.
         </>
       }

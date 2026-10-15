@@ -342,6 +342,50 @@ async def list_my_lots(
     )
 
 
+async def _delete_coins(db: AsyncSession, storage: ImageStorage, coins: list[Coin]) -> None:
+    """Deletes coins with their photos; carts and favourites go with them (ON DELETE CASCADE)."""
+    image_urls = [
+        (coin.id, url)
+        for coin in coins
+        for image in coin.images
+        for url in (image.url, image.thumbnail_url)
+        if url
+    ]
+    for coin in coins:
+        await db.delete(coin)
+    await db.commit()
+
+    # After the commit, so a failed delete never leaves a coin without its photos.
+    for coin_id, url in image_urls:
+        try:
+            await asyncio.to_thread(storage.delete_image_file, url)
+        except Exception:
+            logger.exception("Could not delete photo %s of deleted coin %s", url, coin_id)
+
+
+@router.post("/delete", response_model=CoinIdsResult)
+async def delete_coins(
+    data: CoinIdsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+    storage: ImageStorage = Depends(get_image_storage),
+) -> CoinIdsResult:
+    """Permanently deletes the seller's withdrawn lots with their photos. Others are skipped:
+    lots on sale must be withdrawn first, and sold ones stay for the order history."""
+    result = await db.execute(
+        select(Coin)
+        .options(selectinload(Coin.images))
+        .where(
+            Coin.id.in_(data.coin_ids),
+            Coin.owner_id == current_user.id,
+            Coin.status == "withdrawn",
+        )
+    )
+    coins = list(result.scalars().all())
+    await _delete_coins(db, storage, coins)
+    return CoinIdsResult(coin_ids=sorted(coin.id for coin in coins))
+
+
 async def _change_status(
     db: AsyncSession, user: User, coin_ids: list[int], *, from_status: str, to_status: str
 ) -> CoinIdsResult:
@@ -453,17 +497,9 @@ async def delete_coin(
         raise HTTPException(status_code=404, detail="Coin not found")
     if coin.owner_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="You do not own this coin")
-    # Orders reference sold coins; their history must stay intact.
-    if coin.status == "sold":
-        raise HTTPException(status_code=409, detail="Sold coins cannot be deleted")
+    # Orders reference sold coins, whose history must stay intact; lots on sale are withdrawn
+    # first, so a coin never vanishes from a buyer's cart without notice.
+    if coin.status != "withdrawn":
+        raise HTTPException(status_code=409, detail="Only lots withdrawn from sale can be deleted")
 
-    image_urls = [url for image in coin.images for url in (image.url, image.thumbnail_url) if url]
-    await db.delete(coin)
-    await db.commit()
-
-    # After the commit, so a failed delete never leaves a coin without its photos.
-    for url in image_urls:
-        try:
-            await asyncio.to_thread(storage.delete_image_file, url)
-        except Exception:
-            logger.exception("Could not delete photo %s of deleted coin %s", url, coin_id)
+    await _delete_coins(db, storage, [coin])

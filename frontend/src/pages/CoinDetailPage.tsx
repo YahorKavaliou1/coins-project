@@ -197,7 +197,10 @@ export function CoinDetailPage() {
 
             {canEdit && (
               <div className={`flex items-center gap-2 ${canBuy ? "mt-2" : ""}`}>
-                <DeleteCoinButton coin={coin} onDeleted={() => navigate("/browse", { replace: true })} />
+                {/* Only withdrawn lots can be deleted. */}
+                {coin.status === "withdrawn" && (
+                  <DeleteCoinButton coin={coin} onDeleted={() => navigate("/my-lots?tab=withdrawn", { replace: true })} />
+                )}
                 <button
                   onClick={() => setEditing(true)}
                   className="flex-1 flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white font-bold uppercase rounded py-3 transition-colors"

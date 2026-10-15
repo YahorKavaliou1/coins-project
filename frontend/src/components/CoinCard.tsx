@@ -112,16 +112,19 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
         <div className="mt-auto pt-3" onClick={stop}>
           {canEdit && onEdit ? (
             <div className="flex items-center gap-2">
-              {/* Same place and shape as the favourites heart on other sellers' coins. */}
-              <button
-                onClick={requestDelete}
-                disabled={deleting}
-                className="border rounded p-2 transition-colors text-gray-400 hover:text-red-700 hover:border-red-700 disabled:opacity-50"
-                title="Delete coin"
-                type="button"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              {/* Same place and shape as the favourites heart on other sellers' coins. Only
+                  withdrawn lots can be deleted. */}
+              {coin.status === "withdrawn" && (
+                <button
+                  onClick={requestDelete}
+                  disabled={deleting}
+                  className="border rounded p-2 transition-colors text-gray-400 hover:text-red-700 hover:border-red-700 disabled:opacity-50"
+                  title="Delete coin"
+                  type="button"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               {confirmDialog}
               <button
                 onClick={() => onEdit(coin)}

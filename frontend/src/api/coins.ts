@@ -70,6 +70,12 @@ export async function withdrawCoins(coinIds: number[]) {
   return data.coin_ids;
 }
 
+/** Permanently deletes withdrawn lots with their photos; returns the ids deleted. */
+export async function deleteCoins(coinIds: number[]) {
+  const { data } = await apiClient.post<{ coin_ids: number[] }>("/coins/delete", { coin_ids: coinIds });
+  return data.coin_ids;
+}
+
 /** Puts withdrawn lots back on sale; returns the ids actually changed. */
 export async function relistCoins(coinIds: number[]) {
   const { data } = await apiClient.post<{ coin_ids: number[] }>("/coins/relist", { coin_ids: coinIds });

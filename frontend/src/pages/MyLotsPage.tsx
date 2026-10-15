@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { EyeOff, Pencil, Plus, RotateCcw } from "lucide-react";
-import { listMyLots, relistCoins, withdrawCoins } from "../api/coins";
+import { EyeOff, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { deleteCoins, listMyLots, relistCoins, withdrawCoins } from "../api/coins";
 import { getErrorMessage, type ApiError } from "../api/client";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { Pagination } from "../components/Pagination";
 import { toast } from "../store/toastStore";
@@ -44,6 +45,8 @@ export function MyLotsPage() {
   const selectionKey = `${status}:${pageNumber}`;
   const selectedIds = selection.key === selectionKey ? selection.ids : [];
   const [editingLot, setEditingLot] = useState<MyLot | null>(null);
+  // Lots waiting for the user to confirm their deletion.
+  const [deleteIds, setDeleteIds] = useState<number[] | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["my-lots", status, pageNumber],
@@ -79,7 +82,29 @@ export function MyLotsPage() {
     onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteCoins,
+    onSuccess: (deleted, ids) => {
+      setDeleteIds(null);
+      setSelected([]);
+      const count = `${deleted.length} ${deleted.length === 1 ? "lot" : "lots"} deleted`;
+      if (deleted.length === ids.length) toast.success(`${count}.`);
+      else toast.error(`${count}; ${ids.length - deleted.length} could not be deleted (no longer withdrawn?).`);
+      for (const key of ["my-lots", "coins", "coin-facets", "favourites", "cart"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+      for (const id of deleted) queryClient.removeQueries({ queryKey: ["coin", id] });
+    },
+    onError: (err: ApiError) => {
+      setDeleteIds(null);
+      toast.error(getErrorMessage(err));
+    },
+  });
+
+  // Sold lots have no actions: they stay for the order history.
   const selectable = status !== "sold";
+  // Only withdrawn lots can be deleted: lots on sale are withdrawn first.
+  const canDelete = status === "withdrawn";
   const action = status === "for_sale" ? "withdraw" : "relist";
   const allSelected = lots.length > 0 && selectedIds.length === lots.length;
 
@@ -129,15 +154,28 @@ export function MyLotsPage() {
             />
             {selectedIds.length > 0 ? `${selectedIds.length} selected` : "Select all on page"}
           </label>
-          <button
-            type="button"
-            disabled={selectedIds.length === 0 || statusMutation.isPending}
-            onClick={() => statusMutation.mutate({ ids: selectedIds, action })}
-            className="ml-auto flex items-center gap-1.5 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:pointer-events-none"
-          >
-            {action === "withdraw" ? <EyeOff className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
-            {action === "withdraw" ? "Withdraw from sale" : "Return to sale"}
-          </button>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={selectedIds.length === 0 || statusMutation.isPending}
+              onClick={() => statusMutation.mutate({ ids: selectedIds, action })}
+              className="flex items-center gap-1.5 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            >
+              {action === "withdraw" ? <EyeOff className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+              {action === "withdraw" ? "Withdraw from sale" : "Return to sale"}
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                disabled={selectedIds.length === 0 || deleteMutation.isPending}
+                onClick={() => setDeleteIds(selectedIds)}
+                className="flex items-center gap-1.5 border border-red-700 text-red-700 hover:bg-red-700 hover:text-white text-xs font-bold uppercase tracking-wide rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -158,12 +196,28 @@ export function MyLotsPage() {
             onToggle={() => toggle(lot.id)}
             onEdit={() => setEditingLot(lot)}
             onChangeStatus={() => statusMutation.mutate({ ids: [lot.id], action })}
-            busy={statusMutation.isPending}
+            onDelete={() => setDeleteIds([lot.id])}
+            busy={statusMutation.isPending || deleteMutation.isPending}
           />
         ))}
       </div>
 
       <Pagination page={pageNumber} pageCount={pageCount} onChange={goToPage} />
+
+      {deleteIds && (
+        <ConfirmDialog
+          title={deleteIds.length === 1 ? "Delete this lot?" : `Delete ${deleteIds.length} lots?`}
+          message={`${deleteIds.length === 1 ? "The lot is" : "These lots are"} deleted permanently together with ${
+            deleteIds.length === 1 ? "its" : "their"
+          } photos. This can't be undone.`}
+          confirmLabel="Delete permanently"
+          pendingLabel="Deleting…"
+          destructive
+          isPending={deleteMutation.isPending}
+          onConfirm={() => deleteMutation.mutate(deleteIds)}
+          onCancel={() => setDeleteIds(null)}
+        />
+      )}
 
       {editingLot && (
         <EditCoinModal
@@ -187,10 +241,11 @@ interface LotRowProps {
   onToggle: () => void;
   onEdit: () => void;
   onChangeStatus: () => void;
+  onDelete: () => void;
   busy: boolean;
 }
 
-function LotRow({ lot, selectable, selected, onToggle, onEdit, onChangeStatus, busy }: LotRowProps) {
+function LotRow({ lot, selectable, selected, onToggle, onEdit, onChangeStatus, onDelete, busy }: LotRowProps) {
   const image = lot.images[0];
   const details = [lot.sku && `SKU ${lot.sku}`, lot.grade, lot.catalog_number].filter(Boolean).join(" · ");
 
@@ -259,6 +314,17 @@ function LotRow({ lot, selectable, selected, onToggle, onEdit, onChangeStatus, b
             >
               {lot.status === "for_sale" ? <EyeOff className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
             </button>
+            {lot.status === "withdrawn" && (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={busy}
+                title="Delete permanently"
+                className="border border-gray-300 text-gray-500 hover:border-red-700 hover:text-red-700 rounded-sm p-1.5 transition-colors disabled:opacity-40"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={onEdit}
