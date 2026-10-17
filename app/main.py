@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from sqlalchemy.exc import DataError, DBAPIError, IntegrityError
 
 from app.api import (
+    account,
     auth,
     cart,
     coin_images,
@@ -110,6 +111,7 @@ app.include_router(favourites.router)
 app.include_router(coin_images.router)
 app.include_router(cart.router)
 app.include_router(orders.router)
+app.include_router(account.router)
 
 
 @app.get("/health")

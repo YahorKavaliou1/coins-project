@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_seller
+from app.api.deps import ensure_payment_details, require_seller
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.coin import Coin
@@ -44,6 +44,7 @@ async def create_coins_batch(
     current_user: User = Depends(require_seller),
 ) -> CoinBatchResult:
     """Creates all lots in one transaction: either every row is listed or none is."""
+    ensure_payment_details(current_user)
     missing_countries = await _missing_ids(db, Country, {item.country_id for item in data.items})
     missing_metals = await _missing_ids(db, Metal, {item.metal_id for item in data.items})
 

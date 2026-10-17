@@ -1,21 +1,22 @@
 {% extends "base.html" %}
-{% block preheader %}Order #{{ order_id }} is confirmed — total €{{ "%.2f"|format(total) }}.{% endblock %}
+{% block preheader %}Order #{{ order_id }}: pay €{{ "%.2f"|format(total) }} to {{ seller_name or "the seller" }} using the details inside.{% endblock %}
 {% block content %}
 <h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Thank you for your order!</h1>
-<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, your order <strong>#{{ order_id }}</strong> is confirmed. The sellers have been notified and will ship your coins.</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 16px;font-size:14px;">
-  {% for item in items %}
-  <tr>
-    <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;">{{ item.name }}</td>
-    <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;">€{{ "%.2f"|format(item.price) }}</td>
-  </tr>
-  {% endfor %}
-  <tr>
-    <td style="padding:12px 0;font-weight:bold;color:#111827;">Total</td>
-    <td style="padding:12px 0;text-align:right;font-weight:bold;color:#111827;">€{{ "%.2f"|format(total) }}</td>
-  </tr>
-</table>
+<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, your order <strong>#{{ order_id }}</strong> from {{ seller_name or "the seller" }} is reserved for you. Please pay the total using the seller's details below, then mark the order as paid on the site.</p>
+{% include "_order_table.html" %}
+<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Payment details</p>
+{% if payment_details %}
+<p style="margin:0 0 16px;padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;white-space:pre-line;">{{ payment_details }}</p>
+{% else %}
+<p style="margin:0 0 16px;">The seller hasn't added payment details yet. Please contact them using the details below.</p>
+{% endif %}
+{% if contact_email or contact_phone or contact_note %}
+<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Seller's contacts</p>
+<p style="margin:0 0 16px;white-space:pre-line;">{% if contact_email %}Email: {{ contact_email }}
+{% endif %}{% if contact_phone %}Phone: {{ contact_phone }}
+{% endif %}{% if contact_note %}{{ contact_note }}{% endif %}</p>
+{% endif %}
 <p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Shipping to</p>
 <p style="margin:0 0 16px;white-space:pre-line;">{{ shipping_address }}</p>
-{% with url=orders_link, label="View my purchases" %}{% include "_button.html" %}{% endwith %}
+{% with url=orders_link, label="I've paid — mark the order" %}{% include "_button.html" %}{% endwith %}
 {% endblock %}

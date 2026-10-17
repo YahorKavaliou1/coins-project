@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_current_user, require_admin
 from app.core.rate_limit import limiter
@@ -26,6 +25,7 @@ from app.services.notifications import (
     send_password_changed_email,
     send_verification_email,
 )
+from app.services.orders import ORDER_LOAD_OPTIONS, order_read
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -111,16 +111,17 @@ async def list_user_orders(
     user_id: int,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> list[Order]:
+) -> list[OrderRead]:
+    """The user's purchases (admins)."""
     await _get_user_or_404(db, user_id)
     stmt = (
         select(Order)
-        .options(selectinload(Order.items))
+        .options(*ORDER_LOAD_OPTIONS)
         .where(Order.buyer_id == user_id)
         .order_by(Order.created_at.desc())
     )
     result = await db.execute(stmt)
-    return list(result.scalars().all())
+    return [order_read(order) for order in result.scalars().all()]
 
 
 @router.get("/{user_id}/admin-actions", response_model=list[AdminActionRead])

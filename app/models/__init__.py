@@ -8,6 +8,7 @@ from app.models.favourite import Favourite
 from app.models.metal import Metal
 from app.models.order import Order
 from app.models.order_item import OrderItem
+from app.models.shipping_address import ShippingAddress
 from app.models.user import User
 from app.models.user_token import UserToken
 
@@ -22,6 +23,7 @@ __all__ = [
     "Metal",
     "Order",
     "OrderItem",
+    "ShippingAddress",
     "User",
     "UserToken",
 ]

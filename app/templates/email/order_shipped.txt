@@ -1,0 +1,9 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, {% if tracking_updated %}{{ seller_name or "the seller" }} updated the tracking code of order #{{ order_id }}.{% else %}{{ seller_name or "the seller" }} has shipped order #{{ order_id }}.{% endif %}
+
+
+{% if tracking_code %}
+Tracking code: {{ tracking_code }}
+{% endif %}
+
+Your purchases: {{ orders_link }}{% endblock %}

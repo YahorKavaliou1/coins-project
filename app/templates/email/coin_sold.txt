@@ -1,12 +1,17 @@
 {% extends "base.txt" %}
-{% block content %}Hi{% if name %} {{ name }}{% endif %}, the following coin{{ "s were" if items|length != 1 else " was" }} bought in order #{{ order_id }}:
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, the following coin{{ "s were" if items|length != 1 else " was" }} bought in order #{{ order_id }}. The buyer received your payment details. Once the money is on your account, ship the coins and mark the order as shipped.
 
-{% for item in items %}- {{ item.name }}: €{{ "%.2f"|format(item.price) }}
-{% endfor %}
-Your total: €{{ "%.2f"|format(total) }}
+{% include "_order_table.txt" %}
 
-Please ship to:
-{% if buyer_name %}{{ buyer_name }}
-{% endif %}{{ shipping_address }}
+{% if payment_details_missing %}
 
-Use this address only to ship this order.{% endblock %}
+You haven't added payment details yet, so the buyer doesn't know how to pay. Add them in Account settings: {{ account_link }}
+The buyer will see them on their order page.
+{% endif %}
+
+Ship to:
+{{ shipping_address }}
+
+Use this address only to ship this order.
+
+Your sales: {{ sales_link }}{% endblock %}

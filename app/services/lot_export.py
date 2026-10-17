@@ -21,6 +21,7 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 
 STATUS_LABELS = {"for_sale": "For sale", "withdrawn": "Withdrawn", "sold": "Sold"}
+ORDER_STATUS_LABELS = {"awaiting_payment": "Awaiting payment", "paid": "Paid", "shipped": "Shipped"}
 DATE_FORMAT = "yyyy-mm-dd hh:mm"
 
 
@@ -79,6 +80,8 @@ def build_lots_workbook(
         "Price paid (EUR)",
         "Buyer",
         "Ship to",
+        "Order status",
+        "Tracking code",
     ]
     bold = Font(bold=True)
     header_cells = []
@@ -125,6 +128,8 @@ def build_lots_workbook(
             float(item.price_paid) if item else None,
             buyer_name,
             order.shipping_address if order else None,
+            ORDER_STATUS_LABELS.get(order.status, order.status) if order else None,
+            order.tracking_code if order else None,
         ]
         cells = []
         for value in row:

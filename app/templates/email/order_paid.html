@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block preheader %}Check that €{{ "%.2f"|format(total) }} arrived, then ship order #{{ order_id }}.{% endblock %}
+{% block content %}
+<h1 style="font-size:22px;margin:0 0 16px;color:#111827;">The buyer has paid</h1>
+<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, {{ buyer_name or "the buyer" }} marked order <strong>#{{ order_id }}</strong> as paid (€{{ "%.2f"|format(total) }}). Please check that the money arrived on your account, then ship the coins and mark the order as shipped, with the tracking code if there is one.</p>
+{% with url=sales_link, label="View my sales" %}{% include "_button.html" %}{% endwith %}
+{% endblock %}

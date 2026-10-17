@@ -45,3 +45,9 @@ export async function resendUserVerification(userId: number) {
   const { data } = await apiClient.post<{ message: string }>(`/users/${userId}/resend-verification`);
   return data;
 }
+
+/** The current user's display name (shown to the other party of their orders). */
+export async function updateProfile(fullName: string) {
+  const { data } = await apiClient.patch<User>("/users/me", { full_name: fullName });
+  return data;
+}

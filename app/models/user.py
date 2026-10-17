@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Any
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
@@ -49,6 +51,19 @@ class User(Base):
     # Copied into every JWT as "ver"; tokens with another value are rejected.
     # Bumping it logs the user out everywhere (password change/reset, block).
     token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    # --- Seller settings (account page); shown to the buyers of the seller's lots ---
+    # How to pay: bank account, PayPal... Sent to the buyer with every order.
+    payment_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Messengers, hours to call...
+    contact_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # [{"name": "Registered mail", "price": "12.00"}, ...]; the buyer picks one at checkout.
+    # Empty: shipping is arranged with the seller.
+    shipping_options: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default="[]"
+    )
 
     def revoke_tokens(self) -> None:
         self.token_version += 1

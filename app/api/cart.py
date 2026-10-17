@@ -5,12 +5,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.account import seller_shipping_options
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.cart_item import CartItem
 from app.models.coin import Coin
 from app.models.user import User
 from app.schemas.cart import CartItemAdd, CartRead
+from app.schemas.order import CartSeller
 
 router = APIRouter(prefix="/cart", tags=["cart"])
 
@@ -35,7 +37,20 @@ async def _load_cart(db: AsyncSession, user_id: int) -> list[CartItem]:
 
 def _cart_read(items: list[CartItem]) -> CartRead:
     total = sum((item.coin.price or Decimal(0) for item in items), Decimal(0))
-    return CartRead(items=items, total_price=total)
+    sellers: dict[int, CartSeller] = {}
+    for item in items:
+        owner = item.coin.owner
+        if item.coin.is_for_sale and owner.id not in sellers:
+            sellers[owner.id] = CartSeller(
+                id=owner.id,
+                name=owner.full_name,
+                shipping_options=seller_shipping_options(owner),
+                has_payment_details=bool(owner.payment_details),
+            )
+    return CartRead.model_validate(
+        {"items": items, "total_price": total, "sellers": list(sellers.values())},
+        from_attributes=True,
+    )
 
 
 @router.get("", response_model=CartRead)

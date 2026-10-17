@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 
-from app.api.deps import get_optional_current_user, require_seller
+from app.api.deps import ensure_payment_details, get_optional_current_user, require_seller
 from app.db.session import get_db
 from app.models.coin import Coin
 from app.models.country import Country
@@ -378,6 +378,8 @@ async def list_my_lots(
                 price_paid=item.price_paid,
                 buyer_name=buyer_name,
                 shipping_address=order.shipping_address,
+                order_status=order.status,
+                tracking_code=order.tracking_code,
             )
 
     favourite_ids = await _get_favourite_ids(db, current_user)
@@ -474,6 +476,7 @@ async def relist_coins(
     current_user: User = Depends(require_seller),
 ) -> CoinIdsResult:
     """Puts withdrawn lots back on sale."""
+    ensure_payment_details(current_user)
     return await _change_status(
         db, current_user, data.coin_ids, from_status="withdrawn", to_status="for_sale"
     )
@@ -500,6 +503,7 @@ async def create_coin(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_seller),
 ) -> Coin:
+    ensure_payment_details(current_user)
     await _validate_country_and_metal(db, data.country_id, data.metal_id)
 
     coin = Coin(**data.model_dump(), owner_id=current_user.id)

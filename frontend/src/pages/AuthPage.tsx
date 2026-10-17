@@ -13,6 +13,7 @@ import { ResendVerificationButton } from "../components/auth/ResendVerificationB
 import { PasswordRequirements } from "../components/auth/PasswordRequirements";
 import { passwordError } from "../utils/password";
 import { Captcha, captchaEnabled } from "../components/Captcha";
+import { safeNextPath } from "../utils/url";
 
 type Mode = "login" | "register";
 
@@ -32,6 +33,8 @@ function FieldError({ message }: { message?: string }) {
 export function AuthPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const mode: Mode = searchParams.get("mode") === "register" ? "register" : "login";
+  // E.g. back to the coin a guest wanted to buy.
+  const nextPath = safeNextPath(searchParams.get("next"));
   const [showPassword, setShowPassword] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
   // Login succeeded on the password but the email isn't confirmed yet.
@@ -61,7 +64,7 @@ export function AuthPage() {
     const token = await login(email, password);
     setTokens(token.access_token, token.refresh_token);
     queryClient.invalidateQueries();
-    navigate("/browse");
+    navigate(nextPath);
   }
 
   const loginMutation = useMutation({
@@ -83,7 +86,7 @@ export function AuthPage() {
     },
   });
 
-  if (accessToken) return <Navigate to="/browse" replace />;
+  if (accessToken) return <Navigate to={nextPath} replace />;
 
   if (registeredEmail) {
     return (
@@ -122,7 +125,13 @@ export function AuthPage() {
     clearErrors();
     setBlockedMessage(null);
     setUnverifiedEmail(null);
-    setSearchParams(next === "register" ? { mode: "register" } : {}, { replace: true });
+    setSearchParams(
+      {
+        ...(next === "register" ? { mode: "register" } : {}),
+        ...(searchParams.get("next") ? { next: searchParams.get("next")! } : {}),
+      },
+      { replace: true }
+    );
   }
 
   const tabClass = (active: boolean) =>

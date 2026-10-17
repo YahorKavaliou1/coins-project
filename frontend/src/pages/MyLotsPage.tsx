@@ -5,6 +5,8 @@ import { Download, EyeOff, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react"
 import { deleteCoins, exportLots, listMyLotIds, listMyLots, relistCoins, withdrawCoins } from "../api/coins";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { OrderStatusBadge } from "../components/OrderStatusBadge";
+import { PaymentDetailsNotice } from "../components/PaymentDetailsNotice";
 import { EditCoinModal } from "../components/EditCoinModal";
 import { Pagination } from "../components/Pagination";
 import { toast } from "../store/toastStore";
@@ -176,6 +178,8 @@ export function MyLotsPage() {
           List a coin
         </button>
       </div>
+
+      <PaymentDetailsNotice />
 
       <div className="flex gap-6 border-b border-gray-200 mb-4 max-sm:gap-4">
         {TABS.map((tab) => (
@@ -421,7 +425,13 @@ function SaleDetails({ lot }: { lot: MyLot }) {
       <dt className="text-gray-400">Sold</dt>
       <dd className="text-gray-700">{formatUtcDateTime(sale.sold_at)}</dd>
       <dt className="text-gray-400">Order</dt>
-      <dd className="text-gray-700">#{sale.order_id}</dd>
+      <dd className="text-gray-700 flex flex-wrap items-center gap-2">
+        <Link to="/sales" className="hover:text-accent">
+          #{sale.order_id}
+        </Link>
+        <OrderStatusBadge status={sale.order_status} />
+        {sale.tracking_code && <span className="font-mono text-gray-500">{sale.tracking_code}</span>}
+      </dd>
       <dt className="text-gray-400">Price paid</dt>
       <dd className="text-gray-700">{formatPrice(sale.price_paid)}</dd>
       <dt className="text-gray-400">Buyer</dt>

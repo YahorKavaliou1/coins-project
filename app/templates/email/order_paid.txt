@@ -1,0 +1,4 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, {{ buyer_name or "the buyer" }} marked order #{{ order_id }} as paid (€{{ "%.2f"|format(total) }}). Please check that the money arrived on your account, then ship the coins and mark the order as shipped, with the tracking code if there is one.
+
+Your sales: {{ sales_link }}{% endblock %}

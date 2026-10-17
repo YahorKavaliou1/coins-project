@@ -65,6 +65,8 @@ export interface SaleInfo {
   price_paid: number;
   buyer_name: string | null;
   shipping_address: string;
+  order_status: OrderStatus;
+  tracking_code: string | null;
 }
 
 export interface MyLot extends Coin {
@@ -157,26 +159,105 @@ export interface CartItemRead {
   coin: Coin;
 }
 
+export interface ShippingOption {
+  name: string;
+  price: number;
+}
+
+/** A seller with coins in the cart: checkout makes one order per seller. */
+export interface CartSeller {
+  id: number;
+  name: string | null;
+  /** Empty: shipping is arranged with the seller. */
+  shipping_options: ShippingOption[];
+  has_payment_details: boolean;
+}
+
 export interface Cart {
   items: CartItemRead[];
+  /** Coins only; shipping depends on the options chosen at checkout. */
   total_price: number;
+  sellers: CartSeller[];
 }
+
+/** awaiting_payment -> paid (the buyer says so) -> shipped (the seller, with a tracking code). */
+export type OrderStatus = "awaiting_payment" | "paid" | "shipped";
 
 export interface OrderItemRead {
   id: number;
-  coin_id: number;
+  /** null once the coin was deleted. */
+  coin_id: number | null;
   coin_name_snapshot: string;
   price_paid: number;
   seller_id: number;
+  /** Thumbnail of the coin's first photo. */
+  image_url: string | null;
 }
 
+/** One buyer, one seller: a cart with several sellers' coins becomes several orders. */
 export interface Order {
   id: number;
-  shipping_address: string;
-  total_price: number;
-  status: string;
   created_at: string;
+  status: OrderStatus;
+  paid_at: string | null;
+  shipped_at: string | null;
+  tracking_code: string | null;
+  shipping_address: string;
+  /** Both null when shipping is arranged with the seller. */
+  shipping_method: string | null;
+  shipping_price: number | null;
+  /** Coins plus shipping. */
+  total_price: number;
   items: OrderItemRead[];
+  buyer_id: number;
+  buyer_name: string | null;
+  seller_id: number;
+  seller_name: string | null;
+}
+
+export interface SellerContact {
+  name: string | null;
+  payment_details: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_note: string | null;
+}
+
+/** An order as its buyer sees it: with how to pay and reach the seller. */
+export interface BuyerOrder extends Order {
+  seller: SellerContact;
+}
+
+export interface AdminOrder extends Order {
+  buyer_email: string;
+  seller_email: string;
+}
+
+export interface AdminOrderPage {
+  items: AdminOrder[];
+  total: number;
+}
+
+export interface SellerSettings {
+  payment_details: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  contact_note: string | null;
+  shipping_options: ShippingOption[];
+}
+
+export interface AddressFields {
+  recipient_name: string;
+  phone: string | null;
+  country: string;
+  city: string;
+  postal_code: string;
+  address_line: string;
+}
+
+export interface Address extends AddressFields {
+  id: number;
+  is_default: boolean;
 }
 
 export type MetalFacet = Pick<Metal, "id" | "name">;

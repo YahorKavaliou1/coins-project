@@ -9,6 +9,9 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { SellPage } from "./pages/SellPage";
 import { MyLotsPage } from "./pages/MyLotsPage";
+import { SalesPage } from "./pages/SalesPage";
+import { AccountPage } from "./pages/AccountPage";
+import { AdminOrdersPage } from "./pages/AdminOrdersPage";
 import { BrowsePage } from "./pages/BrowsePage";
 import { CoinDetailPage } from "./pages/CoinDetailPage";
 import { CartPage } from "./pages/CartPage";
@@ -47,6 +50,30 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               element={
                 <RequireRole roles={["seller", "admin"]}>
                   <MyLotsPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/sales"
+              element={
+                <RequireRole roles={["seller", "admin"]}>
+                  <SalesPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/account"
+              element={
+                <RequireRole roles={["user", "seller", "admin"]}>
+                  <AccountPage />
+                </RequireRole>
+              }
+            />
+            <Route
+              path="/admin/orders"
+              element={
+                <RequireRole roles={["admin"]}>
+                  <AdminOrdersPage />
                 </RequireRole>
               }
             />

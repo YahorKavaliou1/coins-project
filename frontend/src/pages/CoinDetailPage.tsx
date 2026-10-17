@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, ShoppingCart, ChevronLeft, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Check, ChevronLeft, ExternalLink, Heart, Pencil, ShoppingCart, Trash2 } from "lucide-react";
 import { getCoin } from "../api/coins";
 import { addToCart } from "../api/cart";
 import { addFavourite, removeFavourite } from "../api/favourites";
@@ -16,6 +16,8 @@ import type { Coin } from "../types";
 import { formatPrice } from "../utils/money";
 import { unavailableLabel } from "../utils/coinStatus";
 import { thumbnailSrc } from "../utils/images";
+import { useCartCoinIds } from "../hooks/useCartCoinIds";
+import { loginPath } from "../utils/url";
 
 export function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +28,7 @@ export function CoinDetailPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [editing, setEditing] = useState(false);
+  const cartIds = useCartCoinIds();
 
   const { data: coin, refetch } = useQuery({
     queryKey: ["coin", coinId],
@@ -57,6 +60,7 @@ export function CoinDetailPage() {
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
+  const inCart = cartIds.has(coin.id);
   const canEdit = (isOwner || isAdmin(currentUser)) && coin.status !== "sold";
 
   const activeImage = coin.images[activeImageIdx];
@@ -183,14 +187,32 @@ export function CoinDetailPage() {
                 >
                   <Heart className="w-5 h-5" fill={coin.is_favourite ? "currentColor" : "none"} />
                 </button>
-                <button
-                  onClick={() => addToCartMutation.mutate(coin.id)}
-                  className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold uppercase rounded py-3"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  Add to cart
-                </button>
+                {inCart ? (
+                  <Link
+                    to="/cart"
+                    className="flex-1 flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent/5 font-bold uppercase rounded py-3"
+                  >
+                    <Check className="w-5 h-5" />
+                    In cart — view cart
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => addToCartMutation.mutate(coin.id)}
+                    disabled={addToCartMutation.isPending}
+                    className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold uppercase rounded py-3 disabled:opacity-50"
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    Add to cart
+                  </button>
+                )}
               </div>
+            ) : !accessToken && coin.is_for_sale ? (
+              <Link
+                to={loginPath(`/coins/${coin.id}`)}
+                className="flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold uppercase rounded py-3"
+              >
+                Log in to buy
+              </Link>
             ) : !coin.is_for_sale ? (
               <div className="text-center text-gray-400 italic py-2">{unavailableLabel(coin.status)}</div>
             ) : null}

@@ -137,12 +137,28 @@ export function Layout() {
                         My lots
                       </button>
                     )}
+                    {canSell(currentUser) && (
+                      <button
+                        type="button"
+                        onClick={() => goTo("/sales")}
+                        className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
+                      >
+                        My sales
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => goTo("/purchases")}
                       className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
                     >
                       My purchases
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goTo("/account")}
+                      className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
+                    >
+                      Account settings
                     </button>
                     {isAdmin(currentUser) && (
                       <button
@@ -151,6 +167,15 @@ export function Layout() {
                         className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
                       >
                         Users
+                      </button>
+                    )}
+                    {isAdmin(currentUser) && (
+                      <button
+                        type="button"
+                        onClick={() => goTo("/admin/orders")}
+                        className="block w-full text-left px-4 py-2 text-sm uppercase tracking-wide text-gray-700 hover:text-accent hover:bg-gray-50"
+                      >
+                        Orders
                       </button>
                     )}
                     <div className="border-t border-gray-200 my-1" />

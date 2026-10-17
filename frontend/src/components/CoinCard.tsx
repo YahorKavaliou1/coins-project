@@ -1,5 +1,5 @@
-import { Heart, Pencil, ShoppingCart, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Check, Heart, Pencil, ShoppingCart, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Coin } from "../types";
 import { useAuthStore } from "../store/authStore";
@@ -10,6 +10,8 @@ import { useDeleteCoin } from "../hooks/useDeleteCoin";
 import { unavailableLabel } from "../utils/coinStatus";
 import { formatPrice } from "../utils/money";
 import { thumbnailSrc } from "../utils/images";
+import { useCartCoinIds } from "../hooks/useCartCoinIds";
+import { loginPath } from "../utils/url";
 
 interface CoinCardProps {
   coin: Coin;
@@ -36,8 +38,10 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
 
   const { requestDelete, isPending: deleting, confirmDialog } = useDeleteCoin(coin);
 
+  const cartIds = useCartCoinIds();
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
   const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
+  const inCart = cartIds.has(coin.id);
   const canEdit = isOwner && coin.status !== "sold";
 
   const images = coin.images.slice(0, 2);
@@ -148,14 +152,31 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
               >
                 <Heart className="w-4 h-4" fill={coin.is_favourite ? "currentColor" : "none"} />
               </button>
-              <button
-                onClick={() => onAddToCart(coin.id)}
-                className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white text-xs font-bold uppercase rounded py-2"
-              >
-                <ShoppingCart className="w-4 h-4 max-sm:hidden" />
-                Add to cart
-              </button>
+              {inCart ? (
+                <Link
+                  to="/cart"
+                  className="flex-1 flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent/5 text-xs font-bold uppercase rounded py-2"
+                >
+                  <Check className="w-4 h-4 max-sm:hidden" />
+                  In cart
+                </Link>
+              ) : (
+                <button
+                  onClick={() => onAddToCart(coin.id)}
+                  className="flex-1 flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white text-xs font-bold uppercase rounded py-2"
+                >
+                  <ShoppingCart className="w-4 h-4 max-sm:hidden" />
+                  Add to cart
+                </button>
+              )}
             </div>
+          ) : !accessToken && coin.is_for_sale ? (
+            <Link
+              to={loginPath(`/coins/${coin.id}`)}
+              className="flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"
+            >
+              Log in to buy
+            </Link>
           ) : !coin.is_for_sale ? (
             <div className="text-center text-gray-400 text-sm italic py-2">{unavailableLabel(coin.status)}</div>
           ) : null}

@@ -12,6 +12,7 @@ import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 import { useSearchParams } from "react-router-dom";
 import { BatchImport } from "../components/batch/BatchImport";
+import { PaymentDetailsGate } from "../components/PaymentDetailsGate";
 import { CATEGORY_DATALIST_ID, CategoryDatalist } from "../components/CategoryDatalist";
 import { LabelsInput } from "../components/LabelsInput";
 
@@ -384,7 +385,7 @@ export function SellPage() {
         ))}
       </div>
 
-      {tab === "single" ? <SingleListingForm /> : <BatchImport />}
+      <PaymentDetailsGate>{tab === "single" ? <SingleListingForm /> : <BatchImport />}</PaymentDetailsGate>
     </div>
   );
 }

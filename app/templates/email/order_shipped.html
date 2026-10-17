@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block preheader %}{% if tracking_code %}Tracking code: {{ tracking_code }}{% else %}Your coins are on their way.{% endif %}{% endblock %}
+{% block content %}
+<h1 style="font-size:22px;margin:0 0 16px;color:#111827;">{% if tracking_updated %}New tracking code{% else %}Your coins are on their way{% endif %}</h1>
+<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, {% if tracking_updated %}{{ seller_name or "the seller" }} updated the tracking code of order <strong>#{{ order_id }}</strong>.{% else %}{{ seller_name or "the seller" }} has shipped order <strong>#{{ order_id }}</strong>.{% endif %}</p>
+{% if tracking_code %}
+<p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Tracking code</p>
+<p style="margin:0 0 16px;padding:12px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;font-family:monospace;font-size:16px;">{{ tracking_code }}</p>
+{% endif %}
+{% with url=orders_link, label="View my purchases" %}{% include "_button.html" %}{% endwith %}
+{% endblock %}

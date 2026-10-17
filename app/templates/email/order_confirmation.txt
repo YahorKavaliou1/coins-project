@@ -1,11 +1,20 @@
 {% extends "base.txt" %}
-{% block content %}Hi{% if name %} {{ name }}{% endif %}, your order #{{ order_id }} is confirmed. The sellers have been notified and will ship your coins.
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, your order #{{ order_id }} from {{ seller_name or "the seller" }} is reserved for you. Please pay the total using the seller's details below, then mark the order as paid on the site.
 
-{% for item in items %}- {{ item.name }}: €{{ "%.2f"|format(item.price) }}
-{% endfor %}
-Total: €{{ "%.2f"|format(total) }}
+{% include "_order_table.txt" %}
 
-Shipping to:
+
+Payment details:
+{% if payment_details %}{{ payment_details }}{% else %}The seller hasn't added payment details yet. Please contact them using the details below.{% endif %}
+
+
+{% if contact_email or contact_phone or contact_note %}Seller's contacts:
+{% if contact_email %}Email: {{ contact_email }}
+{% endif %}{% if contact_phone %}Phone: {{ contact_phone }}
+{% endif %}{% if contact_note %}{{ contact_note }}
+{% endif %}
+
+{% endif %}Shipping to:
 {{ shipping_address }}
 
-View your purchases: {{ orders_link }}{% endblock %}
+Mark the order as paid once you've paid: {{ orders_link }}{% endblock %}

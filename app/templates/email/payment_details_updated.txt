@@ -1,0 +1,12 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, {{ seller_name or "the seller" }} changed their payment details. If you haven't paid yet, please use the new details below for {{ "these orders" if orders|length != 1 else "this order" }}:
+
+{% for order in orders %}- Order #{{ order.id }}: €{{ "%.2f"|format(order.total) }}
+{% endfor %}
+
+Payment details:
+{{ payment_details }}
+
+Already paid using the previous details? Then nothing changes: mark the order as paid on the site, if you haven't yet.
+
+Your purchases: {{ orders_link }}{% endblock %}

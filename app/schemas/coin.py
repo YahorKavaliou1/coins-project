@@ -184,6 +184,8 @@ class SaleInfo(BaseModel):
     price_paid: MoneyOut
     buyer_name: str | None
     shipping_address: str
+    order_status: str  # awaiting_payment, paid or shipped
+    tracking_code: str | None = None
 
 
 class MyLotRead(CoinRead):

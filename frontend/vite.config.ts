@@ -28,6 +28,7 @@ export default defineConfig({
       "/cart": apiProxy,
       "/orders": apiProxy,
       "/favourites": apiProxy,
+      "/account": apiProxy,
       "/static": API_TARGET,
     },
   },

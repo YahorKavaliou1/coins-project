@@ -87,4 +87,18 @@ def require_roles(*roles: UserRole) -> Callable[..., Awaitable[User]]:
 
 
 require_seller = require_roles(UserRole.SELLER, UserRole.ADMIN)
+
+# Shown as is by the frontend (e.g. when returning a lot to sale in "My lots").
+PAYMENT_DETAILS_REQUIRED_DETAIL = (
+    "Add your payment details in Account settings before listing coins for sale: "
+    "buyers receive them with every order."
+)
+
+
+def ensure_payment_details(user: User) -> None:
+    """Coins go on sale only once their seller has said how buyers pay them."""
+    if not (user.payment_details or "").strip():
+        raise HTTPException(status_code=409, detail=PAYMENT_DETAILS_REQUIRED_DETAIL)
+
+
 require_admin = require_roles(UserRole.ADMIN)
