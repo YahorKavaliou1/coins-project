@@ -22,7 +22,7 @@ services:
   # http://localhost:8025 and nothing reaches real inboxes.
   mailpit:
     # A fixed version: "latest" would silently change what runs.
-    image: axllent/mailpit:v1.31.3
+    image: axllent/mailpit:v1.31.6
     container_name: coins_mailpit
     restart: unless-stopped
     ports:
