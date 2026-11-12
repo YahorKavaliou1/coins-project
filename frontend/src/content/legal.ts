@@ -29,6 +29,13 @@ export const operator = {
   city: "[City]",
 };
 
+/**
+ * Whether the owner has joined the Consumer Arbitration System (Junta Arbitral de Consumo) or
+ * another ADR entity. Must be stated by law (Ley 7/2017, art. 40-41): if this changes, rewrite
+ * the "Complaints and dispute resolution" section of the Terms accordingly.
+ */
+const adrAdhered = false;
+
 const updated = "November 2026";
 const emailLink = `[${operator.email}](mailto:${operator.email})`;
 const contactLine = `${operator.legalName}, ${operator.address}. Email: ${emailLink}, phone: ${operator.phone}.`;
@@ -99,25 +106,34 @@ export const terms: LegalDocument = {
           "At checkout you choose a delivery address and a shipping method; the total, shipping included, is shown before you confirm.",
           "If a price, a shipping cost or the availability of a coin changed while it was in your cart, the order is not placed and you are asked to review your cart.",
           "Coins handled by different members of our staff become separate orders, each paid, shipped and tracked on its own. The cart shows this before you confirm.",
-          "Placing the order is a purchase with an obligation to pay. The coins are reserved for you and removed from the shop, and we confirm the order by email with the payment details.",
+          "Before placing the order you can check and correct everything you entered: remove coins from the cart, change the delivery address and the shipping method. The order is placed only when you press the button \"Order with obligation to pay\".",
+          "Placing the order is a purchase with an obligation to pay. The coins are reserved for you and removed from the shop, and we confirm the order by email with the payment details and the information on your right of withdrawal.",
+          "To correct the delivery address after placing the order, contact us before it is shipped.",
         ],
+      ],
+    },
+    {
+      title: "Contract language and records",
+      blocks: [
+        "The contract is concluded in English. We keep a record of every order — coins, prices, shipping, delivery address and status — and you can see it at any time in [My purchases](/purchases); the order confirmation email contains it too. These Terms apply in the version published when you place the order: we recommend saving or printing a copy.",
       ],
     },
     {
       title: "Payment",
       blocks: [
-        "Payment is made outside the site, using the payment details in the order confirmation email and on the [My purchases](/purchases) page. We do not take card payments on the site.",
+        "Payment is made outside the site, by the method stated in the payment details (for example, bank transfer), using the details in the order confirmation email and on the [My purchases](/purchases) page. We do not take card payments on the site.",
         [
           "Once you have paid, mark the order as paid in My purchases. We check that the payment has arrived and ship the order.",
           "If our payment details change, we email you the new ones for any unpaid order. Always pay using the details shown in My purchases, and be careful with payment instructions that do not come from us.",
           "Any bank fees charged by your own bank are yours.",
+          `We issue an invoice for your purchase on request: write to ${emailLink} with the order number.`,
         ],
       ],
     },
     {
       title: "Order status and cancellation",
       blocks: [
-        "An order goes through three statuses: Awaiting payment → Paid → Shipped. You receive an email at each step; when the order is shipped, the email includes the tracking code if the shipping method has one. Shipping is described in the [Shipping Policy](/shipping).",
+        "An order is Awaiting payment until you mark it as paid, then Paid, and Shipped once we send it. You receive an email when the order is placed and when it is shipped; the shipping email includes the tracking code if the shipping method has one. Unless another date is agreed with you, the coins are delivered within 30 days of the order; details are in the [Shipping Policy](/shipping).",
         "Placed orders cannot be cancelled on the site. To cancel an order before it is shipped, contact us; any amount already paid is refunded. After delivery, the right of withdrawal below applies.",
       ],
     },
@@ -127,11 +143,11 @@ export const terms: LegalDocument = {
         "If you buy as a consumer, you may withdraw from the purchase within 14 days of the day you, or someone you name, receive the coins, without giving any reason (Real Decreto Legislativo 1/2007, arts. 102–108).",
         [
           `To withdraw, tell us before the 14 days end, for example by email to ${emailLink}. You may use the model form below, but it is not required.`,
-          "Send the coins back to us without undue delay and no later than 14 days after telling us, in the condition and holder in which you received them. You pay the cost of returning them.",
-          "We refund all payments received for the returned coins, including the standard shipping cost, within 14 days of receiving your notice, by the same means you paid, unless you agree otherwise. We may wait to refund until we have received the coins back.",
+          "Send the coins back to us without undue delay and no later than 14 days after telling us, if possible in the holder in which you received them. You pay the cost of returning them.",
+          "We refund all payments received for the returned coins, including the standard shipping cost, within 14 days of receiving your notice, by the same means you paid, unless you agree otherwise. We may withhold the refund until we have received the coins back or you have supplied evidence of having sent them, whichever is earlier.",
           "You are responsible for any loss in value caused by handling the coins beyond what is needed to examine them (for example, cleaning a coin or removing it from a sealed holder).",
         ],
-        "The right of withdrawal does not apply to coins whose price depends on fluctuations of the precious-metals market that we cannot control, such as bullion coins priced by their metal content (art. 103.c).",
+        "The right of withdrawal does not apply to coins whose price depends on fluctuations of the precious-metals market that we cannot control, such as bullion coins priced by their metal content (art. 103.b).",
         "Model withdrawal form: \"To " +
           `${operator.legalName}, ${operator.address}, ${operator.email}: ` +
           "I hereby give notice that I withdraw from my contract of sale of the following goods: [coins, order number] — ordered on [date] / received on [date] — name — address — date — signature (only if sent on paper).\"",
@@ -167,6 +183,15 @@ export const terms: LegalDocument = {
       title: "Changes to these terms",
       blocks: [
         "We may update these Terms. The date at the top shows the latest version. Orders are governed by the Terms in force when they were placed.",
+      ],
+    },
+    {
+      title: "Complaints and dispute resolution",
+      blocks: [
+        `Send complaints by email to ${emailLink} or by post to ${operator.address}, with your order number. We confirm receipt and answer as soon as possible and in any case within one month (Real Decreto Legislativo 1/2007, art. 21). Official complaint forms (hojas de reclamaciones) are available on request at the same addresses.`,
+        adrAdhered
+          ? "We are adhered to the Consumer Arbitration System (Sistema Arbitral de Consumo): if your complaint is not resolved, you may submit it to the Junta Arbitral de Consumo."
+          : "We are not adhered to the Consumer Arbitration System or to any other alternative dispute resolution entity. If we cannot resolve your complaint, we tell you which entity is competent and whether we will take part in the procedure (Ley 7/2017, art. 41). You can also contact the consumer authorities of your region.",
       ],
     },
     {
@@ -224,7 +249,10 @@ export const shipping: LegalDocument = {
     {
       title: "Delivery times",
       blocks: [
-        "Delivery times depend on the shipping method, the destination and the carrier. Ask us if you need an estimate before ordering. We are not responsible for delays caused by carriers or customs, but if your order does not arrive, contact us: see below.",
+        [
+          "We ship without undue delay once your payment has reached us. How long the transport takes depends on the shipping method and the destination.",
+          "Unless another date is agreed with you, the coins are delivered within 30 days of the order (Real Decreto Legislativo 1/2007, art. 66 bis).",
+          "If we do not deliver in time, you may give us an additional period appropriate to the circumstances. If we do not deliver within it, you may terminate the contract and we refund all payments without undue delay. If the delivery date was essential and you told us so before ordering, you may terminate at once.",        ],
       ],
     },
     {
@@ -279,7 +307,7 @@ export const privacy: LegalDocument = {
           "Delivery addresses: recipient name, phone (optional), country, city, postal code and street address.",
           "Order data: the coins ordered, prices, shipping method and cost, the delivery address at the time of the order, order status and dates, tracking code.",
           "Cart and favourites: the coins you added.",
-          "Emails we send you: the service emails listed below are stored while waiting to be sent and after.",
+          "Emails we send you: the service emails listed below. Their content is deleted once sent; a log of each email (address, subject, date) is kept for 90 days.",
           "Messages you send us by email or phone, including those written with the form on our contact page (it opens your own email app; nothing is sent through the site).",
           "Technical data: IP address and browser data, used to limit repeated requests, for the anti-bot check on some forms and in the server logs of our hosting provider.",
         ],
@@ -291,7 +319,7 @@ export const privacy: LegalDocument = {
       blocks: [
         [
           "Creating and managing your account, handling and delivering your orders, and sending service emails — performance of the contract (art. 6.1.b GDPR).",
-          "Service emails: email confirmation, password reset and password change, account blocked, unblocked or locked, order confirmation with payment details, order paid, order shipped, changes to the payment details of an unpaid order.",
+          "Service emails: email confirmation, password reset and password change, account blocked, unblocked or locked, notice that an account already exists when someone tries to register with your email address, order confirmation with payment details, order shipped, changes to the payment details of an unpaid order.",
           "Account security, preventing fraud and abuse, protecting the site against bots (CAPTCHA) and excess requests — our legitimate interest (art. 6.1.f GDPR) in keeping the site and its users safe.",
           "Answering your messages — your request and our legitimate interest.",
           "Keeping order records and meeting legal obligations, including tax and accounting obligations and requests from authorities — legal obligation (art. 6.1.c GDPR).",
@@ -305,7 +333,7 @@ export const privacy: LegalDocument = {
         [
           "Our staff, as far as needed to handle your orders and run the site.",
           "The carrier delivering your order: name, delivery address and, if given, phone.",
-          "Service providers acting on our behalf, under data processing agreements: application hosting (Render), database (Neon, servers in Frankfurt, Germany), photo storage, sending of emails (Brevo) and the anti-bot check on the registration, password-reset and confirmation-email forms (Cloudflare Turnstile).",
+          "Service providers acting on our behalf, under data processing agreements: application hosting (Render), database (Neon, servers in Frankfurt, Germany), photo storage, sending of emails (Brevo), our email inbox (Google Gmail), which receives the messages you send us, and the anti-bot check on the registration, password-reset and confirmation-email forms (Cloudflare Turnstile).",
           "Public authorities, when the law requires it.",
         ],
         "We do not sell or rent personal data.",
@@ -314,7 +342,7 @@ export const privacy: LegalDocument = {
     {
       title: "International transfers",
       blocks: [
-        "We store data in the European Union. Some providers (Render, Neon, Cloudflare) are US companies that may access data from outside the European Economic Area. Such transfers are covered by the EU–US Data Privacy Framework or by the European Commission's Standard Contractual Clauses.",
+        "We store data in the European Union. Some providers (Render, Neon, Cloudflare, Google) are US companies that may access data from outside the European Economic Area. Such transfers are covered by the EU–US Data Privacy Framework or by the European Commission's Standard Contractual Clauses.",
       ],
     },
     {
@@ -325,6 +353,8 @@ export const privacy: LegalDocument = {
           "Account data, addresses, cart and favourites: while the account exists. You can delete addresses and remove coins from your cart and favourites at any time.",
           "Orders: kept after an account is closed, for as long as needed for possible claims and legal obligations (up to 6 years, Spanish Commercial Code, art. 30).",
           "Messages: as long as needed to answer them and handle the matter.",
+          "Email log: 90 days.",
+          "Security data (account locks, blocks and our administrators' actions on accounts): while the account exists.",
           "Server logs: for the limited period set by the hosting provider.",
         ],
       ],
@@ -340,7 +370,7 @@ export const privacy: LegalDocument = {
     {
       title: "Security",
       blocks: [
-        "Connections to the site are encrypted (HTTPS). Passwords are stored as hashes. Login is protected against password guessing by temporary account locks and an anti-bot check, and changing or resetting the password signs the account out on all devices. Access to data is limited to what each user and staff member needs.",
+        "Connections to the site are encrypted (HTTPS). Passwords are stored as hashes. Login is protected against password guessing by temporary account locks, registration and password-reset forms by an anti-bot check, and changing or resetting the password signs the account out on all devices. Access to data is limited to what each user and staff member needs.",
       ],
     },
     {

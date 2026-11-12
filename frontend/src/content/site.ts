@@ -51,7 +51,7 @@ export const home = {
     {
       icon: "rotate",
       title: "14-day returns",
-      text: "Changed your mind? Return a coin in its original holder within 14 days of delivery for a refund. Bullion priced by its metal is excluded.",
+      text: "Changed your mind? Return a coin within 14 days of delivery for a refund. Bullion priced by its metal is excluded.",
     },
   ],
   steps: [
@@ -89,11 +89,11 @@ export const contact = {
     },
     {
       q: "How much is shipping and how long does it take?",
-      a: "The shipping methods and their prices are shown in your cart before you order. Delivery time depends on the method and the destination — ask us if you need an estimate.",
+      a: "The shipping methods and their prices are shown in your cart before you order. We ship once your payment arrives, and unless agreed otherwise your coins are delivered within 30 days of the order.",
     },
     {
       q: "Can I return a coin?",
-      a: "Yes, within 14 days of delivery, in its original holder: tell us by email and we refund it, shipping included. Bullion priced by its metal content cannot be returned.",
+      a: "Yes, within 14 days of delivery: tell us by email and send the coin back, if possible in its original holder. We refund the coin and the original standard shipping; the return postage is yours. Bullion priced by its metal content cannot be returned.",
     },
     {
       q: "Do you buy coins?",

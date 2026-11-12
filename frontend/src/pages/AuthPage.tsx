@@ -11,6 +11,7 @@ import { inputClass, labelClass } from "../components/formStyles";
 import { AuthCard } from "../components/auth/AuthCard";
 import { ResendVerificationButton } from "../components/auth/ResendVerificationButton";
 import { PasswordRequirements } from "../components/auth/PasswordRequirements";
+import { DataProtectionNote } from "../components/DataProtectionNote";
 import { passwordError } from "../utils/password";
 import { Captcha, captchaEnabled } from "../components/Captcha";
 import { safeNextPath } from "../utils/url";
@@ -266,17 +267,20 @@ export function AuthPage() {
           {isRegister && <Captcha key={captchaKey} action="register" onToken={setCaptchaToken} />}
 
           {isRegister && (
-            <p className="text-xs text-gray-500">
-              By creating an account you accept the{" "}
-              <Link to="/terms" className="text-accent hover:underline">
-                Terms of Service
-              </Link>{" "}
-              and confirm you have read the{" "}
-              <Link to="/privacy" className="text-accent hover:underline">
-                Privacy Policy
-              </Link>
-              .
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-gray-500">
+                By creating an account you confirm that you are at least 18 years old and accept the{" "}
+                <Link to="/terms" className="text-accent hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and confirm you have read the{" "}
+                <Link to="/privacy" className="text-accent hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
+              <DataProtectionNote purpose="to manage your account and your orders and to send you the related emails" />
+            </div>
           )}
 
           <button

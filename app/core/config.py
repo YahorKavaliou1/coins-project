@@ -115,6 +115,14 @@ class Settings(BaseSettings):
     # Runs the outbox worker inside the API process. Disable if a separate worker is used.
     email_worker_enabled: bool = True
 
+    # --- The site owner, i.e. the seller, as required in the order confirmation email
+    # (RDL 1/2007 art. 98.7). Keep in line with `operator` in frontend/src/content/legal.ts.
+    company_legal_name: str = "[Legal name of the site owner]"
+    company_tax_id: str = "[NIF / CIF]"
+    company_address: str = "[Street, number, postal code, city], Spain"
+    company_email: str = "agaro.coins@gmail.com"
+    company_phone: str = "+34 640 325 691"
+
     email_verification_ttl_hours: int = 24
     password_reset_ttl_minutes: int = 60
     # Newly registered accounts that never confirm their email are deleted after this.

@@ -9,6 +9,7 @@ import { useAuthStore } from "../store/authStore";
 import { toast } from "../store/toastStore";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { AddressForm } from "../components/AddressForm";
+import { DataProtectionNote } from "../components/DataProtectionNote";
 import { EMPTY_ADDRESS, addressSummary, cleanAddress } from "../utils/address";
 import { sectionTitleClass } from "../components/formStyles";
 import type { AddressFields, CartItemRead, CartSeller, Coin } from "../types";
@@ -307,11 +308,12 @@ export function CartPage() {
                   />
                   Save to my addresses
                 </label>
+                <DataProtectionNote className="mt-3" purpose="to deliver your orders; your name, address and phone are given to the carrier" />
               </div>
             )}
 
             <p className="text-xs text-gray-500 mt-3">
-              After placing the order you'll get the seller's payment details by email. Pay, then mark the order as
+              After placing the order you'll get our payment details by email. Pay, then mark the order as
               paid in My purchases.
             </p>
             <p className="text-xs text-gray-500 mt-2">
@@ -335,7 +337,12 @@ export function CartPage() {
               disabled={checkoutMutation.isPending || unavailable.length > 0 || available.length === 0}
               className="mt-4 w-full bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {checkoutMutation.isPending ? "Placing order..." : sellers.length > 1 ? `Place ${sellers.length} orders` : "Place order"}
+              {/* The button must say the order is binding (TRLGDCU art. 98.2, Directive 2011/83 art. 8.2). */}
+              {checkoutMutation.isPending
+                ? "Placing order..."
+                : sellers.length > 1
+                  ? `Place ${sellers.length} orders with obligation to pay`
+                  : "Order with obligation to pay"}
             </button>
           </form>
         </section>

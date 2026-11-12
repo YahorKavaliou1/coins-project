@@ -165,6 +165,7 @@ async def send_order_emails(
             "contact_phone": seller.contact_phone,
             "contact_note": seller.contact_note,
             "orders_link": _link("/purchases"),
+            "contact_link": _link("/contact"),
         },
     )
     enqueue_email(

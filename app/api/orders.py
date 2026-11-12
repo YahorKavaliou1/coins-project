@@ -134,8 +134,8 @@ async def checkout(
         if option is None:
             raise HTTPException(
                 status_code=409,
-                detail=f"Choose a shipping method for the coins of {seller.full_name or 'each seller'}. "
-                "The seller's shipping options may have changed: please review your cart.",
+                detail="Choose a shipping method for each order. "
+                "Shipping options may have changed: please review your cart.",
             )
         shipping[seller_id] = (option["name"], Decimal(option["price"]))
 

@@ -47,7 +47,18 @@ class RenderedEmail:
 def render_email(template: str, context: dict[str, Any]) -> RenderedEmail:
     if template not in SUBJECTS:
         raise ValueError(f"Unknown email template: {template}")
-    full_context = {"site_name": SITE_NAME, "site_url": settings.frontend_url, **context}
+    full_context = {
+        "site_name": SITE_NAME,
+        "site_url": settings.frontend_url,
+        "company": {
+            "legal_name": settings.company_legal_name,
+            "tax_id": settings.company_tax_id,
+            "address": settings.company_address,
+            "email": settings.company_email,
+            "phone": settings.company_phone,
+        },
+        **context,
+    }
     subject = SUBJECTS[template].format(**full_context)
     full_context["subject"] = subject
     html = _env.get_template(f"{template}.html").render(full_context)

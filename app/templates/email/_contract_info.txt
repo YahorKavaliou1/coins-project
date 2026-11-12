@@ -1,0 +1,29 @@
+{# Plain-text twin of _contract_info.html: keep both in line. #}
+----------------------------------------
+SELLER
+{{ company.legal_name }}, NIF {{ company.tax_id }}, {{ company.address }}. Email: {{ company.email }}, phone: {{ company.phone }}.
+This purchase is governed by our Terms of Service: {{ site_url }}/terms
+
+DELIVERY
+We ship once your payment has reached us. Unless another date is agreed with you, the coins are delivered within 30 days of the order.
+
+RIGHT OF WITHDRAWAL
+If you buy as a consumer, you may withdraw from this purchase within 14 days of the day you, or someone you name, receive the coins, without giving any reason. To withdraw, tell us before the period ends, for example by email to {{ company.email }}; you may use the model form below, but it is not required.
+
+Send the coins back to {{ company.address }} without undue delay and no later than 14 days after telling us. You pay the cost of returning them. We refund all payments received for the returned coins, including the standard shipping cost, within 14 days of receiving your notice, by the same means you paid unless you agree otherwise. We may withhold the refund until we have received the coins back or you have supplied evidence of having sent them, whichever is earlier. You are responsible for any loss in value caused by handling the coins beyond what is needed to examine them.
+
+The right of withdrawal does not apply to coins whose price depends on fluctuations of the precious-metals market that we cannot control, such as bullion coins priced by their metal content.
+
+MODEL WITHDRAWAL FORM
+To {{ company.legal_name }}, {{ company.address }}, {{ company.email }}:
+I hereby give notice that I withdraw from my contract of sale of the following goods: ____
+Order number: #{{ order_id }}
+Ordered on: ____ / received on: ____
+Name: ____
+Address: ____
+Signature (only if this form is sent on paper): ____
+Date: ____
+
+GUARANTEE
+Every coin we sell is guaranteed to be genuine and to match its description. If you buy as a consumer, you also have the legal guarantee of conformity under Spanish consumer law (RDL 1/2007). Complaints: {{ company.email }} or {{ company.address }}.
+

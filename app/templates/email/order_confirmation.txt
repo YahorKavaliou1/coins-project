@@ -5,7 +5,7 @@
 
 
 Payment details:
-{% if payment_details %}{{ payment_details }}{% else %}Payment details haven't been added to this order yet. Please contact us using the details below.{% endif %}
+{% if payment_details %}{{ payment_details }}{% else %}Payment details haven't been added to this order yet. They will appear in your purchases as soon as they are; {% if contact_email or contact_phone or contact_note %}you can also contact us using the details below.{% else %}if it takes long, contact us: {{ contact_link }}{% endif %}{% endif %}
 
 
 {% if contact_email or contact_phone or contact_note %}Your contact{% if seller_name %} ({{ seller_name }}){% endif %}:
@@ -17,4 +17,6 @@ Payment details:
 {% endif %}Shipping to:
 {{ shipping_address }}
 
-Mark the order as paid once you've paid: {{ orders_link }}{% endblock %}
+Mark the order as paid once you've paid: {{ orders_link }}
+
+{% include "_contract_info.txt" %}{% endblock %}

@@ -1,0 +1,30 @@
+{# Information the seller must give the buyer on a durable medium with the order confirmation
+   (RDL 1/2007 art. 98.7, LSSI-CE art. 28). Keep in line with the Terms in frontend/src/content/legal.ts. #}
+{% set heading = "margin:24px 0 4px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;" %}
+{% set small = "margin:0 0 12px;font-size:13px;color:#4b5563;" %}
+<div style="border-top:1px solid #e5e7eb;margin-top:24px;">
+<p style="{{ heading }}">Seller</p>
+<p style="{{ small }}">{{ company.legal_name }}, NIF {{ company.tax_id }}, {{ company.address }}. Email: {{ company.email }}, phone: {{ company.phone }}.<br>
+This purchase is governed by our Terms of Service: <a href="{{ site_url }}/terms" style="color:#7a1f2b;">{{ site_url }}/terms</a></p>
+
+<p style="{{ heading }}">Delivery</p>
+<p style="{{ small }}">We ship once your payment has reached us. Unless another date is agreed with you, the coins are delivered within 30 days of the order.</p>
+
+<p style="{{ heading }}">Right of withdrawal</p>
+<p style="{{ small }}">If you buy as a consumer, you may withdraw from this purchase within 14 days of the day you, or someone you name, receive the coins, without giving any reason. To withdraw, tell us before the period ends, for example by email to {{ company.email }}; you may use the model form below, but it is not required.</p>
+<p style="{{ small }}">Send the coins back to {{ company.address }} without undue delay and no later than 14 days after telling us. You pay the cost of returning them. We refund all payments received for the returned coins, including the standard shipping cost, within 14 days of receiving your notice, by the same means you paid unless you agree otherwise. We may withhold the refund until we have received the coins back or you have supplied evidence of having sent them, whichever is earlier. You are responsible for any loss in value caused by handling the coins beyond what is needed to examine them.</p>
+<p style="{{ small }}">The right of withdrawal does not apply to coins whose price depends on fluctuations of the precious-metals market that we cannot control, such as bullion coins priced by their metal content.</p>
+
+<p style="{{ heading }}">Model withdrawal form</p>
+<p style="margin:0 0 12px;padding:12px;font-size:13px;color:#4b5563;background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;">To {{ company.legal_name }}, {{ company.address }}, {{ company.email }}:<br>
+I hereby give notice that I withdraw from my contract of sale of the following goods: ____<br>
+Order number: #{{ order_id }}<br>
+Ordered on: ____ / received on: ____<br>
+Name: ____<br>
+Address: ____<br>
+Signature (only if this form is sent on paper): ____<br>
+Date: ____</p>
+
+<p style="{{ heading }}">Guarantee</p>
+<p style="{{ small }}">Every coin we sell is guaranteed to be genuine and to match its description. If you buy as a consumer, you also have the legal guarantee of conformity under Spanish consumer law (RDL 1/2007). Complaints: {{ company.email }} or {{ company.address }}.</p>
+</div>

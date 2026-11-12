@@ -5,4 +5,5 @@
 
 --
 {% block footer_note %}You received this email because of activity on your {{ site_name }} account.{% endblock %}
+
 {{ site_url }}

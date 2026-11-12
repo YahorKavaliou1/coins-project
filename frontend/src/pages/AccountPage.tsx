@@ -12,6 +12,7 @@ import {
 import { updateProfile } from "../api/users";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { AddressForm } from "../components/AddressForm";
+import { DataProtectionNote } from "../components/DataProtectionNote";
 import { EMPTY_ADDRESS, addressSummary, cleanAddress } from "../utils/address";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { inputClass, labelClass, sectionTitleClass } from "../components/formStyles";
@@ -68,7 +69,7 @@ function ProfileSection() {
           <label className={labelClass}>Your name</label>
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className={inputClass} />
           <p className="text-xs text-gray-400 mt-1">
-            {canSell(currentUser) ? "Shown to the buyers of your coins." : "Shown to the sellers you buy from."}
+            {canSell(currentUser) ? "Shown to the buyers of your coins." : "Shown to our team on your orders."}
           </p>
         </div>
         <button type="submit" disabled={mutation.isPending} className={`${primaryButton} mb-5 max-sm:mb-0`}>
@@ -175,6 +176,7 @@ function AddressesSection() {
             </button>
           </div>
           <AddressForm value={form} onChange={setForm} />
+          <DataProtectionNote className="mt-3" purpose="to deliver your orders; your name, address and phone are given to the carrier" />
           <div className="flex gap-2 mt-4">
             <button type="submit" disabled={saveMutation.isPending} className={primaryButton}>
               Save address
