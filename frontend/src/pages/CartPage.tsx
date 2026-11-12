@@ -83,8 +83,8 @@ export function CartPage() {
       }
       toast.success(
         orders.length === 1
-          ? `Order #${orders[0].id} placed. The seller's payment details are on the way to your email.`
-          : `${orders.length} orders placed, one per seller. Payment details are on the way to your email.`
+          ? `Order #${orders[0].id} placed. Our payment details are on the way to your email.`
+          : `${orders.length} orders placed. Payment details for each are on the way to your email.`
       );
       navigate("/purchases");
     },
@@ -183,7 +183,7 @@ export function CartPage() {
       <h1 className="text-xl font-bold mb-1">Your cart</h1>
       <p className="text-sm text-gray-500 mb-6">
         {cart.items.length} {cart.items.length === 1 ? "item" : "items"}
-        {sellers.length > 1 && ` from ${sellers.length} sellers: one order per seller, each paid and shipped separately`}
+        {sellers.length > 1 && ` in ${sellers.length} separate orders, each paid and shipped on its own`}
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -207,19 +207,20 @@ export function CartPage() {
             </section>
           )}
 
-          {sellers.map((seller) => {
+          {sellers.map((seller, index) => {
             const items = available.filter((item) => item.coin.owner.id === seller.id);
             const option = chosenOption(seller);
             return (
               <section key={seller.id} className="bg-white border border-gray-200 rounded-md divide-y divide-gray-200">
                 <div className="px-4 py-3 text-sm">
-                  Sold by <span className="font-semibold">{seller.name || "a seller"}</span>
+                  {sellers.length > 1 && <span className="font-semibold">Order {index + 1} of {sellers.length} · </span>}
+                  Handled by <span className="font-semibold">{seller.name || "our team"}</span>
                 </div>
                 {items.map(itemRow)}
                 <div className="px-4 py-3">
                   <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Shipping</div>
                   {seller.shipping_options.length === 0 ? (
-                    <p className="text-sm text-gray-500">The seller arranges shipping and its cost with you after the order.</p>
+                    <p className="text-sm text-gray-500">We arrange shipping and its cost with you after the order.</p>
                   ) : (
                     <div className="flex flex-col gap-1.5">
                       {seller.shipping_options.map((o) => (
@@ -312,6 +313,17 @@ export function CartPage() {
             <p className="text-xs text-gray-500 mt-3">
               After placing the order you'll get the seller's payment details by email. Pay, then mark the order as
               paid in My purchases.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Placing an order is a purchase with an obligation to pay, under our{" "}
+              <Link to="/terms" className="text-accent hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link to="/shipping" className="text-accent hover:underline">
+                Shipping Policy
+              </Link>
+              .
             </p>
 
             {unavailable.length > 0 && (

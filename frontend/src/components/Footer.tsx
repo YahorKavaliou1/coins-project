@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Mail, Phone } from "lucide-react";
 import { company } from "../content/site";
 import { mainNav } from "./navigation";
+import { legalDocuments } from "../content/legal";
 
 const headingClass = "text-xs font-semibold uppercase tracking-widest text-gold mb-3";
 const linkClass = "text-sm text-gray-300 hover:text-white transition-colors";
@@ -10,7 +11,7 @@ const linkClass = "text-sm text-gray-300 hover:text-white transition-colors";
 export function Footer() {
   return (
     <footer className="bg-logo text-white mt-12">
-      <div className="max-w-6xl mx-auto px-5 py-10 max-md:px-4 max-md:py-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <div className="max-w-6xl mx-auto px-5 py-10 max-md:px-4 max-md:py-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         <div>
           <Link to="/" className="inline-flex items-center gap-3 text-lg font-bold hover:text-gray-200">
             <img src="/logo.png" alt="" width={40} height={40} className="w-10 h-10" />
@@ -26,6 +27,19 @@ export function Footer() {
               <li key={item.to}>
                 <Link to={item.to} className={linkClass}>
                   {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav aria-label="Legal">
+          <h2 className={headingClass}>Legal</h2>
+          <ul className="flex flex-col gap-2">
+            {legalDocuments.map((doc) => (
+              <li key={doc.path}>
+                <Link to={doc.path} className={linkClass}>
+                  {doc.navLabel}
                 </Link>
               </li>
             ))}

@@ -21,6 +21,8 @@ import { PurchasesPage } from "./pages/PurchasesPage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { AdminUserDetailPage } from "./pages/AdminUserDetailPage";
 import { RequireRole } from "./components/RequireRole";
+import { LegalPage } from "./pages/LegalPage";
+import { legalDocuments } from "./content/legal";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="/contact" element={<ContactPage />} />
+            {legalDocuments.map((doc) => (
+              <Route key={doc.path} path={doc.path} element={<LegalPage doc={doc} />} />
+            ))}
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />

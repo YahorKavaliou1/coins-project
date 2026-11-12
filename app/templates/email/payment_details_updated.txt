@@ -1,5 +1,5 @@
 {% extends "base.txt" %}
-{% block content %}Hi{% if name %} {{ name }}{% endif %}, {{ seller_name or "the seller" }} changed their payment details. If you haven't paid yet, please use the new details below for {{ "these orders" if orders|length != 1 else "this order" }}:
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, our payment details have changed. If you haven't paid yet, please use the new details below for {{ "these orders" if orders|length != 1 else "this order" }}:
 
 {% for order in orders %}- Order #{{ order.id }}: €{{ "%.2f"|format(order.total) }}
 {% endfor %}

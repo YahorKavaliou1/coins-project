@@ -35,7 +35,7 @@ export function OrderItems({ order }: { order: Order }) {
       <div className="flex justify-between gap-3 py-2 text-gray-500">
         <span>Shipping{order.shipping_method ? `: ${order.shipping_method}` : ""}</span>
         <span className="whitespace-nowrap">
-          {order.shipping_price !== null ? formatPrice(order.shipping_price) : "arranged with the seller"}
+          {order.shipping_price !== null ? formatPrice(order.shipping_price) : "to be arranged"}
         </span>
       </div>
       <div className="flex justify-between gap-3 pt-2 border-t border-gray-200 font-bold">

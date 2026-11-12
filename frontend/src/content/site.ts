@@ -1,8 +1,13 @@
 /**
  * Texts and contact details of the Home and Contact pages.
  *
- * The phone number and email are real. The texts (founding year, features, FAQ...) are
- * placeholders written so the pages look finished: replace them before going live.
+ * The phone number and email are real. The founding year and the "About" story are
+ * placeholders: replace them before going live.
+ *
+ * The promises here (authenticity, returns, shipping, payment) must match the legal pages in
+ * content/legal.ts, which describe how the site actually works: we are the only seller, our
+ * staff list the coins and handle the orders, the buyer pays by the payment details sent with
+ * the order and we ship once the payment has arrived.
  */
 
 export const company = {
@@ -31,29 +36,29 @@ export const home = {
     {
       icon: "shield",
       title: "Authenticity guaranteed",
-      text: "Each coin is checked by our specialists. If a coin ever proves not genuine, you get a full refund — no time limit.",
+      text: "Every coin is checked by us before it is listed. If a coin we sold proves not genuine, we take it back and refund it in full.",
     },
     {
       icon: "award",
       title: "Honest grading",
-      text: "We grade conservatively and photograph both sides of every lot, so what you see is what arrives.",
+      text: "Grades are our own careful assessment, and the photos show the actual coin you will receive.",
     },
     {
       icon: "truck",
-      title: "Insured shipping",
-      text: "Orders ship within two business days in discreet, fully insured packaging with tracking.",
+      title: "Clear shipping",
+      text: "Choose a shipping method in your cart and see its price before you order. We ship as soon as your payment arrives.",
     },
     {
       icon: "rotate",
       title: "14-day returns",
-      text: "Changed your mind? Send the coin back in its original holder within 14 days for a refund.",
+      text: "Changed your mind? Return a coin in its original holder within 14 days of delivery for a refund. Bullion priced by its metal is excluded.",
     },
   ],
   steps: [
     { title: "Find your coin", text: "Filter the shop by country, metal, grade, category or labels, or search by name and year." },
-    { title: "Check the details", text: "Study the photos, weight, diameter, mintage and catalogue number of every lot." },
-    { title: "Order securely", text: "Add coins to your cart and check out — we confirm every order by email." },
-    { title: "Receive it insured", text: "Your coins travel tracked and insured, packed to arrive exactly as pictured." },
+    { title: "Check the details", text: "Study the photos, weight, diameter, mintage and catalogue number of every coin." },
+    { title: "Place your order", text: "Add coins to your cart, choose the delivery address and shipping, and place the order." },
+    { title: "Pay and receive", text: "Pay by the details we email you and mark the order as paid. We ship it and send you the tracking code." },
   ],
   about: {
     title: "A small team of collectors",
@@ -79,8 +84,16 @@ export const contact = {
   subjects: ["Question about a coin", "My order", "Selling coins", "Other"],
   faq: [
     {
-      q: "How long does delivery take?",
-      a: "We ship within two business days. Domestic orders usually arrive in 2–4 days, international ones in 5–10.",
+      q: "How do I pay?",
+      a: "After you place the order we email you our payment details; you also find them in My purchases. Pay, then mark the order as paid there — we ship once the payment arrives.",
+    },
+    {
+      q: "How much is shipping and how long does it take?",
+      a: "The shipping methods and their prices are shown in your cart before you order. Delivery time depends on the method and the destination — ask us if you need an estimate.",
+    },
+    {
+      q: "Can I return a coin?",
+      a: "Yes, within 14 days of delivery, in its original holder: tell us by email and we refund it, shipping included. Bullion priced by its metal content cannot be returned.",
     },
     {
       q: "Do you buy coins?",
@@ -88,7 +101,7 @@ export const contact = {
     },
     {
       q: "What if my coin arrives damaged?",
-      a: "Every shipment is insured. Photograph the parcel and the coin, contact us within 48 hours and we'll put it right.",
+      a: "Photograph the parcel and the coin, keep the packaging and contact us as soon as possible — we'll put it right.",
     },
   ],
 };

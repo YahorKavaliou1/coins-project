@@ -265,6 +265,20 @@ export function AuthPage() {
 
           {isRegister && <Captcha key={captchaKey} action="register" onToken={setCaptchaToken} />}
 
+          {isRegister && (
+            <p className="text-xs text-gray-500">
+              By creating an account you accept the{" "}
+              <Link to="/terms" className="text-accent hover:underline">
+                Terms of Service
+              </Link>{" "}
+              and confirm you have read the{" "}
+              <Link to="/privacy" className="text-accent hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          )}
+
           <button
             type="submit"
             disabled={isPending || (isRegister && captchaEnabled && !captchaToken)}

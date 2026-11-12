@@ -1,14 +1,14 @@
 {% extends "base.txt" %}
-{% block content %}Hi{% if name %} {{ name }}{% endif %}, your order #{{ order_id }} from {{ seller_name or "the seller" }} is reserved for you. Please pay the total using the seller's details below, then mark the order as paid on the site.
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, your order #{{ order_id }} is reserved for you. Please pay the total using the payment details below, then mark the order as paid on the site.
 
 {% include "_order_table.txt" %}
 
 
 Payment details:
-{% if payment_details %}{{ payment_details }}{% else %}The seller hasn't added payment details yet. Please contact them using the details below.{% endif %}
+{% if payment_details %}{{ payment_details }}{% else %}Payment details haven't been added to this order yet. Please contact us using the details below.{% endif %}
 
 
-{% if contact_email or contact_phone or contact_note %}Seller's contacts:
+{% if contact_email or contact_phone or contact_note %}Your contact{% if seller_name %} ({{ seller_name }}){% endif %}:
 {% if contact_email %}Email: {{ contact_email }}
 {% endif %}{% if contact_phone %}Phone: {{ contact_phone }}
 {% endif %}{% if contact_note %}{{ contact_note }}

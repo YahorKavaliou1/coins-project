@@ -8,7 +8,7 @@
   {% endfor %}
   <tr>
     <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;color:#6b7280;">Shipping{% if shipping_method %}: {{ shipping_method }}{% endif %}</td>
-    <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;color:#6b7280;">{% if shipping_price is not none %}€{{ "%.2f"|format(shipping_price) }}{% else %}arranged with the seller{% endif %}</td>
+    <td style="padding:10px 0;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;color:#6b7280;">{% if shipping_price is not none %}€{{ "%.2f"|format(shipping_price) }}{% else %}to be arranged{% endif %}</td>
   </tr>
   <tr>
     <td style="padding:12px 0;font-weight:bold;color:#111827;">Total</td>

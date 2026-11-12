@@ -70,7 +70,7 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
     onSuccess: () => {
       setConfirming(false);
       queryClient.invalidateQueries({ queryKey: ["orders"] });
-      toast.success("Thank you! The seller will check the payment and ship your coins.");
+      toast.success("Thank you! We'll check the payment and ship your coins.");
     },
     onError: (err: ApiError) => {
       setConfirming(false);
@@ -93,7 +93,7 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
         {order.status === "awaiting_payment" && (
           <div className="border border-amber-200 bg-amber-50 rounded-sm p-4">
             <div className="font-semibold text-amber-900 mb-1">
-              Pay {formatPrice(order.total_price)} to {seller.name || "the seller"}
+              Pay {formatPrice(order.total_price)} using these details
             </div>
             {seller.payment_details ? (
               <div className="flex items-start gap-2">
@@ -104,11 +104,11 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
               </div>
             ) : hasContacts ? (
               <p className="text-sm text-amber-900">
-                The seller hasn't added payment details yet. Please contact them using the details below.
+                Payment details haven't been added to this order yet. Please contact us using the details below.
               </p>
             ) : (
               <p className="text-sm text-amber-900">
-                The seller hasn't added payment details yet. They have been asked to: they will appear here. If it takes
+                Payment details haven't been added to this order yet. They will appear here soon. If it takes
                 long,{" "}
                 <Link to="/contact" className="underline font-semibold">
                   contact us
@@ -131,8 +131,8 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
 
         {order.status === "paid" && (
           <p className="text-sm text-blue-900 bg-blue-50 border border-blue-100 rounded-sm p-3">
-            You marked this order as paid on {formatUtcDate(order.paid_at!)}. The seller will check the payment and ship
-            your coins.
+            You marked this order as paid on {formatUtcDate(order.paid_at!)}. We'll check the payment and ship your
+            coins.
           </p>
         )}
 
@@ -145,7 +145,7 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
                 <CopyButton text={order.tracking_code} />
               </div>
             ) : (
-              " The seller didn't add a tracking code."
+              " No tracking code was given for this shipment."
             )}
           </div>
         )}
@@ -154,8 +154,8 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
 
         <div className="grid grid-cols-2 gap-4 text-sm max-sm:grid-cols-1">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Seller</div>
-            <div className="font-semibold">{seller.name || "—"}</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">Your contact</div>
+            <div className="font-semibold">{seller.name || "Our team"}</div>
             {hasContacts ? (
               <div className="text-gray-600 whitespace-pre-line">
                 {seller.contact_email && (
@@ -171,7 +171,13 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
                 {seller.contact_note}
               </div>
             ) : (
-              <div className="text-gray-400">No contacts given.</div>
+              <div className="text-gray-600">
+                Use our{" "}
+                <Link to="/contact" className="text-accent hover:underline">
+                  contact page
+                </Link>
+                .
+              </div>
             )}
           </div>
           <div>
@@ -184,7 +190,7 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
       {confirming && (
         <ConfirmDialog
           title="Mark the order as paid?"
-          message={`Confirm that you paid ${formatPrice(order.total_price)} to ${seller.name || "the seller"}. They will be notified to check the payment and ship your coins.`}
+          message={`Confirm that you paid ${formatPrice(order.total_price)} for order #${order.id}. We'll check the payment and ship your coins.`}
           confirmLabel="Yes, I've paid"
           pendingLabel="Saving…"
           isPending={paidMutation.isPending}
