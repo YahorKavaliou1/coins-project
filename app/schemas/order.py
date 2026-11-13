@@ -54,7 +54,7 @@ class GuestCheckoutRequest(CheckoutRequest):
 class OrderAccessRequest(BaseModel):
     """The token of an order's own link (see services.orders.order_access_token)."""
 
-    token: Annotated[str, StringConstraints(max_length=100)]
+    token: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 
 
 class TrackingUpdate(BaseModel):

@@ -44,7 +44,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema. Refused once orders were cancelled: the old schema can't hold them
+    (no such status, and a resold coin would appear in two orders)."""
+    cancelled = op.get_bind().execute(
+        sa.text("SELECT count(*) FROM orders WHERE status = 'cancelled'")
+    ).scalar()
+    if cancelled:
+        raise RuntimeError(
+            f"{cancelled} cancelled orders exist: resolve them before downgrading past d5f7b9c1e3a4"
+        )
     op.drop_index('uq_order_items_active_coin', table_name='order_items')
     op.create_unique_constraint('uq_order_items_coin_id', 'order_items', ['coin_id'])
     op.drop_column('order_items', 'cancelled')

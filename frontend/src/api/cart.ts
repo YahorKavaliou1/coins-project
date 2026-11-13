@@ -39,8 +39,18 @@ async function previewGuestCart(ids: number[]): Promise<Cart> {
   return data;
 }
 
+// One merge at a time: several cart queries can start together right after login.
+let merging: Promise<void> | null = null;
+
 /** Moves the coins a visitor collected before logging in into the account's cart. */
-async function mergeGuestCart() {
+function mergeGuestCart(): Promise<void> {
+  merging ??= doMergeGuestCart().finally(() => {
+    merging = null;
+  });
+  return merging;
+}
+
+async function doMergeGuestCart() {
   const ids = guestCartIds();
   if (ids.length === 0) return;
   const retry: number[] = [];
@@ -58,8 +68,13 @@ async function mergeGuestCart() {
   setGuestCartIds(retry);
 }
 
-export async function getCart() {
-  if (!loggedIn()) return previewGuestCart(guestCartIds());
+/**
+ * A query function for the key ["cart", accessToken]: the guest's or the account's cart as the
+ * key says, so one is never cached under the other's key (e.g. while the session is being
+ * restored after hydration, or after logout).
+ */
+export async function getCart({ queryKey }: { queryKey: readonly unknown[] }) {
+  if (!queryKey[1]) return previewGuestCart(guestCartIds());
   await mergeGuestCart();
   const { data } = await apiClient.get<Cart>("/cart");
   return data;

@@ -317,8 +317,6 @@ async def send_payment_details_updated_emails(db: AsyncSession, seller: User) ->
 
     for orders in by_buyer.values():
         buyer = orders[0].buyer
-        # A guest has no purchases page to go to: their order's own link, if it's just one.
-        orders_path = order_page_path(orders[0]) if len(orders) == 1 else "/purchases"
         enqueue_email(
             db,
             to_email=buyer.email,
@@ -327,12 +325,21 @@ async def send_payment_details_updated_emails(db: AsyncSession, seller: User) ->
             context={
                 "name": buyer.full_name,
                 "seller_name": seller.full_name,
-                "orders": [{"id": o.id, "total": o.total_price} for o in orders],
+                # A guest has no purchases page to go to: each guest order has its own link.
+                "orders": [
+                    {
+                        "id": o.id,
+                        "total": o.total_price,
+                        "link": _link(order_page_path(o)) if o.placed_as_guest else None,
+                    }
+                    for o in orders
+                ],
                 # "order #3" or "orders #3, #5": the subject line.
                 "order_label": ("orders " if len(orders) > 1 else "order ")
                 + ", ".join(f"#{o.id}" for o in orders),
                 "payment_details": seller.payment_details,
-                "orders_link": _link(orders_path),
+                "orders_link": _link("/purchases"),
+                "all_guest": all(o.placed_as_guest for o in orders),
             },
         )
     return len(by_buyer)

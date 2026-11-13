@@ -1,6 +1,6 @@
 import secrets
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
@@ -90,6 +90,9 @@ async def _checkout_address(db: AsyncSession, data: CheckoutRequest, user: User)
 GUEST_EMAIL_REFUSED_DETAIL = "This email address can't be used for an order. Please contact us."
 
 
+GUEST_ORDERS_PER_EMAIL_PER_DAY = 3
+
+
 async def _guest_buyer(db: AsyncSession, email: str, coins: list[Coin]) -> User:
     """The account a guest's orders go to: the one with this email, or a new one.
 
@@ -111,9 +114,25 @@ async def _guest_buyer(db: AsyncSession, email: str, coins: list[Coin]) -> User:
         )
         db.add(user)
         await db.flush()
-    elif user.is_blocked or not user.is_active or any(coin.owner_id == user.id for coin in coins):
-        # One answer for every refusal, so it doesn't tell what the account is (blocked, or
-        # the seller's own); and only for an order that would otherwise go through.
+        return user
+    recent_guest_orders = await db.scalar(
+        select(func.count())
+        .select_from(Order)
+        .where(
+            Order.buyer_id == user.id,
+            Order.placed_as_guest.is_(True),
+            Order.created_at > datetime.now(UTC) - timedelta(days=1),
+        )
+    )
+    if (
+        user.is_blocked
+        or not user.is_active
+        or any(coin.owner_id == user.id for coin in coins)
+        # Anyone can order to any address: this caps the order emails one mailbox can get.
+        or (recent_guest_orders or 0) >= GUEST_ORDERS_PER_EMAIL_PER_DAY
+    ):
+        # One answer for every refusal, so it doesn't tell which it is (blocked, the seller's
+        # own, too many orders); and only for an order that would otherwise go through.
         raise HTTPException(status_code=403, detail=GUEST_EMAIL_REFUSED_DETAIL)
     return user
 
@@ -290,10 +309,13 @@ async def _load_orders(db: AsyncSession, ids: list[int]) -> list[Order]:
     return list(result.scalars().all())
 
 
-async def _get_order(db: AsyncSession, order_id: int) -> Order:
-    result = await db.execute(
-        select(Order).options(*ORDER_LOAD_OPTIONS).where(Order.id == order_id)
-    )
+async def _get_order(db: AsyncSession, order_id: int, *, lock: bool = False) -> Order:
+    """`lock`: before changing the status, so a concurrent cancel (seller or worker) can't be
+    overwritten, e.g. a cancelled order turned paid while its coins are back on sale."""
+    stmt = select(Order).options(*ORDER_LOAD_OPTIONS).where(Order.id == order_id)
+    if lock:
+        stmt = stmt.with_for_update(of=Order)
+    result = await db.execute(stmt)
     order = result.scalar_one_or_none()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -322,7 +344,7 @@ async def mark_order_paid(
     current_user: User = Depends(get_current_user),
 ) -> BuyerOrderRead:
     """The buyer reports having paid; the seller checks their account and ships."""
-    order = await _get_order(db, order_id)
+    order = await _get_order(db, order_id, lock=True)
     if order.buyer_id != current_user.id:
         raise HTTPException(status_code=404, detail="Order not found")
     await _mark_paid(db, order)
@@ -343,11 +365,13 @@ async def _mark_paid(db: AsyncSession, order: Order) -> None:
     await db.commit()
 
 
-async def _get_order_by_link(db: AsyncSession, order_id: int, token: str) -> Order:
+async def _get_order_by_link(
+    db: AsyncSession, order_id: int, token: str, *, lock: bool = False
+) -> Order:
     # The same answer for a wrong token and a missing order.
     if not check_order_access_token(order_id, token):
         raise HTTPException(status_code=404, detail="Order not found")
-    return await _get_order(db, order_id)
+    return await _get_order(db, order_id, lock=lock)
 
 
 def _link_order_read(order: Order) -> BuyerOrderRead:
@@ -370,7 +394,7 @@ async def mark_order_paid_by_link(
     request: Request, order_id: int, data: OrderAccessRequest, db: AsyncSession = Depends(get_db)
 ) -> BuyerOrderRead:
     """Like mark-paid, for a guest following the order's own link."""
-    await _mark_paid(db, await _get_order_by_link(db, order_id, data.token))
+    await _mark_paid(db, await _get_order_by_link(db, order_id, data.token, lock=True))
     return _link_order_read(await _get_order(db, order_id))
 
 
@@ -398,7 +422,7 @@ async def mark_order_shipped(
     """The seller sent the coins (or corrects the tracking code of a shipped order).
 
     Allowed before the buyer marks the order paid: the seller sees the money arrive."""
-    order = await _get_order(db, order_id)
+    order = await _get_order(db, order_id, lock=True)
     if order.seller_id != current_user.id:
         raise HTTPException(status_code=404, detail="Order not found")
     if order.status == OrderStatus.CANCELLED:
@@ -440,7 +464,7 @@ async def cancel_sale(
     order = await _get_own_sale(db, order_id, current_user)
     if order.status not in (OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID):
         raise HTTPException(status_code=409, detail="Only orders not shipped yet can be cancelled")
-    cancel_order(order)
+    await cancel_order(db, order)
     send_order_cancelled_emails(db, order, expired=False)
     await db.commit()
     return order_read(await _get_order(db, order_id))

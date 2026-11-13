@@ -51,13 +51,19 @@ export function meta({ loaderData }: Route.MetaArgs) {
   if (!loaderData) return notFoundMeta();
   const { coin } = loaderData;
   const photo = coin.images[0]?.url;
-  return pageMeta({
-    title: coin.is_for_sale && coin.price !== null ? `${coin.name} – ${formatPrice(coin.price)}` : coin.name,
-    description: description(coin),
-    path: coinPath(coin),
-    image: photo && absoluteUrl(photo),
-    type: "product",
-  });
+  // Withdrawn by its seller (and possibly deleted later): kept out of search results. Sold
+  // coins stay indexed, marked unavailable, so their page keeps its links.
+  const robots = coin.status === "withdrawn" ? [{ name: "robots", content: "noindex" }] : [];
+  return [
+    ...pageMeta({
+      title: coin.is_for_sale && coin.price !== null ? `${coin.name} – ${formatPrice(coin.price)}` : coin.name,
+      description: description(coin),
+      path: coinPath(coin),
+      image: photo && absoluteUrl(photo),
+      type: "product",
+    }),
+    ...robots,
+  ];
 }
 
 export default function CoinRoute({ loaderData }: Route.ComponentProps) {

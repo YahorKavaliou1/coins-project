@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 # for_sale: listed in the shop. withdrawn: taken off sale by its seller, who can relist it.
-# sold: bought (see OrderItem); final.
+# sold: bought (see OrderItem); back to for_sale only if its order is cancelled.
 CoinStatus = Literal["for_sale", "withdrawn", "sold"]
 COIN_STATUSES: tuple[str, ...] = get_args(CoinStatus)
 

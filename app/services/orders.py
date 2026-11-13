@@ -91,10 +91,11 @@ def admin_order_read(order: Order) -> AdminOrderRead:
 
 def order_access_token(order_id: int) -> str:
     """The secret part of an order's own link (buyer emails of guest orders): lets whoever has
-    the email see the order and mark it paid without an account. Derived from SECRET_KEY, so
-    nothing is stored and the link keeps working."""
+    the email see the order and mark it paid without an account. Signed, so nothing is
+    stored and the link keeps working (settings.order_link_secret)."""
     message = f"order-access:{order_id}".encode()
-    return hmac.new(settings.secret_key.encode(), message, hashlib.sha256).hexdigest()
+    key = (settings.order_link_secret or settings.secret_key).encode()
+    return hmac.new(key, message, hashlib.sha256).hexdigest()
 
 
 def check_order_access_token(order_id: int, token: str) -> bool:
@@ -108,9 +109,16 @@ def order_page_path(order: Order) -> str:
     return "/purchases"
 
 
-def cancel_order(order: Order) -> None:
+async def cancel_order(db: AsyncSession, order: Order) -> None:
     """Cancels an unshipped order: its coins go back on sale. The order stays for the record.
     Needs order.items and their coins loaded; the caller sends the emails and commits."""
+    # Coins locked in id order, like checkout and restore_order.
+    await db.execute(
+        select(Coin.id)
+        .where(Coin.id.in_([item.coin_id for item in order.items]))
+        .order_by(Coin.id)
+        .with_for_update()
+    )
     order.status = OrderStatus.CANCELLED
     order.cancelled_at = datetime.now(UTC)
     for item in order.items:

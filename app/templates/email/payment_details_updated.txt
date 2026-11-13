@@ -1,7 +1,8 @@
 {% extends "base.txt" %}
 {% block content %}Hi{% if name %} {{ name }}{% endif %}, our payment details have changed. If you haven't paid yet, please use the new details below for {{ "these orders" if orders|length != 1 else "this order" }}:
 
-{% for order in orders %}- Order #{{ order.id }}: €{{ "%.2f"|format(order.total) }}
+{% for order in orders %}- Order #{{ order.id }}: €{{ "%.2f"|format(order.total) }}{% if order.link %} — {{ order.link }}{% endif %}
+
 {% endfor %}
 
 Payment details:
@@ -9,4 +10,4 @@ Payment details:
 
 Already paid using the previous details? Then nothing changes: mark the order as paid on the site, if you haven't yet.
 
-Your purchases: {{ orders_link }}{% endblock %}
+{% if not all_guest %}Your purchases: {{ orders_link }}{% endif %}{% endblock %}

@@ -60,6 +60,10 @@ class Settings(BaseSettings):
 
     # Signs JWT tokens. Required: the app refuses to start without a real key.
     secret_key: str
+    # Signs the order links in guest emails (services/orders.py). Empty: SECRET_KEY is used.
+    # Set it before rotating SECRET_KEY, to its old value, so emailed links keep working;
+    # changing it invalidates every order link.
+    order_link_secret: str = ""
     # Only HMAC algorithms: SECRET_KEY is a shared secret, and "none" must never be accepted.
     algorithm: Literal["HS256", "HS384", "HS512"] = "HS256"
     access_token_expire_minutes: int = 30

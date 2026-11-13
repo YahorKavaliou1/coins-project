@@ -138,14 +138,16 @@ async def _process_unpaid_guest_orders(db: AsyncSession, now: datetime) -> None:
     )
     cancelled = 0
     for order in unpaid.scalars().all():
-        deadline = order.created_at + ttl
-        if deadline <= now:
-            cancel_order(order)
-            send_order_cancelled_emails(db, order, expired=True)
-            cancelled += 1
-        elif order.payment_reminder_sent_at is None:
+        if order.payment_reminder_sent_at is None:
+            # Never cancelled unannounced: if maintenance didn't run in time (downtime), the
+            # buyer still gets `lead` after the reminder.
+            deadline = max(order.created_at + ttl, now + lead)
             send_payment_reminder_email(db, order, deadline)
             order.payment_reminder_sent_at = now
+        elif max(order.created_at + ttl, order.payment_reminder_sent_at + lead) <= now:
+            await cancel_order(db, order)
+            send_order_cancelled_emails(db, order, expired=True)
+            cancelled += 1
     if cancelled:
         logger.info("Cancelled %s unpaid guest orders", cancelled)
 
