@@ -1,11 +1,18 @@
-"""Building order views for buyers, sellers and admins."""
+"""Order views for buyers, sellers and admins; cancelling and restoring orders; order links."""
 
+import hashlib
+import hmac
+from datetime import UTC, datetime
 from typing import Any
 
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.models.coin import Coin
-from app.models.order import Order
+from app.models.order import Order, OrderStatus
 from app.models.order_item import OrderItem
 from app.schemas.order import (
     AdminOrderRead,
@@ -42,6 +49,7 @@ def _order_fields(order: Order) -> dict[str, Any]:
         "status": order.status,
         "paid_at": order.paid_at,
         "shipped_at": order.shipped_at,
+        "cancelled_at": order.cancelled_at,
         "tracking_code": order.tracking_code,
         "shipping_address": order.shipping_address,
         "shipping_method": order.shipping_method,
@@ -79,3 +87,64 @@ def admin_order_read(order: Order) -> AdminOrderRead:
     return AdminOrderRead(
         **_order_fields(order), buyer_email=order.buyer.email, seller_email=order.seller.email
     )
+
+
+def order_access_token(order_id: int) -> str:
+    """The secret part of an order's own link (buyer emails of guest orders): lets whoever has
+    the email see the order and mark it paid without an account. Derived from SECRET_KEY, so
+    nothing is stored and the link keeps working."""
+    message = f"order-access:{order_id}".encode()
+    return hmac.new(settings.secret_key.encode(), message, hashlib.sha256).hexdigest()
+
+
+def check_order_access_token(order_id: int, token: str) -> bool:
+    return hmac.compare_digest(order_access_token(order_id), token)
+
+
+def order_page_path(order: Order) -> str:
+    """Where the buyer follows an order: their purchases, or for a guest the order's own link."""
+    if order.placed_as_guest:
+        return f"/order/{order.id}?token={order_access_token(order.id)}"
+    return "/purchases"
+
+
+def cancel_order(order: Order) -> None:
+    """Cancels an unshipped order: its coins go back on sale. The order stays for the record.
+    Needs order.items and their coins loaded; the caller sends the emails and commits."""
+    order.status = OrderStatus.CANCELLED
+    order.cancelled_at = datetime.now(UTC)
+    for item in order.items:
+        item.cancelled = True
+        if item.coin is not None and item.coin.status == "sold":
+            item.coin.status = "for_sale"
+
+
+RESTORE_UNAVAILABLE_DETAIL = (
+    "Some of these coins were sold again or taken off sale meanwhile, so the order can't be "
+    "restored. Please refund the buyer."
+)
+
+
+async def restore_order(db: AsyncSession, order: Order) -> None:
+    """Undoes a cancellation when the payment arrived late: the order counts as paid and its
+    coins are sold again, if they are all still on sale. Needs order.items loaded."""
+    coin_ids = [item.coin_id for item in order.items]
+    # Locked like in checkout, so the coins can't be bought at the same time.
+    coins = (
+        (
+            await db.execute(
+                select(Coin).where(Coin.id.in_(coin_ids)).order_by(Coin.id).with_for_update()
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if len(coins) != len(coin_ids) or any(not coin.is_for_sale for coin in coins):
+        raise HTTPException(status_code=409, detail=RESTORE_UNAVAILABLE_DETAIL)
+    for coin in coins:
+        coin.status = "sold"
+    for item in order.items:
+        item.cancelled = False
+    order.status = OrderStatus.PAID
+    order.paid_at = datetime.now(UTC)
+    order.cancelled_at = None

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block preheader %}We received your payment for order #{{ order_id }}.{% endblock %}
+{% block content %}
+<h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Order #{{ order_id }} is restored</h1>
+<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, your payment of €{{ "%.2f"|format(total) }} for order <strong>#{{ order_id }}</strong> arrived after the order had been cancelled. The order is restored and counts as paid: we'll ship your coins and let you know.</p>
+{% with url=link, label="View the order" %}{% include "_button.html" %}{% endwith %}
+{% endblock %}

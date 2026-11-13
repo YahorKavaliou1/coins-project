@@ -7,7 +7,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import StringConstraints
-from sqlalchemy import ColumnElement, String, cast, func, or_, select, update
+from sqlalchemy import ColumnElement, String, and_, cast, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
@@ -325,7 +325,7 @@ async def export_my_lots(
     sale_rows = await db.execute(
         select(OrderItem, Order, Order.buyer_name)
         .join(OrderItem.order)
-        .where(OrderItem.coin_id.in_([coin.id for coin in coins]))
+        .where(OrderItem.coin_id.in_([coin.id for coin in coins]), OrderItem.cancelled.is_(False))
     )
     sales = {item.coin_id: (item, order, buyer) for item, order, buyer in sale_rows.all()}
 
@@ -357,7 +357,9 @@ async def list_my_lots(
     if status == "sold":
         # Most recent sale first.
         # Outer joins: a sold lot is listed (as counted above) even if its order is missing.
-        stmt = stmt.outerjoin(OrderItem, OrderItem.coin_id == Coin.id).outerjoin(OrderItem.order)
+        stmt = stmt.outerjoin(
+            OrderItem, and_(OrderItem.coin_id == Coin.id, OrderItem.cancelled.is_(False))
+        ).outerjoin(OrderItem.order)
         stmt = stmt.order_by(Order.created_at.desc().nulls_last(), Coin.id.desc())
     else:
         stmt = stmt.order_by(Coin.created_at.desc(), Coin.id.desc())
@@ -369,7 +371,9 @@ async def list_my_lots(
         sale_rows = await db.execute(
             select(OrderItem, Order, Order.buyer_name)
             .join(OrderItem.order)
-            .where(OrderItem.coin_id.in_([coin.id for coin in coins]))
+            .where(
+                OrderItem.coin_id.in_([coin.id for coin in coins]), OrderItem.cancelled.is_(False)
+            )
         )
         for item, order, buyer_name in sale_rows.all():
             sales[item.coin_id] = SaleInfo(
@@ -427,7 +431,8 @@ async def delete_coins(
     storage: ImageStorage = Depends(get_image_storage),
 ) -> CoinIdsResult:
     """Permanently deletes the seller's withdrawn lots with their photos. Others are skipped:
-    lots on sale must be withdrawn first, and sold ones stay for the order history."""
+    lots on sale must be withdrawn first, and sold ones (or once in a cancelled order) stay
+    for the order history."""
     result = await db.execute(
         select(Coin)
         .options(selectinload(Coin.images))
@@ -435,6 +440,8 @@ async def delete_coins(
             Coin.id.in_(data.coin_ids),
             Coin.owner_id == current_user.id,
             Coin.status == "withdrawn",
+            # Kept for the history of a cancelled order it was in.
+            ~exists().where(OrderItem.coin_id == Coin.id),
         )
     )
     coins = list(result.scalars().all())
@@ -596,5 +603,10 @@ async def delete_coin(
     # first, so a coin never vanishes from a buyer's cart without notice.
     if coin.status != "withdrawn":
         raise HTTPException(status_code=409, detail="Only lots withdrawn from sale can be deleted")
+    if await db.scalar(select(exists().where(OrderItem.coin_id == coin.id))):
+        raise HTTPException(
+            status_code=409,
+            detail="This lot was in a cancelled order and stays for its history: keep it withdrawn",
+        )
 
     await _delete_coins(db, storage, [coin])

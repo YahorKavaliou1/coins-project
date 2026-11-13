@@ -22,7 +22,8 @@ from app.models.order_item import OrderItem
 from app.models.user import User
 from app.models.user_token import UserToken
 from app.services.email.transport import PermanentEmailError, send_email
-from app.services.notifications import send_order_expired_emails
+from app.services.notifications import send_order_cancelled_emails, send_payment_reminder_email
+from app.services.orders import cancel_order
 
 logger = logging.getLogger("app.email")
 
@@ -110,11 +111,18 @@ async def deliver_next_email() -> bool:
         return True
 
 
-async def _cancel_unpaid_guest_orders(db: AsyncSession, now: datetime) -> None:
-    """Orders placed without logging in and left unpaid are cancelled (deleted: an order item
-    marks its coin as sold for good), and their coins go back on sale. Without this, anyone
-    could take coins off sale with throwaway email addresses."""
-    expired = await db.execute(
+# How long before an unpaid guest order is cancelled its buyer is reminded to pay.
+PAYMENT_REMINDER_LEAD = timedelta(days=2)
+
+
+async def _process_unpaid_guest_orders(db: AsyncSession, now: datetime) -> None:
+    """Orders placed without logging in and left unpaid: a reminder shortly before the
+    deadline, then cancellation, so throwaway emails can't keep coins off sale. Cancelled
+    orders stay; the seller restores one if its payment arrives late after all."""
+    ttl = timedelta(days=settings.guest_order_ttl_days)
+    # At most half the time to pay, for short TTLs.
+    lead = min(PAYMENT_REMINDER_LEAD, ttl / 2)
+    unpaid = await db.execute(
         select(Order)
         .options(
             selectinload(Order.items).selectinload(OrderItem.coin),
@@ -124,20 +132,22 @@ async def _cancel_unpaid_guest_orders(db: AsyncSession, now: datetime) -> None:
         .where(
             Order.placed_as_guest.is_(True),
             Order.status == OrderStatus.AWAITING_PAYMENT,
-            Order.created_at < now - timedelta(days=settings.guest_order_ttl_days),
+            Order.created_at < now - (ttl - lead),
         )
         .with_for_update(of=Order, skip_locked=True)
     )
-    orders = list(expired.scalars().all())
-    for order in orders:
-        send_order_expired_emails(db, order)
-        for item in order.items:
-            if item.coin is not None and item.coin.status == "sold":
-                item.coin.status = "for_sale"
-            await db.delete(item)
-        await db.delete(order)
-    if orders:
-        logger.info("Cancelled %s unpaid guest orders", len(orders))
+    cancelled = 0
+    for order in unpaid.scalars().all():
+        deadline = order.created_at + ttl
+        if deadline <= now:
+            cancel_order(order)
+            send_order_cancelled_emails(db, order, expired=True)
+            cancelled += 1
+        elif order.payment_reminder_sent_at is None:
+            send_payment_reminder_email(db, order, deadline)
+            order.payment_reminder_sent_at = now
+    if cancelled:
+        logger.info("Cancelled %s unpaid guest orders", cancelled)
 
 
 async def run_maintenance() -> None:
@@ -159,7 +169,7 @@ async def run_maintenance() -> None:
                 )
             )
         )
-        await _cancel_unpaid_guest_orders(db, now)
+        await _process_unpaid_guest_orders(db, now)
         # Accounts that never confirmed their email. Accounts that somehow own coins or
         # orders are kept for manual review rather than breaking foreign keys.
         stale_users = select(User.id).where(

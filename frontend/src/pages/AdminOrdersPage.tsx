@@ -12,7 +12,7 @@ import { formatUtcDateTime } from "../utils/dates";
 import { formatPrice } from "../utils/money";
 
 const PAGE_SIZE = 50;
-const FILTERS: (OrderStatus | "all")[] = ["all", "awaiting_payment", "paid", "shipped"];
+const FILTERS: (OrderStatus | "all")[] = ["all", "awaiting_payment", "paid", "shipped", "cancelled"];
 
 /** Every order on the site, for admins: who bought from whom, and where each one stands. */
 export function AdminOrdersPage() {

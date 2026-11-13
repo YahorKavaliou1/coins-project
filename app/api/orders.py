@@ -1,6 +1,6 @@
 import secrets
 from collections import defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -11,7 +11,6 @@ from sqlalchemy.orm import selectinload
 
 from app.api.auth import EMAIL_SENDING_LIMIT, find_user, normalize_email
 from app.api.deps import get_current_user, require_admin, require_seller
-from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.security import hash_password
 from app.db.session import get_db
@@ -27,26 +26,32 @@ from app.schemas.order import (
     BuyerOrderRead,
     CheckoutRequest,
     GuestCheckoutRequest,
+    OrderAccessRequest,
     OrderRead,
     TrackingUpdate,
 )
 from app.services.captcha import require_captcha
 from app.services.coin_naming import build_coin_name
 from app.services.notifications import (
+    send_order_cancelled_emails,
     send_order_emails,
     send_order_paid_email,
+    send_order_restored_email,
     send_order_shipped_email,
 )
 from app.services.orders import (
     ORDER_LOAD_OPTIONS,
     admin_order_read,
     buyer_order_read,
+    cancel_order,
+    check_order_access_token,
     order_read,
+    restore_order,
 )
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
-StatusFilter = Literal["awaiting_payment", "paid", "shipped"]
+StatusFilter = Literal["awaiting_payment", "paid", "shipped", "cancelled"]
 
 
 def _coin_display_name(coin: Coin) -> str:
@@ -103,9 +108,6 @@ async def _guest_buyer(db: AsyncSession, email: str, coins: list[Coin]) -> User:
             full_name=None,
             role=UserRole.USER,
             is_verified=False,
-            # Deleted like any unconfirmed account once this passes with no orders left, i.e.
-            # when its unpaid guest orders have been cancelled.
-            verification_deadline=datetime.now(UTC) + timedelta(days=settings.guest_order_ttl_days),
         )
         db.add(user)
         await db.flush()
@@ -323,13 +325,53 @@ async def mark_order_paid(
     order = await _get_order(db, order_id)
     if order.buyer_id != current_user.id:
         raise HTTPException(status_code=404, detail="Order not found")
+    await _mark_paid(db, order)
+    return buyer_order_read(await _get_order(db, order_id))
+
+
+async def _mark_paid(db: AsyncSession, order: Order) -> None:
+    if order.status == OrderStatus.CANCELLED:
+        raise HTTPException(
+            status_code=409,
+            detail="This order was cancelled. If you have already paid, please contact us.",
+        )
     if order.status != OrderStatus.AWAITING_PAYMENT:
         raise HTTPException(status_code=409, detail="This order is already marked as paid")
     order.status = OrderStatus.PAID
     order.paid_at = datetime.now(UTC)
     send_order_paid_email(db, order)
     await db.commit()
-    return buyer_order_read(await _get_order(db, order_id))
+
+
+async def _get_order_by_link(db: AsyncSession, order_id: int, token: str) -> Order:
+    # The same answer for a wrong token and a missing order.
+    if not check_order_access_token(order_id, token):
+        raise HTTPException(status_code=404, detail="Order not found")
+    return await _get_order(db, order_id)
+
+
+def _link_order_read(order: Order) -> BuyerOrderRead:
+    # Without the account's id: the order's link may be forwarded.
+    return buyer_order_read(order).model_copy(update={"buyer_id": 0})
+
+
+@router.post("/{order_id}/access", response_model=BuyerOrderRead)
+@limiter.limit("30/minute")
+async def get_order_by_link(
+    request: Request, order_id: int, data: OrderAccessRequest, db: AsyncSession = Depends(get_db)
+) -> BuyerOrderRead:
+    """An order from its own link (emails of guest orders): no account needed."""
+    return _link_order_read(await _get_order_by_link(db, order_id, data.token))
+
+
+@router.post("/{order_id}/access/mark-paid", response_model=BuyerOrderRead)
+@limiter.limit("10/minute")
+async def mark_order_paid_by_link(
+    request: Request, order_id: int, data: OrderAccessRequest, db: AsyncSession = Depends(get_db)
+) -> BuyerOrderRead:
+    """Like mark-paid, for a guest following the order's own link."""
+    await _mark_paid(db, await _get_order_by_link(db, order_id, data.token))
+    return _link_order_read(await _get_order(db, order_id))
 
 
 @router.get("/sales", response_model=list[OrderRead])
@@ -359,6 +401,8 @@ async def mark_order_shipped(
     order = await _get_order(db, order_id)
     if order.seller_id != current_user.id:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order.status == OrderStatus.CANCELLED:
+        raise HTTPException(status_code=409, detail="This order was cancelled: restore it first")
     tracking_code = data.tracking_code or None
     first_time = order.status != OrderStatus.SHIPPED
     if not first_time and tracking_code == order.tracking_code:
@@ -368,6 +412,53 @@ async def mark_order_shipped(
     if first_time:
         order.shipped_at = datetime.now(UTC)
     send_order_shipped_email(db, order, tracking_updated=not first_time)
+    await db.commit()
+    return order_read(await _get_order(db, order_id))
+
+
+async def _get_own_sale(db: AsyncSession, order_id: int, seller: User) -> Order:
+    result = await db.execute(
+        select(Order)
+        .options(*ORDER_LOAD_OPTIONS)
+        .where(Order.id == order_id, Order.seller_id == seller.id)
+        .with_for_update(of=Order)
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+@router.post("/{order_id}/cancel", response_model=OrderRead)
+async def cancel_sale(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+) -> OrderRead:
+    """The seller cancels an order not shipped yet (e.g. never paid): its coins go back on
+    sale and the buyer is told."""
+    order = await _get_own_sale(db, order_id, current_user)
+    if order.status not in (OrderStatus.AWAITING_PAYMENT, OrderStatus.PAID):
+        raise HTTPException(status_code=409, detail="Only orders not shipped yet can be cancelled")
+    cancel_order(order)
+    send_order_cancelled_emails(db, order, expired=False)
+    await db.commit()
+    return order_read(await _get_order(db, order_id))
+
+
+@router.post("/{order_id}/restore", response_model=OrderRead)
+async def restore_sale(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_seller),
+) -> OrderRead:
+    """The payment of a cancelled order arrived after all: the order counts as paid again,
+    if its coins are still on sale."""
+    order = await _get_own_sale(db, order_id, current_user)
+    if order.status != OrderStatus.CANCELLED:
+        raise HTTPException(status_code=409, detail="Only cancelled orders can be restored")
+    await restore_order(db, order)
+    send_order_restored_email(db, order)
     await db.commit()
     return order_read(await _get_order(db, order_id))
 

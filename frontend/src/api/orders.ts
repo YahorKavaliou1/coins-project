@@ -44,6 +44,29 @@ export async function markOrderPaid(orderId: number) {
   return data;
 }
 
+/** An order from its own link (emails of guest orders), without an account. */
+export async function getOrderByLink(orderId: number, token: string) {
+  const { data } = await apiClient.post<BuyerOrder>(`/orders/${orderId}/access`, { token });
+  return data;
+}
+
+export async function markOrderPaidByLink(orderId: number, token: string) {
+  const { data } = await apiClient.post<BuyerOrder>(`/orders/${orderId}/access/mark-paid`, { token });
+  return data;
+}
+
+/** The seller cancels an order not shipped yet: its coins go back on sale. */
+export async function cancelOrder(orderId: number) {
+  const { data } = await apiClient.post<Order>(`/orders/${orderId}/cancel`);
+  return data;
+}
+
+/** A cancelled order's payment arrived late: it counts as paid again, if its coins are unsold. */
+export async function restoreOrder(orderId: number) {
+  const { data } = await apiClient.post<Order>(`/orders/${orderId}/restore`);
+  return data;
+}
+
 export async function listMySales(status?: OrderStatus) {
   const { data } = await apiClient.get<Order[]>(`/orders/sales${status ? `?status=${status}` : ""}`);
   return data;

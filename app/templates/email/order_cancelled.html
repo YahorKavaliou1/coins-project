@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block preheader %}Order #{{ order_id }} has been cancelled{% if not to_seller %}: please don't pay for it{% endif %}.{% endblock %}
+{% block content %}
+<h1 style="font-size:22px;margin:0 0 16px;color:#111827;">Order #{{ order_id }} was cancelled</h1>
+{% if to_seller %}
+<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, order <strong>#{{ order_id }}</strong>, placed without an account, wasn't paid within {{ days }} days, so it has been cancelled and its coins are back on sale. If the payment does arrive after all, restore the order in your sales: it counts as paid again if its coins are still unsold.</p>
+{% else %}
+<p style="margin:0 0 16px;">Hi{% if name %} {{ name }}{% endif %}, {% if expired %}your order <strong>#{{ order_id }}</strong> wasn't paid within {{ days }} days, so it has been cancelled{% else %}we have cancelled your order <strong>#{{ order_id }}</strong>{% endif %}. Please don't pay for it any more. If you have already paid, contact us: we'll restore the order if its coins are still available, or refund you.</p>
+{% endif %}
+{% include "_order_table.html" %}
+{% with url=link, label=("View cancelled orders" if to_seller else "View the order") %}{% include "_button.html" %}{% endwith %}
+{% endblock %}

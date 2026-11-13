@@ -14,6 +14,7 @@ from app.models.order_item import OrderItem
 from app.models.user import User
 from app.models.user_token import TokenPurpose
 from app.services.email.outbox import enqueue_email
+from app.services.orders import order_page_path
 from app.services.tokens import can_issue_token, issue_token
 
 ACCOUNT_EXISTS_MAX_PER_DAY = 3
@@ -164,7 +165,7 @@ async def send_order_emails(
             "contact_email": seller.contact_email,
             "contact_phone": seller.contact_phone,
             "contact_note": seller.contact_note,
-            "orders_link": _link("/purchases"),
+            "orders_link": _link(order_page_path(order)),
             "contact_link": _link("/contact"),
             # Guest orders are cancelled if left unpaid (email worker maintenance).
             "pay_within_days": settings.guest_order_ttl_days if order.placed_as_guest else None,
@@ -191,36 +192,77 @@ async def send_order_emails(
     )
 
 
-def send_order_expired_emails(db: AsyncSession, order: Order) -> None:
-    """An unpaid guest order was cancelled: the buyer must not pay any more, the seller's
-    coins are back on sale. Needs order.buyer, order.seller and order.items loaded."""
+def send_order_cancelled_emails(db: AsyncSession, order: Order, *, expired: bool) -> None:
+    """The buyer must not pay any more; the coins are back on sale. `expired`: an unpaid guest
+    order, cancelled automatically, so the seller is told too (otherwise they cancelled it).
+    Needs order.buyer, order.seller and order.items loaded."""
     context = {
         "order_id": order.id,
         "items": _order_lines(order.items),
         **_shipping_context(order),
         "total": order.total_price,
+        "expired": expired,
         "days": settings.guest_order_ttl_days,
     }
     enqueue_email(
         db,
         to_email=order.buyer.email,
-        template="order_expired",
+        template="order_cancelled",
         user_id=order.buyer_id,
-        context={**context, "to_seller": False, "link": _link("/browse")},
-    )
-    enqueue_email(
-        db,
-        to_email=order.seller.email,
-        template="order_expired",
-        user_id=order.seller_id,
-        # The order is deleted: what the seller needs if the payment arrives late after all.
         context={
             **context,
-            "to_seller": True,
-            "link": _link("/my-lots"),
-            "buyer_name": order.buyer_name,
-            "buyer_email": order.buyer.email,
-            "shipping_address": order.shipping_address,
+            "to_seller": False,
+            "name": order.buyer.full_name,
+            "link": _link(order_page_path(order)),
+        },
+    )
+    if expired:
+        enqueue_email(
+            db,
+            to_email=order.seller.email,
+            template="order_cancelled",
+            user_id=order.seller_id,
+            context={
+                **context,
+                "to_seller": True,
+                "name": order.seller.full_name,
+                "link": _link("/sales?status=cancelled"),
+            },
+        )
+
+
+def send_order_restored_email(db: AsyncSession, order: Order) -> None:
+    """A cancelled order was restored: its late payment arrived. Needs order.buyer loaded."""
+    enqueue_email(
+        db,
+        to_email=order.buyer.email,
+        template="order_restored",
+        user_id=order.buyer_id,
+        context={
+            "name": order.buyer.full_name,
+            "order_id": order.id,
+            "total": order.total_price,
+            "link": _link(order_page_path(order)),
+        },
+    )
+
+
+def send_payment_reminder_email(db: AsyncSession, order: Order, deadline: datetime) -> None:
+    """An unpaid guest order will soon be cancelled. Needs order.buyer and order.seller loaded."""
+    seller = order.seller
+    enqueue_email(
+        db,
+        to_email=order.buyer.email,
+        template="order_payment_reminder",
+        user_id=order.buyer_id,
+        context={
+            "name": order.buyer.full_name,
+            "order_id": order.id,
+            "total": order.total_price,
+            "deadline": deadline.strftime("%d %b %Y"),
+            "payment_details": seller.payment_details,
+            "link": _link(order_page_path(order)),
+            "contact_link": _link("/contact"),
         },
     )
 
@@ -255,7 +297,7 @@ def send_order_shipped_email(db: AsyncSession, order: Order, *, tracking_updated
             "seller_name": order.seller.full_name,
             "tracking_code": order.tracking_code,
             "tracking_updated": tracking_updated,
-            "orders_link": _link("/purchases"),
+            "orders_link": _link(order_page_path(order)),
         },
     )
 
@@ -275,6 +317,8 @@ async def send_payment_details_updated_emails(db: AsyncSession, seller: User) ->
 
     for orders in by_buyer.values():
         buyer = orders[0].buyer
+        # A guest has no purchases page to go to: their order's own link, if it's just one.
+        orders_path = order_page_path(orders[0]) if len(orders) == 1 else "/purchases"
         enqueue_email(
             db,
             to_email=buyer.email,
@@ -288,7 +332,7 @@ async def send_payment_details_updated_emails(db: AsyncSession, seller: User) ->
                 "order_label": ("orders " if len(orders) > 1 else "order ")
                 + ", ".join(f"#{o.id}" for o in orders),
                 "payment_details": seller.payment_details,
-                "orders_link": _link("/purchases"),
+                "orders_link": _link(orders_path),
             },
         )
     return len(by_buyer)

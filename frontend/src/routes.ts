@@ -16,6 +16,7 @@ export default [
     route("reset-password", "routes/reset-password.tsx"),
     route("cart", "routes/cart.tsx"),
     route("purchases", "routes/purchases.tsx"),
+    route("order/:orderId", "routes/order.tsx"),
     route("account", "routes/account.tsx"),
     route("sell", "routes/sell.tsx"),
     route("my-lots", "routes/my-lots.tsx"),

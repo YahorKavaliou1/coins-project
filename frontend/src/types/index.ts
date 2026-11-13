@@ -181,7 +181,7 @@ export interface Cart {
 }
 
 /** awaiting_payment -> paid (the buyer says so) -> shipped (the seller, with a tracking code). */
-export type OrderStatus = "awaiting_payment" | "paid" | "shipped";
+export type OrderStatus = "awaiting_payment" | "paid" | "shipped" | "cancelled";
 
 export interface OrderItemRead {
   id: number;
@@ -201,6 +201,7 @@ export interface Order {
   status: OrderStatus;
   paid_at: string | null;
   shipped_at: string | null;
+  cancelled_at: string | null;
   tracking_code: string | null;
   shipping_address: string;
   /** Both null when shipping is arranged with the seller. */

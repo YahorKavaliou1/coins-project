@@ -1,0 +1,8 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, {% if to_seller %}order #{{ order_id }}, placed without an account, wasn't paid within {{ days }} days, so it has been cancelled and its coins are back on sale. If the payment does arrive after all, restore the order in your sales: it counts as paid again if its coins are still unsold.{% else %}{% if expired %}your order #{{ order_id }} wasn't paid within {{ days }} days, so it has been cancelled{% else %}we have cancelled your order #{{ order_id }}{% endif %}. Please don't pay for it any more. If you have already paid, contact us: we'll restore the order if its coins are still available, or refund you.{% endif %}
+
+
+{% include "_order_table.txt" %}
+
+
+{{ link }}{% endblock %}

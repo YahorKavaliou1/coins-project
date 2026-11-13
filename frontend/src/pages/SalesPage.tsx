@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package, Truck } from "lucide-react";
-import { listMySales, markOrderShipped } from "../api/orders";
+import { Package, RotateCcw, Truck, XCircle } from "lucide-react";
+import { cancelOrder, listMySales, markOrderShipped, restoreOrder } from "../api/orders";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { inputClass } from "../components/formStyles";
 import { OrderItems } from "../components/OrderItems";
@@ -13,7 +14,7 @@ import { toast } from "../store/toastStore";
 import type { Order, OrderStatus } from "../types";
 import { formatUtcDate, formatUtcDateTime } from "../utils/dates";
 
-const FILTERS: (OrderStatus | "all")[] = ["all", "awaiting_payment", "paid", "shipped"];
+const FILTERS: (OrderStatus | "all")[] = ["all", "awaiting_payment", "paid", "shipped", "cancelled"];
 
 export function SalesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -78,6 +79,26 @@ function SaleCard({ order }: { order: Order }) {
     onError: (err: ApiError) => toast.error(getErrorMessage(err)),
   });
 
+  // Cancelling (an order not shipped yet) or restoring (a cancelled one) after confirmation.
+  const [confirming, setConfirming] = useState<"cancel" | "restore" | null>(null);
+  const statusMutation = useMutation({
+    mutationFn: (action: "cancel" | "restore") => (action === "cancel" ? cancelOrder(order.id) : restoreOrder(order.id)),
+    onSuccess: (_, action) => {
+      setConfirming(null);
+      for (const key of ["sales", "my-lots", "coins", "coin"]) queryClient.invalidateQueries({ queryKey: [key] });
+      toast.success(
+        action === "cancel"
+          ? "Order cancelled: its coins are back on sale. The buyer was notified."
+          : "Order restored as paid. The buyer was notified."
+      );
+    },
+    onError: (err: ApiError) => {
+      setConfirming(null);
+      toast.error(getErrorMessage(err));
+    },
+  });
+  const canCancel = order.status === "awaiting_payment" || order.status === "paid";
+
   return (
     <article className="bg-white border border-gray-200 rounded-md">
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 border-b border-gray-200 max-sm:px-4">
@@ -105,6 +126,8 @@ function SaleCard({ order }: { order: Order }) {
               .
             </>
           )}
+          {order.status === "cancelled" &&
+            `Cancelled on ${formatUtcDate(order.cancelled_at!)}; its coins went back on sale. If the payment arrives after all, restore the order.`}
         </p>
 
         <OrderItems order={order} />
@@ -114,7 +137,35 @@ function SaleCard({ order }: { order: Order }) {
           <div className="text-gray-700 whitespace-pre-line">{order.shipping_address}</div>
         </div>
 
-        {editing ? (
+        {confirming && (
+          <ConfirmDialog
+            title={confirming === "cancel" ? `Cancel order #${order.id}?` : `Restore order #${order.id}?`}
+            message={
+              confirming === "cancel"
+                ? "Its coins go back on sale and the buyer is told not to pay. You can restore it later while the coins are unsold."
+                : "Only if the payment has arrived: the order counts as paid and its coins are sold again, if none was sold meanwhile."
+            }
+            confirmLabel={confirming === "cancel" ? "Cancel order" : "Restore as paid"}
+            pendingLabel={confirming === "cancel" ? "Cancelling..." : "Restoring..."}
+            destructive={confirming === "cancel"}
+            isPending={statusMutation.isPending}
+            onConfirm={() => statusMutation.mutate(confirming)}
+            onCancel={() => setConfirming(null)}
+          />
+        )}
+
+        {order.status === "cancelled" ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setConfirming("restore")}
+              className="flex items-center gap-1.5 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase tracking-wide rounded-sm px-4 py-2.5 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Payment arrived — restore
+            </button>
+          </div>
+        ) : editing ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -155,6 +206,16 @@ function SaleCard({ order }: { order: Order }) {
               {order.status !== "shipped" && <Truck className="w-4 h-4" />}
               {order.status === "shipped" ? (order.tracking_code ? "Change tracking code" : "Add tracking code") : "Mark as shipped"}
             </button>
+            {canCancel && (
+              <button
+                type="button"
+                onClick={() => setConfirming("cancel")}
+                className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-red-700"
+              >
+                <XCircle className="w-4 h-4" />
+                Cancel order
+              </button>
+            )}
           </div>
         )}
       </div>

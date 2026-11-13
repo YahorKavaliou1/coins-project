@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Numeric, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Numeric, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -14,8 +14,16 @@ if TYPE_CHECKING:
 
 class OrderItem(Base):
     __tablename__ = "order_items"
-    # A coin can be sold only once (backs up the row lock taken in checkout).
-    __table_args__ = (UniqueConstraint("coin_id", name="uq_order_items_coin_id"),)
+    # A coin can be in only one order that isn't cancelled (backs up the row lock taken in
+    # checkout); a cancelled order keeps its items for the record.
+    __table_args__ = (
+        Index(
+            "uq_order_items_active_coin",
+            "coin_id",
+            unique=True,
+            postgresql_where=text("NOT cancelled"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
@@ -27,6 +35,8 @@ class OrderItem(Base):
     # Text: the name includes the seller's free-form extra info.
     coin_name_snapshot: Mapped[str] = mapped_column(Text)
     price_paid: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    # Mirrors the order's "cancelled" status, for the index above.
+    cancelled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     order: Mapped["Order"] = relationship(back_populates="items")
     coin: Mapped["Coin"] = relationship()

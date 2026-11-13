@@ -1,0 +1,4 @@
+{% extends "base.txt" %}
+{% block content %}Hi{% if name %} {{ name }}{% endif %}, your payment of €{{ "%.2f"|format(total) }} for order #{{ order_id }} arrived after the order had been cancelled. The order is restored and counts as paid: we'll ship your coins and let you know.
+
+{{ link }}{% endblock %}

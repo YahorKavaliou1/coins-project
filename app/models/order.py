@@ -21,6 +21,9 @@ class OrderStatus(StrEnum):
     PAID = "paid"
     # The seller sent the coins, optionally with a tracking code.
     SHIPPED = "shipped"
+    # Not paid in time (guest orders) or cancelled by the seller; its coins are back on sale.
+    # The seller can restore it if the payment arrives late and the coins are still free.
+    CANCELLED = "cancelled"
 
 
 class Order(Base):
@@ -30,7 +33,8 @@ class Order(Base):
     __tablename__ = "orders"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('awaiting_payment', 'paid', 'shipped')", name="ck_orders_status"
+            "status IN ('awaiting_payment', 'paid', 'shipped', 'cancelled')",
+            name="ck_orders_status",
         ),
     )
 
@@ -42,7 +46,8 @@ class Order(Base):
     # whose name the seller must not learn).
     buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Placed without logging in. Left unpaid, such an order is cancelled after
-    # settings.guest_order_ttl_days and its coins go back on sale (email worker maintenance).
+    # settings.guest_order_ttl_days and its coins go back on sale, with a reminder to pay a
+    # couple of days before (email worker maintenance).
     placed_as_guest: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # Formatted from the chosen address at checkout (a snapshot: later edits don't change it).
     shipping_address: Mapped[str] = mapped_column(Text)
@@ -58,6 +63,10 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     buyer: Mapped["User"] = relationship(foreign_keys=[buyer_id])
     seller: Mapped["User"] = relationship(foreign_keys=[seller_id])

@@ -51,6 +51,12 @@ class GuestCheckoutRequest(CheckoutRequest):
         return self
 
 
+class OrderAccessRequest(BaseModel):
+    """The token of an order's own link (see services.orders.order_access_token)."""
+
+    token: Annotated[str, StringConstraints(max_length=100)]
+
+
 class TrackingUpdate(BaseModel):
     tracking_code: (
         Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] | None
@@ -83,6 +89,7 @@ class OrderRead(BaseModel):
     status: OrderStatus
     paid_at: datetime | None
     shipped_at: datetime | None
+    cancelled_at: datetime | None
     tracking_code: str | None
     shipping_address: str
     shipping_method: str | None

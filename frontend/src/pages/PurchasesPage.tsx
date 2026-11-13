@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, Package } from "lucide-react";
-import { listMyOrders, markOrderPaid } from "../api/orders";
+import { listMyOrders, markOrderPaid, markOrderPaidByLink } from "../api/orders";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { OrderItems } from "../components/OrderItems";
@@ -79,14 +79,16 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function PurchaseCard({ order }: { order: BuyerOrder }) {
+/** `linkToken`: opened from the order's own link (a guest), not from My purchases. */
+export function PurchaseCard({ order, linkToken }: { order: BuyerOrder; linkToken?: string }) {
   const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const paidMutation = useMutation({
-    mutationFn: () => markOrderPaid(order.id),
+    mutationFn: () => (linkToken ? markOrderPaidByLink(order.id, linkToken) : markOrderPaid(order.id)),
     onSuccess: () => {
       setConfirming(false);
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] });
       toast.success("Thank you! We'll check the payment and ship your coins.");
     },
     onError: (err: ApiError) => {
@@ -144,6 +146,17 @@ function PurchaseCard({ order }: { order: BuyerOrder }) {
               I've paid
             </button>
           </div>
+        )}
+
+        {order.status === "cancelled" && (
+          <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-sm p-3">
+            This order was cancelled on {formatUtcDate(order.cancelled_at!)} and its coins are back on sale. Please
+            don't pay for it. If you have already paid,{" "}
+            <Link to="/contact" className="underline font-semibold">
+              contact us
+            </Link>
+            : we'll restore the order if its coins are still available, or refund you.
+          </p>
         )}
 
         {order.status === "paid" && (

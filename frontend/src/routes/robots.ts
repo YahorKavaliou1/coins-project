@@ -9,6 +9,7 @@ const PRIVATE_PATHS = [
   "/reset-password",
   "/cart",
   "/purchases",
+  "/order/",
   "/account",
   "/sell",
   "/my-lots",
