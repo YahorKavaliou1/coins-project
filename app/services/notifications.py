@@ -166,6 +166,8 @@ async def send_order_emails(
             "contact_note": seller.contact_note,
             "orders_link": _link("/purchases"),
             "contact_link": _link("/contact"),
+            # Guest orders are cancelled if left unpaid (email worker maintenance).
+            "pay_within_days": settings.guest_order_ttl_days if order.placed_as_guest else None,
         },
     )
     enqueue_email(
@@ -185,6 +187,40 @@ async def send_order_emails(
             # The buyer sees the seller's details on the order page as soon as they are added.
             "payment_details_missing": not seller.payment_details,
             "account_link": _link("/account"),
+        },
+    )
+
+
+def send_order_expired_emails(db: AsyncSession, order: Order) -> None:
+    """An unpaid guest order was cancelled: the buyer must not pay any more, the seller's
+    coins are back on sale. Needs order.buyer, order.seller and order.items loaded."""
+    context = {
+        "order_id": order.id,
+        "items": _order_lines(order.items),
+        **_shipping_context(order),
+        "total": order.total_price,
+        "days": settings.guest_order_ttl_days,
+    }
+    enqueue_email(
+        db,
+        to_email=order.buyer.email,
+        template="order_expired",
+        user_id=order.buyer_id,
+        context={**context, "to_seller": False, "link": _link("/browse")},
+    )
+    enqueue_email(
+        db,
+        to_email=order.seller.email,
+        template="order_expired",
+        user_id=order.seller_id,
+        # The order is deleted: what the seller needs if the payment arrives late after all.
+        context={
+            **context,
+            "to_seller": True,
+            "link": _link("/my-lots"),
+            "buyer_name": order.buyer_name,
+            "buyer_email": order.buyer.email,
+            "shipping_address": order.shipping_address,
         },
     )
 

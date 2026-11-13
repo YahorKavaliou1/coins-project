@@ -10,16 +10,19 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.models.cart_item import CartItem
 from app.models.coin import Coin
 from app.models.email_outbox import EmailOutbox, EmailStatus
 from app.models.favourite import Favourite
-from app.models.order import Order
+from app.models.order import Order, OrderStatus
+from app.models.order_item import OrderItem
 from app.models.user import User
 from app.models.user_token import UserToken
 from app.services.email.transport import PermanentEmailError, send_email
+from app.services.notifications import send_order_expired_emails
 
 logger = logging.getLogger("app.email")
 
@@ -107,6 +110,36 @@ async def deliver_next_email() -> bool:
         return True
 
 
+async def _cancel_unpaid_guest_orders(db: AsyncSession, now: datetime) -> None:
+    """Orders placed without logging in and left unpaid are cancelled (deleted: an order item
+    marks its coin as sold for good), and their coins go back on sale. Without this, anyone
+    could take coins off sale with throwaway email addresses."""
+    expired = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items).selectinload(OrderItem.coin),
+            selectinload(Order.buyer),
+            selectinload(Order.seller),
+        )
+        .where(
+            Order.placed_as_guest.is_(True),
+            Order.status == OrderStatus.AWAITING_PAYMENT,
+            Order.created_at < now - timedelta(days=settings.guest_order_ttl_days),
+        )
+        .with_for_update(of=Order, skip_locked=True)
+    )
+    orders = list(expired.scalars().all())
+    for order in orders:
+        send_order_expired_emails(db, order)
+        for item in order.items:
+            if item.coin is not None and item.coin.status == "sold":
+                item.coin.status = "for_sale"
+            await db.delete(item)
+        await db.delete(order)
+    if orders:
+        logger.info("Cancelled %s unpaid guest orders", len(orders))
+
+
 async def run_maintenance() -> None:
     now = datetime.now(UTC)
     async with _session_maker() as db:
@@ -126,6 +159,7 @@ async def run_maintenance() -> None:
                 )
             )
         )
+        await _cancel_unpaid_guest_orders(db, now)
         # Accounts that never confirmed their email. Accounts that somehow own coins or
         # orders are kept for manual review rather than breaking foreign keys.
         stale_users = select(User.id).where(

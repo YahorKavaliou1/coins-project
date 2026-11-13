@@ -18,6 +18,9 @@
 {% endif %}
 <p style="margin:0 0 4px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Shipping to</p>
 <p style="margin:0 0 16px;white-space:pre-line;">{{ shipping_address }}</p>
+{% if pay_within_days %}
+<p style="margin:0 0 16px;"><strong>Please pay within {{ pay_within_days }} days:</strong> an order placed without an account and left unpaid is then cancelled.</p>
+{% endif %}
 {% with url=orders_link, label="I've paid — mark the order" %}{% include "_button.html" %}{% endwith %}
 {% include "_contract_info.html" %}
 {% endblock %}

@@ -1,16 +1,17 @@
 import secrets
 from collections import defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import delete, exists, func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.auth import EMAIL_SENDING_LIMIT, find_user, normalize_email
 from app.api.deps import get_current_user, require_admin, require_seller
+from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.security import hash_password
 from app.db.session import get_db
@@ -81,16 +82,46 @@ async def _checkout_address(db: AsyncSession, data: CheckoutRequest, user: User)
     return format_address(AddressBase.model_validate(data.address.model_dump()))
 
 
+GUEST_EMAIL_REFUSED_DETAIL = "This email address can't be used for an order. Please contact us."
+
+
+async def _guest_buyer(db: AsyncSession, email: str, coins: list[Coin]) -> User:
+    """The account a guest's orders go to: the one with this email, or a new one.
+
+    A new account is unconfirmed and has no usable password. Whoever owns the mailbox takes
+    it over with "Forgot password" (which also confirms it), or by registering with the same
+    email, and then sees these orders in My purchases."""
+    # Hashed on every path, so the response time doesn't reveal whether the email is taken.
+    unusable_password = await hash_password(secrets.token_urlsafe(32))
+    user = await find_user(db, email, for_update=True)
+    if user is None:
+        user = User(
+            email=normalize_email(email),
+            hashed_password=unusable_password,
+            # No name: anyone can type one, and it would greet the mailbox owner in emails.
+            # Sellers see the order's own buyer_name.
+            full_name=None,
+            role=UserRole.USER,
+            is_verified=False,
+            # Deleted like any unconfirmed account once this passes with no orders left, i.e.
+            # when its unpaid guest orders have been cancelled.
+            verification_deadline=datetime.now(UTC) + timedelta(days=settings.guest_order_ttl_days),
+        )
+        db.add(user)
+        await db.flush()
+    elif user.is_blocked or not user.is_active or any(coin.owner_id == user.id for coin in coins):
+        # One answer for every refusal, so it doesn't tell what the account is (blocked, or
+        # the seller's own); and only for an order that would otherwise go through.
+        raise HTTPException(status_code=403, detail=GUEST_EMAIL_REFUSED_DETAIL)
+    return user
+
+
 async def _place_orders(
-    db: AsyncSession,
-    buyer: User,
-    buyer_name: str | None,
-    coin_ids: list[int],
-    data: CheckoutRequest,
+    db: AsyncSession, coin_ids: list[int], data: CheckoutRequest, user: User | None
 ) -> list[int]:
-    """Buys these coins for `buyer`: one order per seller, each awaiting payment by the
-    seller's details. Shared by checkout from an account and by guest checkout. Returns the
-    new orders' ids; the caller commits."""
+    """Buys these coins: one order per seller, each awaiting payment by the seller's details.
+    Shared by checkout from an account (`user`) and by guest checkout (`user` None, `data` a
+    GuestCheckoutRequest). Returns the new orders' ids; the caller commits."""
     # Lock the coins before checking availability, so two concurrent checkouts can't both
     # see a coin as for sale: the second one waits here, then sees it sold. Ordered by id so
     # overlapping carts can't deadlock.
@@ -117,9 +148,6 @@ async def _place_orders(
             status_code=409,
             detail=f"No longer available: {', '.join(unavailable)}. Please review your cart.",
         )
-    if any(coin.owner_id == buyer.id for coin in coins):
-        raise HTTPException(status_code=400, detail="You cannot buy your own coin")
-
     by_seller: dict[int, list[Coin]] = defaultdict(list)
     for coin in coins:
         by_seller[coin.owner_id].append(coin)
@@ -154,6 +182,17 @@ async def _place_orders(
             "Please review your cart and try again.",
         )
 
+    # The buyer only now, once the order is otherwise valid: a guest's email can't be probed
+    # with orders that would fail anyway.
+    if user is None:
+        assert isinstance(data, GuestCheckoutRequest) and data.address is not None
+        buyer = await _guest_buyer(db, data.email, coins)
+        buyer_name: str | None = data.address.recipient_name
+    else:
+        buyer, buyer_name = user, user.full_name
+        if any(coin.owner_id == buyer.id for coin in coins):
+            raise HTTPException(status_code=400, detail="You cannot buy your own coin")
+
     address = await _checkout_address(db, data, buyer)
 
     orders: list[Order] = []
@@ -162,6 +201,7 @@ async def _place_orders(
         order = Order(
             buyer_id=buyer.id,
             buyer_name=buyer_name,
+            placed_as_guest=user is None,
             seller_id=seller_id,
             shipping_address=address,
             shipping_method=method,
@@ -204,8 +244,15 @@ async def checkout(
     current_user: User = Depends(get_current_user),
 ) -> list[BuyerOrderRead]:
     """Buys the user's cart."""
-    # Locked: a second checkout of the same cart (double submit) waits here, then finds the
-    # cart emptied by the first one.
+    # The cart's coins first, then the cart (coins before cart rows, like deleting a coin):
+    # a second checkout of the same cart (double submit) waits here, then finds the cart
+    # emptied by the first one.
+    await db.execute(
+        select(Coin.id)
+        .where(Coin.id.in_(select(CartItem.coin_id).where(CartItem.user_id == current_user.id)))
+        .order_by(Coin.id)
+        .with_for_update()
+    )
     cart = await db.execute(
         select(CartItem.coin_id)
         .where(CartItem.user_id == current_user.id)
@@ -213,42 +260,9 @@ async def checkout(
         .with_for_update()
     )
     coin_ids = list(cart.scalars())
-    order_ids = await _place_orders(db, current_user, current_user.full_name, coin_ids, data)
+    order_ids = await _place_orders(db, coin_ids, data, current_user)
     await db.commit()
     return [buyer_order_read(order) for order in await _load_orders(db, order_ids)]
-
-
-GUEST_EMAIL_REFUSED_DETAIL = "This email address can't be used for an order. Please contact us."
-
-
-async def _guest_buyer(db: AsyncSession, email: str, name: str, coin_ids: list[int]) -> User:
-    """The account a guest's orders go to: the one with this email, or a new one.
-
-    A new account is unconfirmed and has no usable password. Whoever owns the mailbox takes
-    it over with "Forgot password" (which also confirms it), or by registering with the same
-    email, and then sees these orders in My purchases."""
-    # Hashed on every path, so the response time doesn't reveal whether the email is taken.
-    unusable_password = await hash_password(secrets.token_urlsafe(32))
-    user = await find_user(db, email, for_update=True)
-    if user is None:
-        user = User(
-            email=normalize_email(email),
-            hashed_password=unusable_password,
-            full_name=name,
-            role=UserRole.USER,
-            is_verified=False,
-        )
-        db.add(user)
-        await db.flush()
-    elif (
-        user.is_blocked
-        or not user.is_active
-        or await db.scalar(select(exists().where(Coin.id.in_(coin_ids), Coin.owner_id == user.id)))
-    ):
-        # One answer for every refusal, so it doesn't tell what the account is (blocked, or
-        # the seller's own).
-        raise HTTPException(status_code=403, detail=GUEST_EMAIL_REFUSED_DETAIL)
-    return user
 
 
 @router.post("/guest-checkout", response_model=list[BuyerOrderRead], status_code=201)
@@ -258,10 +272,7 @@ async def guest_checkout(
 ) -> list[BuyerOrderRead]:
     """Buys a guest's cart without logging in; the order emails go to the given address."""
     await require_captcha(data.captcha_token, request)
-    assert data.address is not None  # GuestCheckoutRequest requires a new address
-    name = data.address.recipient_name
-    buyer = await _guest_buyer(db, data.email, name, data.coin_ids)
-    order_ids = await _place_orders(db, buyer, name, data.coin_ids, data)
+    order_ids = await _place_orders(db, data.coin_ids, data, None)
     await db.commit()
     # Without the account's id: the email may belong to someone else's account.
     return [

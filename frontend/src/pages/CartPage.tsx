@@ -23,6 +23,9 @@ function coinTitle(coin: Coin): string {
   return coin.name.startsWith(prefix) ? coin.name.slice(prefix.length) : coin.name;
 }
 
+/** Must match guest_order_ttl_days in app/core/config.py. */
+const GUEST_ORDER_TTL_DAYS = 7;
+
 /** Cents, so float sums like 0.1 + 0.2 add up like the server's decimals. */
 const toCents = (euros: number) => Math.round(euros * 100);
 
@@ -35,11 +38,14 @@ export function CartPage() {
     queryKey: ["cart", accessToken],
     queryFn: getCart,
   });
-  const { data: addresses } = useQuery({
+  const { data: savedAddresses } = useQuery({
     queryKey: ["addresses"],
     queryFn: listAddresses,
     enabled: !!accessToken,
   });
+  const isGuest = !accessToken;
+  // Not a previous user's, still cached after they logged out.
+  const addresses = isGuest ? undefined : savedAddresses;
 
   // Shipping option per seller; a seller's first option until the buyer picks another.
   const [shippingChoice, setShippingChoice] = useState<Record<number, string>>({});
@@ -52,7 +58,6 @@ export function CartPage() {
   const [guestEmail, setGuestEmail] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaKey, setCaptchaKey] = useState(0);
-  const isGuest = !accessToken;
 
   const removeMutation = useMutation({
     mutationFn: async (coinIds: number[]) => {
@@ -347,6 +352,7 @@ export function CartPage() {
             <p className="text-xs text-gray-500 mt-3">
               After placing the order you'll get our payment details by email. Pay, then mark the order as
               paid in My purchases.
+              {isGuest && ` Without an account, an order not paid within ${GUEST_ORDER_TTL_DAYS} days is cancelled.`}
             </p>
             <p className="text-xs text-gray-500 mt-2">
               Placing an order is a purchase with an obligation to pay, under our{" "}

@@ -17,6 +17,8 @@ Payment details:
 {% endif %}Shipping to:
 {{ shipping_address }}
 
-Mark the order as paid once you've paid: {{ orders_link }}
+{% if pay_within_days %}Please pay within {{ pay_within_days }} days: an order placed without an account and left unpaid is then cancelled.
+
+{% endif %}Mark the order as paid once you've paid: {{ orders_link }}
 
 {% include "_contract_info.txt" %}{% endblock %}

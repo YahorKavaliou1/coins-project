@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -41,6 +41,9 @@ class Order(Base):
     # or for a guest the recipient name they entered (the email may belong to another account,
     # whose name the seller must not learn).
     buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Placed without logging in. Left unpaid, such an order is cancelled after
+    # settings.guest_order_ttl_days and its coins go back on sale (email worker maintenance).
+    placed_as_guest: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # Formatted from the chosen address at checkout (a snapshot: later edits don't change it).
     shipping_address: Mapped[str] = mapped_column(Text)
     # Snapshot of the seller's shipping option; both null when shipping is arranged with them.

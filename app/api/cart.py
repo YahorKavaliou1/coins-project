@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.account import seller_shipping_options
 from app.api.deps import get_current_user
+from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.cart_item import CartItem
 from app.models.coin import Coin
@@ -71,7 +72,10 @@ async def get_cart(
 
 
 @router.post("/preview", response_model=CartRead)
-async def preview_cart(data: CartPreviewRequest, db: AsyncSession = Depends(get_db)) -> CartRead:
+@limiter.limit("120/minute")  # anonymous, and loads up to 100 coins
+async def preview_cart(
+    request: Request, data: CartPreviewRequest, db: AsyncSession = Depends(get_db)
+) -> CartRead:
     """A guest's cart (coin ids kept by the browser) with the same details as a user's cart.
     Coins deleted since are left out; sold ones are shown as no longer available."""
     result = await db.execute(

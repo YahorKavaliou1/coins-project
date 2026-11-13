@@ -127,6 +127,9 @@ class Settings(BaseSettings):
     password_reset_ttl_minutes: int = 60
     # Newly registered accounts that never confirm their email are deleted after this.
     unverified_account_ttl_days: int = 7
+    # Orders placed without logging in and still unpaid after this are cancelled, and their
+    # coins go back on sale. Must match GUEST_ORDER_TTL_DAYS in frontend/src/pages/CartPage.tsx.
+    guest_order_ttl_days: int = 7
 
     # --- Coin photo storage ---
     # "local": files in app/static/uploads (default). "s3": Amazon S3 or any S3-compatible
