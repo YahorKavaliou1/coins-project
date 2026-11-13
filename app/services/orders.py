@@ -112,12 +112,14 @@ def order_page_path(order: Order) -> str:
 async def cancel_order(db: AsyncSession, order: Order) -> None:
     """Cancels an unshipped order: its coins go back on sale. The order stays for the record.
     Needs order.items and their coins loaded; the caller sends the emails and commits."""
-    # Coins locked in id order, like checkout and restore_order.
+    # Coins locked in id order, like checkout and restore_order, and re-read: the copies
+    # loaded with the order may predate a concurrent change.
     await db.execute(
-        select(Coin.id)
+        select(Coin)
         .where(Coin.id.in_([item.coin_id for item in order.items]))
         .order_by(Coin.id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     order.status = OrderStatus.CANCELLED
     order.cancelled_at = datetime.now(UTC)
@@ -137,11 +139,16 @@ async def restore_order(db: AsyncSession, order: Order) -> None:
     """Undoes a cancellation when the payment arrived late: the order counts as paid and its
     coins are sold again, if they are all still on sale. Needs order.items loaded."""
     coin_ids = [item.coin_id for item in order.items]
-    # Locked like in checkout, so the coins can't be bought at the same time.
+    # Locked like in checkout, so the coins can't be bought at the same time; re-read, as the
+    # copies loaded with the order may predate a concurrent restore or purchase.
     coins = (
         (
             await db.execute(
-                select(Coin).where(Coin.id.in_(coin_ids)).order_by(Coin.id).with_for_update()
+                select(Coin)
+                .where(Coin.id.in_(coin_ids))
+                .order_by(Coin.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
             )
         )
         .scalars()

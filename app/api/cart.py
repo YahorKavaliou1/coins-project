@@ -46,7 +46,10 @@ class _GuestCartItem:
 
 
 def _cart_read(items: list[CartItem] | list[_GuestCartItem]) -> CartRead:
-    total = sum((item.coin.price or Decimal(0) for item in items), Decimal(0))
+    # Coins that can still be bought: sold ones stay in the cart only to be removed.
+    total = sum(
+        (item.coin.price or Decimal(0) for item in items if item.coin.is_for_sale), Decimal(0)
+    )
     sellers: dict[int, CartSeller] = {}
     for item in items:
         owner = item.coin.owner

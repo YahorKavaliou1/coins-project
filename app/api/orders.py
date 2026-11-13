@@ -6,6 +6,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -103,7 +104,7 @@ async def _guest_buyer(db: AsyncSession, email: str, coins: list[Coin]) -> User:
     unusable_password = await hash_password(secrets.token_urlsafe(32))
     user = await find_user(db, email, for_update=True)
     if user is None:
-        user = User(
+        new_user = User(
             email=normalize_email(email),
             hashed_password=unusable_password,
             # No name: anyone can type one, and it would greet the mailbox owner in emails.
@@ -112,9 +113,16 @@ async def _guest_buyer(db: AsyncSession, email: str, coins: list[Coin]) -> User:
             role=UserRole.USER,
             is_verified=False,
         )
-        db.add(user)
-        await db.flush()
-        return user
+        try:
+            async with db.begin_nested():
+                db.add(new_user)
+        except IntegrityError:
+            # A concurrent request (another tab, a retry) created it first: use that one.
+            user = await find_user(db, email, for_update=True)
+            if user is None:
+                raise
+        else:
+            return new_user
     recent_guest_orders = await db.scalar(
         select(func.count())
         .select_from(Order)

@@ -47,14 +47,16 @@ export function AdminUserDetailPage() {
   if (userError) return <p>User not found.</p>;
   if (!user) return <p>Loading...</p>;
 
-  const totalSpent = (orders ?? []).reduce((sum, order) => sum + order.total_price, 0);
+  // Cancelled orders were never paid for (or were refunded).
+  const placedOrders = (orders ?? []).filter((order) => order.status !== "cancelled");
+  const totalSpent = placedOrders.reduce((sum, order) => sum + order.total_price, 0);
 
   const details: [string, string][] = [
     ["Email", user.email],
     ["Name", user.full_name || "—"],
     ["Role", user.role],
     ["Registered (UTC)", formatUtcDateTime(user.created_at)],
-    ["Orders", orders ? String(orders.length) : "…"],
+    ["Orders", orders ? `${placedOrders.length}${placedOrders.length < orders.length ? ` (+${orders.length - placedOrders.length} cancelled)` : ""}` : "…"],
     ["Total spent", orders ? formatPrice(totalSpent) : "…"],
     ["Failed login attempts", String(user.failed_login_attempts)],
   ];

@@ -4,6 +4,6 @@
 {% block content %}{% endblock %}
 
 --
-{% block footer_note %}You received this email because of activity on your {{ site_name }} account.{% endblock %}
+{% block footer_note %}You received this email because of activity on {{ site_name }} with this email address.{% endblock %}
 
 {{ site_url }}

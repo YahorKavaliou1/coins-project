@@ -87,10 +87,11 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
           {coin.year ? ` · ${coin.year}` : ""}
         </div>
 
-        <div className="font-bold text-sm mt-0.5 leading-snug">
+        {/* A real link, for search engines and opening in a new tab; the whole card is clickable too. */}
+        <Link to={coinPath(coin)} onClick={stop} className="block font-bold text-sm mt-0.5 leading-snug hover:text-accent">
           {coin.denomination || coin.metal.name}
           {coin.extra_info ? ` - ${coin.extra_info}` : ""}
-        </div>
+        </Link>
 
         {coin.labels.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
