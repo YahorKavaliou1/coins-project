@@ -85,35 +85,27 @@ services:
       - key: TURNSTILE_SECRET_KEY
         value: 1x0000000000000000000000000000000AA
 
+  # The site itself: server-rendered React (React Router), so search engines and link previews
+  # get complete pages. A Node web service, not a static site: a static site can't render pages
+  # per request. Free web services sleep like the API: use a paid plan for production.
   - name: agaro-coins
     type: web
-    runtime: static
+    runtime: node
+    plan: free
+    region: frankfurt # next to the API it calls while rendering
     rootDir: frontend
     buildCommand: npm ci && npm run build
-    staticPublishPath: dist
+    startCommand: npm start
+    healthCheckPath: /robots.txt
     envVars:
       - key: NODE_VERSION
         value: "22"
       - key: VITE_API_URL
         value: https://agaro-coins-api-ojxm.onrender.com
+      # The site's public address (no trailing slash) for canonical links, the sitemap and
+      # link previews. Change it to the site's own domain when it gets one.
+      - key: VITE_SITE_URL
+        value: https://agaro-coins-ojxm.onrender.com
       - key: VITE_TURNSTILE_SITE_KEY
         value: 1x00000000000000000000AA
-    routes:
-      # A single-page app: /coins/5, /contact... are routed by React, so every path that
-      # isn't a file gets index.html instead of a 404.
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    headers:
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: Referrer-Policy
-        value: no-referrer
-      - path: /*
-        name: Strict-Transport-Security
-        value: max-age=31536000; includeSubDomains
+    # Security headers are set by the app itself (frontend/src/root.tsx).

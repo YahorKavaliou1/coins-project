@@ -11,7 +11,7 @@ import { unavailableLabel } from "../utils/coinStatus";
 import { formatPrice } from "../utils/money";
 import { thumbnailSrc } from "../utils/images";
 import { useCartCoinIds } from "../hooks/useCartCoinIds";
-import { loginPath } from "../utils/url";
+import { coinPath, loginPath } from "../utils/url";
 
 interface CoinCardProps {
   coin: Coin;
@@ -52,7 +52,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
 
   return (
     <div
-      onClick={() => navigate(`/coins/${coin.id}`)}
+      onClick={() => navigate(coinPath(coin))}
       className="bg-white rounded-lg shadow overflow-hidden flex flex-col cursor-pointer hover:shadow-md transition-shadow"
     >
       {/* Images */}
@@ -172,7 +172,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
             </div>
           ) : !accessToken && coin.is_for_sale ? (
             <Link
-              to={loginPath(`/coins/${coin.id}`)}
+              to={loginPath(coinPath(coin))}
               className="flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"
             >
               Log in to buy

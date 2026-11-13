@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Award, RotateCcw, ShieldCheck, Truck, type LucideIcon } from "lucide-react";
-import { listCoins } from "../api/coins";
+import { listLatestCoins } from "../api/coins";
 import { CoinCard } from "../components/CoinCard";
 import { HeroEmblem } from "../components/HeroEmblem";
 import { company, home } from "../content/site";
+import type { CoinPage } from "../types";
 
 const FEATURE_ICONS: Record<string, LucideIcon> = {
   shield: ShieldCheck,
@@ -15,10 +16,11 @@ const FEATURE_ICONS: Record<string, LucideIcon> = {
 
 const sectionTitle = "text-xl font-bold text-gray-900";
 
-export function HomePage() {
+export function HomePage({ initialLatest }: { initialLatest: CoinPage }) {
   const { data: latest } = useQuery({
     queryKey: ["coins", "home-latest"],
-    queryFn: () => listCoins({ sort: "recent", for_sale_only: true, page_size: 4 }),
+    queryFn: listLatestCoins,
+    initialData: initialLatest,
   });
 
   return (

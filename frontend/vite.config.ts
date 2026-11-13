@@ -1,22 +1,24 @@
 import { defineConfig, type ProxyOptions } from "vite";
-import react from "@vitejs/plugin-react";
+import { reactRouter } from "@react-router/dev/vite";
+import tailwindcss from "@tailwindcss/vite";
 
 const API_TARGET = "http://127.0.0.1:8000";
 
-// Some API prefixes are also SPA routes (/auth, /cart, /coins/:id). When the
-// browser navigates to such a URL (a full page load asks for HTML), serve the
-// SPA's index.html instead of proxying; API calls ask for JSON and are proxied.
+// Some API prefixes are also page addresses (/auth, /cart, /coins/:id). A page load (asks for
+// HTML) and React Router's data requests for a page ("/coins/12-....data") are left to the
+// app's server rendering instead of proxying; API calls ask for JSON and are proxied.
 const apiProxy: ProxyOptions = {
   target: API_TARGET,
   bypass: (req) => {
-    if (req.method === "GET" && req.headers.accept?.includes("text/html")) {
-      return "/index.html";
+    const path = req.url?.split("?")[0] ?? "";
+    if (req.method === "GET" && (req.headers.accept?.includes("text/html") || path.endsWith(".data"))) {
+      return req.url;
     }
   },
 };
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), reactRouter()],
   server: {
     port: 5173,
     proxy: {

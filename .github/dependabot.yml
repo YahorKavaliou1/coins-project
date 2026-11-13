@@ -9,6 +9,10 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    groups:
+      # Its packages require each other's exact version: update them in one pull request.
+      react-router:
+        patterns: ["react-router", "react-router-dom", "@react-router/*"]
   - package-ecosystem: docker-compose
     directory: /
     schedule:

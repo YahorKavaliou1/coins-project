@@ -169,6 +169,13 @@ class _CoinWithComputedName:
         return getattr(self._coin, item)
 
 
+class CoinSitemapEntry(BaseModel):
+    """A coin on sale, as the frontend's sitemap needs it (its page address is built from these)."""
+
+    id: int
+    name: str
+
+
 class Page(BaseModel):
     items: list[CoinRead]
     total: int

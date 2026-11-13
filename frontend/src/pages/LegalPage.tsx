@@ -38,10 +38,6 @@ export function LegalPage({ doc }: { doc: LegalDocument }) {
   // Opened from the footer: start at the top, not at the old scroll position.
   useEffect(() => {
     window.scrollTo(0, 0);
-    document.title = `${doc.title} · Coins Catalog`;
-    return () => {
-      document.title = "Coins Catalog";
-    };
   }, [doc]);
 
   return (

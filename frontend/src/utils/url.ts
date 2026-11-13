@@ -25,3 +25,24 @@ export function safeNextPath(next: string | null): string {
 export function loginPath(path: string): string {
   return `/auth?next=${encodeURIComponent(path)}`;
 }
+
+/** "Austria 2024 Gold (1 oz) "Philharmonic"" -> "austria-2024-gold-1-oz-philharmonic" */
+export function slugify(text: string): string {
+  return text
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // accents: "Česko" -> "cesko"
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .slice(0, 80)
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * The canonical address of a coin's page: its id, then its name for search engines and people
+ * ("/coins/12-austria-2024-gold-1-oz-philharmonic"). Only the id is used to find the coin;
+ * any other form of the address redirects here (routes/coin.tsx).
+ */
+export function coinPath(coin: { id: number; name: string }): string {
+  const slug = slugify(coin.name);
+  return slug ? `/coins/${coin.id}-${slug}` : `/coins/${coin.id}`;
+}

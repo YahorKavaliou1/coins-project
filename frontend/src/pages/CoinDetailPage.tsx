@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronLeft, ExternalLink, Heart, Pencil, ShoppingCart, Trash2 } from "lucide-react";
 import { getCoin } from "../api/coins";
@@ -17,11 +17,11 @@ import { formatPrice } from "../utils/money";
 import { unavailableLabel } from "../utils/coinStatus";
 import { thumbnailSrc } from "../utils/images";
 import { useCartCoinIds } from "../hooks/useCartCoinIds";
-import { loginPath } from "../utils/url";
+import { coinPath, loginPath } from "../utils/url";
 
-export function CoinDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const coinId = Number(id);
+/** `initialCoin`: the coin as loaded on the server (routes/coin.tsx), shown until it is reloaded. */
+export function CoinDetailPage({ initialCoin }: { initialCoin: Coin }) {
+  const coinId = initialCoin.id;
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -33,7 +33,7 @@ export function CoinDetailPage() {
   const { data: coin, refetch } = useQuery({
     queryKey: ["coin", coinId],
     queryFn: () => getCoin(coinId),
-    enabled: Number.isFinite(coinId),
+    initialData: initialCoin,
   });
 
   const addToCartMutation = useMutation({
@@ -80,7 +80,7 @@ export function CoinDetailPage() {
   details.push(["Weight", `${coin.weight} ${coin.weight_unit}`]);
   if (coin.diameter !== null) details.push(["Diameter", `${coin.diameter} mm`]);
   if (coin.catalog_number) details.push(["Catalog No.", coin.catalog_number]);
-  if (coin.mintage !== null) details.push(["Mintage", coin.mintage.toLocaleString()]);
+  if (coin.mintage !== null) details.push(["Mintage", coin.mintage.toLocaleString("en-GB")]);
   details.push(["Metal", coin.metal.name]);
   if (coin.sku) details.push(["SKU", coin.sku]);
 
@@ -208,7 +208,7 @@ export function CoinDetailPage() {
               </div>
             ) : !accessToken && coin.is_for_sale ? (
               <Link
-                to={loginPath(`/coins/${coin.id}`)}
+                to={loginPath(coinPath(coin))}
                 className="flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold uppercase rounded py-3"
               >
                 Log in to buy

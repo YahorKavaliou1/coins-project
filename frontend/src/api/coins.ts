@@ -53,6 +53,11 @@ export async function listCoins(filters: CoinFilters = {}) {
   return data;
 }
 
+/** The newest coins in the shop, for the home page. */
+export function listLatestCoins() {
+  return listCoins({ sort: "recent", for_sale_only: true, page_size: 4 });
+}
+
 export async function getCoinFacets(filters: CoinFilters = {}) {
   const { data } = await apiClient.get<CoinFacets>(`/coins/facets?${buildParams(filters).toString()}`);
   return data;
@@ -93,6 +98,12 @@ export async function deleteCoins(coinIds: number[]) {
 export async function relistCoins(coinIds: number[]) {
   const { data } = await apiClient.post<{ coin_ids: number[] }>("/coins/relist", { coin_ids: coinIds });
   return data.coin_ids;
+}
+
+/** Every coin on sale, for the sitemap (routes/sitemap.ts). */
+export async function listSitemapCoins() {
+  const { data } = await apiClient.get<{ id: number; name: string }[]>("/coins/sitemap");
+  return data;
 }
 
 export async function getCoin(id: number) {

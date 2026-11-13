@@ -36,9 +36,10 @@ export function isEmailNotVerifiedError(err: ApiError): boolean {
 }
 
 export const apiClient = axios.create({
-  // Empty in development: the Vite dev server proxies API paths to the backend (vite.config.ts).
   // In production the API has its own domain, set at build time (see .env.example).
-  baseURL: import.meta.env.VITE_API_URL ?? "",
+  // Unset in development: in the browser the Vite dev server proxies API paths to the backend
+  // (vite.config.ts); the server-side render calls the backend directly.
+  baseURL: import.meta.env.VITE_API_URL ?? (import.meta.env.SSR ? "http://127.0.0.1:8000" : ""),
 });
 
 apiClient.interceptors.request.use((config) => {

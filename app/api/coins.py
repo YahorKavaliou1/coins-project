@@ -27,6 +27,7 @@ from app.schemas.coin import (
     CoinIdsRequest,
     CoinIdsResult,
     CoinRead,
+    CoinSitemapEntry,
     CoinUpdate,
     ExportedPhotoRead,
     ExportRequest,
@@ -40,6 +41,7 @@ from app.schemas.coin import (
     SaleInfo,
 )
 from app.schemas.fields import MAX_DB_INT, MAX_LABEL_LENGTH
+from app.services.coin_naming import build_coin_name
 from app.services.image_storage import ImageStorage, get_image_storage
 from app.services.lot_export import build_lots_workbook
 
@@ -480,6 +482,43 @@ async def relist_coins(
     return await _change_status(
         db, current_user, data.coin_ids, from_status="withdrawn", to_status="for_sale"
     )
+
+
+@router.get("/sitemap", response_model=list[CoinSitemapEntry])
+async def list_sitemap_coins(db: AsyncSession = Depends(get_db)) -> list[CoinSitemapEntry]:
+    """Every coin on sale, for the sitemap: only what its page address needs, in one query."""
+    stmt = (
+        select(
+            Coin.id,
+            Coin.year,
+            Coin.weight,
+            Coin.weight_unit,
+            Coin.denomination,
+            Coin.extra_info,
+            Country.name,
+            Metal.name,
+        )
+        .join(Country, Coin.country_id == Country.id)
+        .join(Metal, Coin.metal_id == Metal.id)
+        .where(Coin.is_for_sale)
+        .order_by(Coin.id)
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        CoinSitemapEntry(
+            id=coin_id,
+            name=build_coin_name(
+                country_name=country_name,
+                year=year,
+                metal_name=metal_name,
+                weight=weight,
+                weight_unit=weight_unit,
+                denomination=denomination,
+                extra_info=extra_info,
+            ),
+        )
+        for coin_id, year, weight, weight_unit, denomination, extra_info, country_name, metal_name in rows
+    ]
 
 
 @router.get("/{coin_id}", response_model=CoinRead)

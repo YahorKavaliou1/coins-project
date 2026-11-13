@@ -12,14 +12,12 @@ import { SortBar } from "../components/SortBar";
 import { Pagination } from "../components/Pagination";
 import type { CoinSort } from "../api/coins";
 import type { Coin } from "../types";
+import { PAGE_SIZE, type BrowseInitialData } from "./browseData";
 import { useAuthStore } from "../store/authStore";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 
-// Divisible by 2 and 3, so the last row of the grid is full on both phone and desktop.
-const PAGE_SIZE = 24;
-
-export function BrowsePage() {
+export function BrowsePage({ initial }: { initial: BrowseInitialData }) {
   const queryClient = useQueryClient();
   const [qInput, setQInput] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
@@ -36,7 +34,11 @@ export function BrowsePage() {
 
   const accessToken = useAuthStore((s) => s.accessToken);
 
-  const { data: countries } = useQuery({ queryKey: ["countries"], queryFn: listCountries });
+  const { data: countries } = useQuery({
+    queryKey: ["countries"],
+    queryFn: listCountries,
+    initialData: initial.countries,
+  });
 
   const commonFilters = {
     country_id: selectedCountryIds.length > 0 ? selectedCountryIds : undefined,
@@ -48,15 +50,19 @@ export function BrowsePage() {
     for_sale_only: true,
   };
 
-  const { data: facets } = useQuery({
-    queryKey: ["coin-facets", selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds],
-    queryFn: () => getCoinFacets({ ...commonFilters, metal_id: selectedMetalIds }),
-  });
-
   // Any change of filters, sort or view starts again from the first page.
   const listKey = JSON.stringify([selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds, sort, favouritesOnly]);
   const [pageState, setPageState] = useState({ key: listKey, number: 1 });
   const pageNumber = pageState.key === listKey ? pageState.number : 1;
+  // The view the page opened with, which `initial` holds the data of.
+  const [initialListKey] = useState(listKey);
+  const isInitialView = listKey === initialListKey;
+
+  const { data: facets } = useQuery({
+    queryKey: ["coin-facets", selectedCountryIds, grade, category, selectedLabels, appliedQ, selectedMetalIds],
+    queryFn: () => getCoinFacets({ ...commonFilters, metal_id: selectedMetalIds }),
+    initialData: isInitialView ? initial.facets : undefined,
+  });
   const listTopRef = useRef<HTMLDivElement>(null);
 
   function goToPage(number: number) {
@@ -71,6 +77,7 @@ export function BrowsePage() {
         // Favourites may include coins sold since they were saved: the shop doesn't show those.
         ? listFavourites({ page: pageNumber, pageSize: PAGE_SIZE, forSaleOnly: true })
         : listCoins({ ...commonFilters, metal_id: selectedMetalIds, sort, page: pageNumber, page_size: PAGE_SIZE }),
+    initialData: isInitialView && pageNumber === 1 ? initial.page : undefined,
     // Keep the current page on screen while the next one loads, instead of an empty grid.
     placeholderData: keepPreviousData,
   });
