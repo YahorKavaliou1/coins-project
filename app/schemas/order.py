@@ -2,11 +2,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Self
 
-from pydantic import BaseModel, Field, StringConstraints, model_validator
+from pydantic import BaseModel, EmailStr, Field, StringConstraints, model_validator
 
 from app.models.order import OrderStatus
 from app.schemas.account import AddressCreate, ShippingOption
 from app.schemas.fields import DbId, MoneyOut
+from app.schemas.user import CaptchaToken
 
 
 class ShippingChoice(BaseModel):
@@ -29,6 +30,24 @@ class CheckoutRequest(BaseModel):
     def one_address(self) -> Self:
         if (self.address_id is None) == (self.address is None):
             raise ValueError("Choose a saved address or enter a new one")
+        return self
+
+
+class GuestCheckoutRequest(CheckoutRequest):
+    """Checkout without logging in: the coins come from the browser's cart and the buyer is
+    known by email only (see orders.guest_checkout)."""
+
+    email: EmailStr
+    coin_ids: list[DbId] = Field(min_length=1, max_length=100)  # cart.MAX_CART_ITEMS
+    captcha_token: CaptchaToken | None = None
+
+    @model_validator(mode="after")
+    def new_address_only(self) -> Self:
+        # Saved addresses belong to an account, which a guest hasn't proven is theirs: they
+        # can neither use one (it would be shown back to them) nor add one to it.
+        if self.address is None:
+            raise ValueError("Enter a delivery address")
+        self.save_address = False
         return self
 
 

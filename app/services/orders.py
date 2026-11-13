@@ -49,7 +49,7 @@ def _order_fields(order: Order) -> dict[str, Any]:
         "total_price": order.total_price,
         "items": items,
         "buyer_id": order.buyer_id,
-        "buyer_name": order.buyer.full_name,
+        "buyer_name": order.buyer_name,
         "seller_id": order.seller_id,
         "seller_name": order.seller.full_name,
     }

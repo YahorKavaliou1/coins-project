@@ -13,7 +13,6 @@ import { Pagination } from "../components/Pagination";
 import type { CoinSort } from "../api/coins";
 import type { Coin } from "../types";
 import { PAGE_SIZE, type BrowseInitialData } from "./browseData";
-import { useAuthStore } from "../store/authStore";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { toast } from "../store/toastStore";
 
@@ -31,8 +30,6 @@ export function BrowsePage({ initial }: { initial: BrowseInitialData }) {
   const [editingCoin, setEditingCoin] = useState<Coin | null>(null);
   // Below md the sidebar is folded behind a button, so the coins come first.
   const [filtersOpen, setFiltersOpen] = useState(false);
-
-  const accessToken = useAuthStore((s) => s.accessToken);
 
   const { data: countries } = useQuery({
     queryKey: ["countries"],
@@ -187,7 +184,7 @@ export function BrowsePage({ initial }: { initial: BrowseInitialData }) {
             <CoinCard
               key={coin.id}
               coin={coin}
-              onAddToCart={accessToken ? (id) => addToCartMutation.mutate(id) : undefined}
+              onAddToCart={(id) => addToCartMutation.mutate(id)}
               onEdit={(c) => setEditingCoin(c)}
             />
           ))}

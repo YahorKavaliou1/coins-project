@@ -61,12 +61,12 @@ MAX_LOCKOUT = timedelta(hours=24)
 EMAIL_SENDING_LIMIT = "5/minute;20/hour"
 
 
-def _normalize_email(email: str) -> str:
+def normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
-async def _find_user(db: AsyncSession, email: str, *, for_update: bool = False) -> User | None:
-    stmt = select(User).where(func.lower(User.email) == _normalize_email(email))
+async def find_user(db: AsyncSession, email: str, *, for_update: bool = False) -> User | None:
+    stmt = select(User).where(func.lower(User.email) == normalize_email(email))
     if for_update:
         stmt = stmt.with_for_update()
     return (await db.execute(stmt)).scalar_one_or_none()
@@ -102,11 +102,11 @@ async def register(
     await require_captcha(data.captcha_token, request)
     # Hashed on every path, so the response time doesn't reveal whether the email is taken.
     hashed_password = await hash_password(data.password)
-    existing = await _find_user(db, data.email, for_update=True)
+    existing = await find_user(db, data.email, for_update=True)
 
     if existing is None:
         user = User(
-            email=_normalize_email(data.email),
+            email=normalize_email(data.email),
             hashed_password=hashed_password,
             full_name=data.full_name,
             role=settings.default_user_role,
@@ -142,7 +142,7 @@ async def login(
 ) -> Token:
     now = datetime.now(UTC)
     # Lock the row so concurrent attempts can't lose failed-login increments.
-    user = await _find_user(db, form_data.username, for_update=True)
+    user = await find_user(db, form_data.username, for_update=True)
 
     # Every path checks exactly one password hash, so timing doesn't reveal whether the
     # account exists. While locked the real password isn't checked at all (otherwise the
@@ -218,7 +218,7 @@ async def resend_verification(
     request: Request, data: EmailRequest, db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
     await require_captcha(data.captcha_token, request)
-    user = await _find_user(db, data.email, for_update=True)
+    user = await find_user(db, data.email, for_update=True)
     if user is not None and not user.is_verified:
         await send_verification_email(db, user)
         await db.commit()
@@ -233,7 +233,7 @@ async def forgot_password(
     request: Request, data: EmailRequest, db: AsyncSession = Depends(get_db)
 ) -> MessageResponse:
     await require_captcha(data.captcha_token, request)
-    user = await _find_user(db, data.email, for_update=True)
+    user = await find_user(db, data.email, for_update=True)
     if user is not None:
         await send_password_reset_email(db, user)
         await db.commit()

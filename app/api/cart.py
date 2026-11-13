@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,7 +12,7 @@ from app.db.session import get_db
 from app.models.cart_item import CartItem
 from app.models.coin import Coin
 from app.models.user import User
-from app.schemas.cart import CartItemAdd, CartRead
+from app.schemas.cart import CartItemAdd, CartPreviewRequest, CartRead
 from app.schemas.order import CartSeller
 
 router = APIRouter(prefix="/cart", tags=["cart"])
@@ -35,7 +36,15 @@ async def _load_cart(db: AsyncSession, user_id: int) -> list[CartItem]:
     return list(result.scalars().all())
 
 
-def _cart_read(items: list[CartItem]) -> CartRead:
+@dataclass
+class _GuestCartItem:
+    """A line of a guest's cart, which lives in their browser: shaped like CartItem."""
+
+    id: int
+    coin: Coin
+
+
+def _cart_read(items: list[CartItem] | list[_GuestCartItem]) -> CartRead:
     total = sum((item.coin.price or Decimal(0) for item in items), Decimal(0))
     sellers: dict[int, CartSeller] = {}
     for item in items:
@@ -59,6 +68,25 @@ async def get_cart(
     current_user: User = Depends(get_current_user),
 ) -> CartRead:
     return _cart_read(await _load_cart(db, current_user.id))
+
+
+@router.post("/preview", response_model=CartRead)
+async def preview_cart(data: CartPreviewRequest, db: AsyncSession = Depends(get_db)) -> CartRead:
+    """A guest's cart (coin ids kept by the browser) with the same details as a user's cart.
+    Coins deleted since are left out; sold ones are shown as no longer available."""
+    result = await db.execute(
+        select(Coin)
+        .options(
+            selectinload(Coin.country),
+            selectinload(Coin.metal),
+            selectinload(Coin.owner),
+            selectinload(Coin.images),
+        )
+        .where(Coin.id.in_(data.coin_ids))
+    )
+    coins = {coin.id: coin for coin in result.scalars()}
+    ids = dict.fromkeys(data.coin_ids)  # without duplicates, in the order added
+    return _cart_read([_GuestCartItem(id=i, coin=coins[i]) for i in ids if i in coins])
 
 
 @router.post("/items", response_model=CartRead, status_code=201)

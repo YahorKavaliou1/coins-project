@@ -2,14 +2,16 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ShoppingCart, Trash2 } from "lucide-react";
-import { getCart, removeFromCart } from "../api/cart";
+import { clearGuestCart, getCart, removeFromCart } from "../api/cart";
 import { listAddresses } from "../api/account";
-import { checkout } from "../api/orders";
+import { checkout, guestCheckout } from "../api/orders";
 import { useAuthStore } from "../store/authStore";
 import { toast } from "../store/toastStore";
 import { getErrorMessage, type ApiError } from "../api/client";
 import { AddressForm } from "../components/AddressForm";
 import { DataProtectionNote } from "../components/DataProtectionNote";
+import { Captcha, captchaEnabled } from "../components/Captcha";
+import { inputClass, labelClass } from "../components/formStyles";
 import { EMPTY_ADDRESS, addressSummary, cleanAddress } from "../utils/address";
 import { sectionTitleClass } from "../components/formStyles";
 import type { AddressFields, CartItemRead, CartSeller, Coin } from "../types";
@@ -32,7 +34,6 @@ export function CartPage() {
   const { data: cart, isLoading } = useQuery({
     queryKey: ["cart", accessToken],
     queryFn: getCart,
-    enabled: !!accessToken,
   });
   const { data: addresses } = useQuery({
     queryKey: ["addresses"],
@@ -46,6 +47,12 @@ export function CartPage() {
   const [addressChoice, setAddressChoice] = useState<number | "new" | null>(null);
   const [newAddress, setNewAddress] = useState<AddressFields>(EMPTY_ADDRESS);
   const [saveAddress, setSaveAddress] = useState(true);
+  // Guests only: where the order emails go. Single-use Turnstile token; bumping captchaKey
+  // remounts the widget for a fresh one.
+  const [guestEmail, setGuestEmail] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
+  const isGuest = !accessToken;
 
   const removeMutation = useMutation({
     mutationFn: async (coinIds: number[]) => {
@@ -69,15 +76,25 @@ export function CartPage() {
   const selectedAddress = addressChoice ?? defaultAddress?.id ?? "new";
 
   const checkoutMutation = useMutation({
-    mutationFn: () =>
-      checkout({
+    mutationFn: () => {
+      const payload = {
         ...(selectedAddress === "new"
           ? { address: cleanAddress(newAddress), save_address: saveAddress }
           : { address_id: selectedAddress }),
         shipping: sellers.map((s) => ({ seller_id: s.id, option_name: chosenOption(s)?.name ?? null })),
         expected_total: total,
-      }),
+      };
+      return isGuest
+        ? guestCheckout({
+            ...payload,
+            email: guestEmail.trim(),
+            coin_ids: available.map((item) => item.coin.id),
+            captcha_token: captchaToken,
+          })
+        : checkout(payload);
+    },
     onSuccess: (orders) => {
+      if (isGuest) clearGuestCart();
       setNewAddress(EMPTY_ADDRESS);
       for (const key of ["cart", "orders", "coins", "addresses", "my-lots"]) {
         queryClient.invalidateQueries({ queryKey: [key] });
@@ -93,21 +110,11 @@ export function CartPage() {
       toast.error(getErrorMessage(err));
       queryClient.invalidateQueries({ queryKey: ["cart"] });
     },
+    onSettled: () => {
+      setCaptchaToken(null);
+      setCaptchaKey((k) => k + 1);
+    },
   });
-
-  if (!accessToken) {
-    return (
-      <div className="bg-white border border-gray-200 rounded-md p-10 text-center">
-        <p className="text-gray-600 mb-4">Please log in to view your cart.</p>
-        <button
-          onClick={() => navigate("/auth?next=/cart")}
-          className="bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm px-6 py-3"
-        >
-          Log in
-        </button>
-      </div>
-    );
-  }
 
   if (isLoading || !cart) return <p>Loading...</p>;
 
@@ -268,6 +275,29 @@ export function CartPage() {
               checkoutMutation.mutate();
             }}
           >
+            {isGuest && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-3">
+                  Ordering as a guest.{" "}
+                  <Link to="/auth?next=/cart" className="text-accent font-semibold hover:underline">
+                    Log in
+                  </Link>{" "}
+                  to use your saved addresses.
+                </p>
+                <label className={labelClass} htmlFor="guest-email">
+                  Email for the order
+                </label>
+                <input
+                  id="guest-email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  value={guestEmail}
+                  onChange={(e) => setGuestEmail(e.target.value)}
+                  className={inputClass}
+                />
+              </div>
+            )}
             <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Deliver to</div>
             <div className="flex flex-col gap-2 mb-3">
               {addresses?.map((address) => (
@@ -299,15 +329,17 @@ export function CartPage() {
             {selectedAddress === "new" && (
               <div className="mb-3">
                 <AddressForm value={newAddress} onChange={setNewAddress} />
-                <label className="flex items-center gap-2 text-sm text-gray-600 mt-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={saveAddress}
-                    onChange={(e) => setSaveAddress(e.target.checked)}
-                    className="accent-accent"
-                  />
-                  Save to my addresses
-                </label>
+                {!isGuest && (
+                  <label className="flex items-center gap-2 text-sm text-gray-600 mt-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={saveAddress}
+                      onChange={(e) => setSaveAddress(e.target.checked)}
+                      className="accent-accent"
+                    />
+                    Save to my addresses
+                  </label>
+                )}
                 <DataProtectionNote className="mt-3" purpose="to deliver your orders; your name, address and phone are given to the carrier" />
               </div>
             )}
@@ -332,9 +364,16 @@ export function CartPage() {
               <p className="text-xs text-red-700 mt-3">Remove unavailable items from your cart to place the order.</p>
             )}
 
+            {isGuest && <Captcha key={captchaKey} action="guest_checkout" onToken={setCaptchaToken} className="mt-4" />}
+
             <button
               type="submit"
-              disabled={checkoutMutation.isPending || unavailable.length > 0 || available.length === 0}
+              disabled={
+                checkoutMutation.isPending ||
+                unavailable.length > 0 ||
+                available.length === 0 ||
+                (isGuest && captchaEnabled && !captchaToken)
+              }
               className="mt-4 w-full bg-accent hover:bg-accent-dark text-white font-bold uppercase tracking-wide text-sm rounded-sm py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {/* The button must say the order is binding (TRLGDCU art. 98.2, Directive 2011/83 art. 8.2). */}

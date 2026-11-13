@@ -1,29 +1,35 @@
+import secrets
 from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import delete, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.auth import EMAIL_SENDING_LIMIT, find_user, normalize_email
 from app.api.deps import get_current_user, require_admin, require_seller
+from app.core.rate_limit import limiter
+from app.core.security import hash_password
 from app.db.session import get_db
 from app.models.cart_item import CartItem
 from app.models.coin import Coin
 from app.models.order import Order, OrderStatus
 from app.models.order_item import OrderItem
 from app.models.shipping_address import ShippingAddress
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.account import MAX_ADDRESSES, AddressBase, AddressRead, format_address
 from app.schemas.order import (
     AdminOrderPage,
     BuyerOrderRead,
     CheckoutRequest,
+    GuestCheckoutRequest,
     OrderRead,
     TrackingUpdate,
 )
+from app.services.captcha import require_captcha
 from app.services.coin_naming import build_coin_name
 from app.services.notifications import (
     send_order_emails,
@@ -75,57 +81,54 @@ async def _checkout_address(db: AsyncSession, data: CheckoutRequest, user: User)
     return format_address(AddressBase.model_validate(data.address.model_dump()))
 
 
-@router.post("/checkout", response_model=list[BuyerOrderRead], status_code=201)
-async def checkout(
+async def _place_orders(
+    db: AsyncSession,
+    buyer: User,
+    buyer_name: str | None,
+    coin_ids: list[int],
     data: CheckoutRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> list[BuyerOrderRead]:
-    """Buys the cart: one order per seller, each awaiting payment by the seller's details."""
-    # Lock the cart's coins before checking availability, so two concurrent checkouts can't
-    # both see a coin as for sale. The second one waits here, then sees it sold (or its cart
-    # already emptied). Ordered by id so overlapping carts can't deadlock.
+) -> list[int]:
+    """Buys these coins for `buyer`: one order per seller, each awaiting payment by the
+    seller's details. Shared by checkout from an account and by guest checkout. Returns the
+    new orders' ids; the caller commits."""
+    # Lock the coins before checking availability, so two concurrent checkouts can't both
+    # see a coin as for sale: the second one waits here, then sees it sold. Ordered by id so
+    # overlapping carts can't deadlock.
     await db.execute(
-        select(Coin.id)
-        .where(Coin.id.in_(select(CartItem.coin_id).where(CartItem.user_id == current_user.id)))
-        .order_by(Coin.id)
-        .with_for_update()
+        select(Coin.id).where(Coin.id.in_(coin_ids)).order_by(Coin.id).with_for_update()
     )
-    cart_result = await db.execute(
-        select(CartItem)
-        .options(
-            selectinload(CartItem.coin).selectinload(Coin.country),
-            selectinload(CartItem.coin).selectinload(Coin.metal),
-            selectinload(CartItem.coin).selectinload(Coin.owner),
-        )
-        .where(CartItem.user_id == current_user.id)
-        .order_by(CartItem.created_at)
+    result = await db.execute(
+        select(Coin)
+        .options(selectinload(Coin.country), selectinload(Coin.metal), selectinload(Coin.owner))
+        .where(Coin.id.in_(coin_ids))
     )
-    cart_items = list(cart_result.scalars().all())
+    by_id = {coin.id: coin for coin in result.scalars()}
+    # In the cart's order, without duplicates; coins deleted meanwhile are gone.
+    coins = [by_id[coin_id] for coin_id in dict.fromkeys(coin_ids) if coin_id in by_id]
 
-    if not cart_items:
+    if not coins:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     unavailable = [
-        _coin_display_name(item.coin)
-        for item in cart_items
-        if not item.coin.is_for_sale or item.coin.price is None
+        _coin_display_name(coin) for coin in coins if not coin.is_for_sale or coin.price is None
     ]
     if unavailable:
         raise HTTPException(
             status_code=409,
             detail=f"No longer available: {', '.join(unavailable)}. Please review your cart.",
         )
+    if any(coin.owner_id == buyer.id for coin in coins):
+        raise HTTPException(status_code=400, detail="You cannot buy your own coin")
 
-    by_seller: dict[int, list[CartItem]] = defaultdict(list)
-    for item in cart_items:
-        by_seller[item.coin.owner_id].append(item)
+    by_seller: dict[int, list[Coin]] = defaultdict(list)
+    for coin in coins:
+        by_seller[coin.owner_id].append(coin)
 
     # Shipping per seller, read under the row locks like the prices.
     chosen = {choice.seller_id: choice.option_name for choice in data.shipping}
     shipping: dict[int, tuple[str | None, Decimal | None]] = {}
-    for seller_id, items in by_seller.items():
-        seller = items[0].coin.owner
+    for seller_id, seller_coins in by_seller.items():
+        seller = seller_coins[0].owner
         options = seller.shipping_options or []
         if not options:
             shipping[seller_id] = (None, None)  # arranged with the seller
@@ -140,9 +143,9 @@ async def checkout(
         shipping[seller_id] = (option["name"], Decimal(option["price"]))
 
     totals = {
-        seller_id: sum((item.coin.price or Decimal(0) for item in items), Decimal(0))
+        seller_id: sum((coin.price or Decimal(0) for coin in seller_coins), Decimal(0))
         + (shipping[seller_id][1] or Decimal(0))
-        for seller_id, items in by_seller.items()
+        for seller_id, seller_coins in by_seller.items()
     }
     if sum(totals.values(), Decimal(0)) != data.expected_total:
         raise HTTPException(
@@ -151,13 +154,14 @@ async def checkout(
             "Please review your cart and try again.",
         )
 
-    address = await _checkout_address(db, data, current_user)
+    address = await _checkout_address(db, data, buyer)
 
     orders: list[Order] = []
-    for seller_id, items in by_seller.items():
+    for seller_id, seller_coins in by_seller.items():
         method, price = shipping[seller_id]
         order = Order(
-            buyer_id=current_user.id,
+            buyer_id=buyer.id,
+            buyer_name=buyer_name,
             seller_id=seller_id,
             shipping_address=address,
             shipping_method=method,
@@ -168,8 +172,7 @@ async def checkout(
         await db.flush()  # get order.id before creating order items
 
         order_items = []
-        for cart_item in items:
-            coin = cart_item.coin
+        for coin in seller_coins:
             order_item = OrderItem(
                 order_id=order.id,
                 coin_id=coin.id,
@@ -182,14 +185,89 @@ async def checkout(
             # The coin's owner (the seller who listed it) never changes.
             # Purchase history and buyer information live on Order/OrderItem instead.
             coin.status = "sold"
-            await db.delete(cart_item)
 
         # Queued in the same transaction: no email for a failed order, none lost for a placed one.
-        await send_order_emails(db, order, order_items, current_user, items[0].coin.owner)
+        await send_order_emails(db, order, order_items, buyer, seller_coins[0].owner)
         orders.append(order)
 
+    # Bought coins leave the buyer's cart (an account's; a guest's lives in their browser).
+    await db.execute(
+        delete(CartItem).where(CartItem.user_id == buyer.id, CartItem.coin_id.in_(by_id))
+    )
+    return [order.id for order in orders]
+
+
+@router.post("/checkout", response_model=list[BuyerOrderRead], status_code=201)
+async def checkout(
+    data: CheckoutRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[BuyerOrderRead]:
+    """Buys the user's cart."""
+    # Locked: a second checkout of the same cart (double submit) waits here, then finds the
+    # cart emptied by the first one.
+    cart = await db.execute(
+        select(CartItem.coin_id)
+        .where(CartItem.user_id == current_user.id)
+        .order_by(CartItem.created_at)
+        .with_for_update()
+    )
+    coin_ids = list(cart.scalars())
+    order_ids = await _place_orders(db, current_user, current_user.full_name, coin_ids, data)
     await db.commit()
-    return [buyer_order_read(order) for order in await _load_orders(db, [o.id for o in orders])]
+    return [buyer_order_read(order) for order in await _load_orders(db, order_ids)]
+
+
+GUEST_EMAIL_REFUSED_DETAIL = "This email address can't be used for an order. Please contact us."
+
+
+async def _guest_buyer(db: AsyncSession, email: str, name: str, coin_ids: list[int]) -> User:
+    """The account a guest's orders go to: the one with this email, or a new one.
+
+    A new account is unconfirmed and has no usable password. Whoever owns the mailbox takes
+    it over with "Forgot password" (which also confirms it), or by registering with the same
+    email, and then sees these orders in My purchases."""
+    # Hashed on every path, so the response time doesn't reveal whether the email is taken.
+    unusable_password = await hash_password(secrets.token_urlsafe(32))
+    user = await find_user(db, email, for_update=True)
+    if user is None:
+        user = User(
+            email=normalize_email(email),
+            hashed_password=unusable_password,
+            full_name=name,
+            role=UserRole.USER,
+            is_verified=False,
+        )
+        db.add(user)
+        await db.flush()
+    elif (
+        user.is_blocked
+        or not user.is_active
+        or await db.scalar(select(exists().where(Coin.id.in_(coin_ids), Coin.owner_id == user.id)))
+    ):
+        # One answer for every refusal, so it doesn't tell what the account is (blocked, or
+        # the seller's own).
+        raise HTTPException(status_code=403, detail=GUEST_EMAIL_REFUSED_DETAIL)
+    return user
+
+
+@router.post("/guest-checkout", response_model=list[BuyerOrderRead], status_code=201)
+@limiter.limit(EMAIL_SENDING_LIMIT)
+async def guest_checkout(
+    request: Request, data: GuestCheckoutRequest, db: AsyncSession = Depends(get_db)
+) -> list[BuyerOrderRead]:
+    """Buys a guest's cart without logging in; the order emails go to the given address."""
+    await require_captcha(data.captcha_token, request)
+    assert data.address is not None  # GuestCheckoutRequest requires a new address
+    name = data.address.recipient_name
+    buyer = await _guest_buyer(db, data.email, name, data.coin_ids)
+    order_ids = await _place_orders(db, buyer, name, data.coin_ids, data)
+    await db.commit()
+    # Without the account's id: the email may belong to someone else's account.
+    return [
+        buyer_order_read(order).model_copy(update={"buyer_id": 0})
+        for order in await _load_orders(db, order_ids)
+    ]
 
 
 async def _load_orders(db: AsyncSession, ids: list[int]) -> list[Order]:

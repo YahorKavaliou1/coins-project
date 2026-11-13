@@ -24,7 +24,6 @@ export function Layout() {
   const { data: cart } = useQuery({
     queryKey: ["cart", accessToken],
     queryFn: getCart,
-    enabled: !!accessToken,
   });
 
   useEffect(() => {
@@ -72,26 +71,24 @@ export function Layout() {
           </nav>
 
           <div className="flex items-center gap-4 text-sm whitespace-nowrap max-md:gap-3">
-            {accessToken && (
-              <NavLink
-                to="/cart"
-                title="Open cart"
-                className={({ isActive }) =>
-                  `relative p-2 border rounded-sm transition-colors ${
-                    isActive
-                      ? "border-accent text-accent"
-                      : "border-gray-300 text-gray-700 hover:border-accent hover:text-accent"
-                  }`
-                }
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {!!cart?.items.length && (
-                  <span className="absolute -top-2 -right-2 bg-accent text-white text-[10px] leading-none rounded-full w-4 h-4 flex items-center justify-center">
-                    {cart.items.length}
-                  </span>
-                )}
-              </NavLink>
-            )}
+            <NavLink
+              to="/cart"
+              title="Open cart"
+              className={({ isActive }) =>
+                `relative p-2 border rounded-sm transition-colors ${
+                  isActive
+                    ? "border-accent text-accent"
+                    : "border-gray-300 text-gray-700 hover:border-accent hover:text-accent"
+                }`
+              }
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {!!cart?.items.length && (
+                <span className="absolute -top-2 -right-2 bg-accent text-white text-[10px] leading-none rounded-full w-4 h-4 flex items-center justify-center">
+                  {cart.items.length}
+                </span>
+              )}
+            </NavLink>
 
             {accessToken ? (
               <div className="relative" ref={menuRef}>

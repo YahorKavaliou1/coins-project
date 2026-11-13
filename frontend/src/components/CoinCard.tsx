@@ -11,7 +11,7 @@ import { unavailableLabel } from "../utils/coinStatus";
 import { formatPrice } from "../utils/money";
 import { thumbnailSrc } from "../utils/images";
 import { useCartCoinIds } from "../hooks/useCartCoinIds";
-import { coinPath, loginPath } from "../utils/url";
+import { coinPath } from "../utils/url";
 
 interface CoinCardProps {
   coin: Coin;
@@ -40,7 +40,7 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
 
   const cartIds = useCartCoinIds();
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
-  const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
+  const canBuy = !isOwner && coin.is_for_sale;
   const inCart = cartIds.has(coin.id);
   const canEdit = isOwner && coin.status !== "sold";
 
@@ -140,18 +140,21 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
             </div>
           ) : canBuy && onAddToCart ? (
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => toggleFavouriteMutation.mutate()}
-                className={`border rounded p-2 transition-colors ${
-                  coin.is_favourite
-                    ? "text-accent border-accent bg-accent/10"
-                    : "text-gray-400 hover:text-accent hover:border-accent"
-                }`}
-                title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
-                type="button"
-              >
-                <Heart className="w-4 h-4" fill={coin.is_favourite ? "currentColor" : "none"} />
-              </button>
+              {/* Favourites are kept per account. */}
+              {accessToken && (
+                <button
+                  onClick={() => toggleFavouriteMutation.mutate()}
+                  className={`border rounded p-2 transition-colors ${
+                    coin.is_favourite
+                      ? "text-accent border-accent bg-accent/10"
+                      : "text-gray-400 hover:text-accent hover:border-accent"
+                  }`}
+                  title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
+                  type="button"
+                >
+                  <Heart className="w-4 h-4" fill={coin.is_favourite ? "currentColor" : "none"} />
+                </button>
+              )}
               {inCart ? (
                 <Link
                   to="/cart"
@@ -170,13 +173,6 @@ export function CoinCard({ coin, onAddToCart, onEdit }: CoinCardProps) {
                 </button>
               )}
             </div>
-          ) : !accessToken && coin.is_for_sale ? (
-            <Link
-              to={loginPath(coinPath(coin))}
-              className="flex items-center justify-center gap-2 border border-accent text-accent hover:bg-accent hover:text-white text-xs font-bold uppercase rounded py-2 transition-colors"
-            >
-              Log in to buy
-            </Link>
           ) : !coin.is_for_sale ? (
             <div className="text-center text-gray-400 text-sm italic py-2">{unavailableLabel(coin.status)}</div>
           ) : null}

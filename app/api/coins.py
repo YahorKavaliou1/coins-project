@@ -323,9 +323,8 @@ async def export_my_lots(
     coins = list(result.scalars().all())
 
     sale_rows = await db.execute(
-        select(OrderItem, Order, User.full_name)
+        select(OrderItem, Order, Order.buyer_name)
         .join(OrderItem.order)
-        .join(User, User.id == Order.buyer_id)
         .where(OrderItem.coin_id.in_([coin.id for coin in coins]))
     )
     sales = {item.coin_id: (item, order, buyer) for item, order, buyer in sale_rows.all()}
@@ -368,9 +367,8 @@ async def list_my_lots(
     sales: dict[int, SaleInfo] = {}
     if status == "sold" and coins:
         sale_rows = await db.execute(
-            select(OrderItem, Order, User.full_name)
+            select(OrderItem, Order, Order.buyer_name)
             .join(OrderItem.order)
-            .join(User, User.id == Order.buyer_id)
             .where(OrderItem.coin_id.in_([coin.id for coin in coins]))
         )
         for item, order, buyer_name in sale_rows.all():

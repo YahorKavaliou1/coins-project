@@ -21,7 +21,24 @@ export function PurchasesPage() {
     enabled: !!accessToken,
   });
 
-  if (!accessToken) return <p>Please log in to view your purchases.</p>;
+  if (!accessToken) {
+    return (
+      <div className="max-w-xl bg-white border border-gray-200 rounded-md p-6 text-sm text-gray-700 leading-relaxed">
+        <p className="mb-3">
+          Please <Link to="/auth?next=/purchases" className="text-accent font-semibold hover:underline">log in</Link> to
+          view your purchases.
+        </p>
+        <p>
+          Ordered as a guest? Your order emails have everything you need to pay. To follow your orders here and mark
+          them as paid,{" "}
+          <Link to="/forgot-password" className="text-accent font-semibold hover:underline">
+            set a password
+          </Link>{" "}
+          for the email address you ordered with, then log in.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl">

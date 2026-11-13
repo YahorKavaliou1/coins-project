@@ -17,7 +17,6 @@ import { formatPrice } from "../utils/money";
 import { unavailableLabel } from "../utils/coinStatus";
 import { thumbnailSrc } from "../utils/images";
 import { useCartCoinIds } from "../hooks/useCartCoinIds";
-import { coinPath, loginPath } from "../utils/url";
 
 /** `initialCoin`: the coin as loaded on the server (routes/coin.tsx), shown until it is reloaded. */
 export function CoinDetailPage({ initialCoin }: { initialCoin: Coin }) {
@@ -59,7 +58,7 @@ export function CoinDetailPage({ initialCoin }: { initialCoin: Coin }) {
   if (!coin) return <p>Loading...</p>;
 
   const isOwner = currentUser !== null && coin.owner.id === currentUser.id;
-  const canBuy = !!accessToken && !isOwner && coin.is_for_sale;
+  const canBuy = !isOwner && coin.is_for_sale;
   const inCart = cartIds.has(coin.id);
   const canEdit = (isOwner || isAdmin(currentUser)) && coin.status !== "sold";
 
@@ -175,18 +174,21 @@ export function CoinDetailPage({ initialCoin }: { initialCoin: Coin }) {
 
             {canBuy ? (
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => toggleFavouriteMutation.mutate()}
-                  className={`border rounded p-3 transition-colors ${
-                    coin.is_favourite
-                      ? "text-accent border-accent bg-accent/10"
-                      : "text-gray-400 hover:text-accent hover:border-accent"
-                  }`}
-                  title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
-                  type="button"
-                >
-                  <Heart className="w-5 h-5" fill={coin.is_favourite ? "currentColor" : "none"} />
-                </button>
+                {/* Favourites are kept per account. */}
+                {accessToken && (
+                  <button
+                    onClick={() => toggleFavouriteMutation.mutate()}
+                    className={`border rounded p-3 transition-colors ${
+                      coin.is_favourite
+                        ? "text-accent border-accent bg-accent/10"
+                        : "text-gray-400 hover:text-accent hover:border-accent"
+                    }`}
+                    title={coin.is_favourite ? "Remove from favourites" : "Add to favourites"}
+                    type="button"
+                  >
+                    <Heart className="w-5 h-5" fill={coin.is_favourite ? "currentColor" : "none"} />
+                  </button>
+                )}
                 {inCart ? (
                   <Link
                     to="/cart"
@@ -206,13 +208,6 @@ export function CoinDetailPage({ initialCoin }: { initialCoin: Coin }) {
                   </button>
                 )}
               </div>
-            ) : !accessToken && coin.is_for_sale ? (
-              <Link
-                to={loginPath(coinPath(coin))}
-                className="flex items-center justify-center gap-2 bg-accent hover:bg-accent-dark text-white font-bold uppercase rounded py-3"
-              >
-                Log in to buy
-              </Link>
             ) : !coin.is_for_sale ? (
               <div className="text-center text-gray-400 italic py-2">{unavailableLabel(coin.status)}</div>
             ) : null}

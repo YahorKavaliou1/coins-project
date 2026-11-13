@@ -37,6 +37,10 @@ class Order(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     buyer_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     seller_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    # The buyer's name as the seller sees it, a snapshot like the address: the account's name,
+    # or for a guest the recipient name they entered (the email may belong to another account,
+    # whose name the seller must not learn).
+    buyer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Formatted from the chosen address at checkout (a snapshot: later edits don't change it).
     shipping_address: Mapped[str] = mapped_column(Text)
     # Snapshot of the seller's shipping option; both null when shipping is arranged with them.

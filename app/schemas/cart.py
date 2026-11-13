@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.coin import CoinRead
 from app.schemas.fields import DbId, MoneyOut
@@ -7,6 +7,12 @@ from app.schemas.order import CartSeller
 
 class CartItemAdd(BaseModel):
     coin_id: DbId
+
+
+class CartPreviewRequest(BaseModel):
+    """A guest's cart, kept in their browser: the coins' ids, in the order they were added."""
+
+    coin_ids: list[DbId] = Field(max_length=100)  # cart.MAX_CART_ITEMS
 
 
 class CartItemRead(BaseModel):

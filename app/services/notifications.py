@@ -179,7 +179,7 @@ async def send_order_emails(
             "items": lines,
             **_shipping_context(order),
             "total": order.total_price,
-            "buyer_name": buyer.full_name,
+            "buyer_name": order.buyer_name,
             "shipping_address": order.shipping_address,
             "sales_link": _link("/sales"),
             # The buyer sees the seller's details on the order page as soon as they are added.
@@ -199,7 +199,7 @@ def send_order_paid_email(db: AsyncSession, order: Order) -> None:
         context={
             "name": order.seller.full_name,
             "order_id": order.id,
-            "buyer_name": order.buyer.full_name,
+            "buyer_name": order.buyer_name,
             "total": order.total_price,
             "sales_link": _link("/sales"),
         },

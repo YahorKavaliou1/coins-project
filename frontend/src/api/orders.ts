@@ -15,9 +15,22 @@ export interface CheckoutPayload {
   expected_total: number;
 }
 
+/** Checkout without an account: the coins of the browser's cart, the buyer's email. */
+export interface GuestCheckoutPayload extends CheckoutPayload {
+  email: string;
+  coin_ids: number[];
+  captcha_token: string | null;
+}
+
 /** One order per seller. */
 export async function checkout(payload: CheckoutPayload) {
   const { data } = await apiClient.post<BuyerOrder[]>("/orders/checkout", payload);
+  return data;
+}
+
+/** Like checkout; the orders go to the account with this email (created if there is none). */
+export async function guestCheckout(payload: GuestCheckoutPayload) {
+  const { data } = await apiClient.post<BuyerOrder[]>("/orders/guest-checkout", payload);
   return data;
 }
 
